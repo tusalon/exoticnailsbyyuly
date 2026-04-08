@@ -1,22 +1,22 @@
-// sw.js - Service Worker para GordisNailsbySandra
+// sw.js - Service Worker para Exotic Nails by Yuly
 
-const CACHE_NAME = 'gordis-nails-v1';
+const CACHE_NAME = 'exoticnailsbyyuly-v1';
 const urlsToCache = [
-  '/gordis-nails/',
-  '/gordis-nails/index.html',
-  '/gordis-nails/admin.html',
-  '/gordis-nails/admin-login.html',
-  '/gordis-nails/setup-wizard.html',
-  '/gordis-nails/editar-negocio.html',
-  '/gordis-nails/manifest.json',
-  '/gordis-nails/icons/icon-72x72.png',
-  '/gordis-nails/icons/icon-96x96.png',
-  '/gordis-nails/icons/icon-128x128.png',
-  '/gordis-nails/icons/icon-144x144.png',
-  '/gordis-nails/icons/icon-152x152.png',
-  '/gordis-nails/icons/icon-192x192.png',
-  '/gordis-nails/icons/icon-384x384.png',
-  '/gordis-nails/icons/icon-512x512.png'
+  '/exoticnailsbyyuly/',
+  '/exoticnailsbyyuly/index.html',
+  '/exoticnailsbyyuly/admin.html',
+  '/exoticnailsbyyuly/admin-login.html',
+  '/exoticnailsbyyuly/setup-wizard.html',
+  '/exoticnailsbyyuly/editar-negocio.html',
+  '/exoticnailsbyyuly/manifest.json',
+  '/exoticnailsbyyuly/icons/icon-72x72.png',
+  '/exoticnailsbyyuly/icons/icon-96x96.png',
+  '/exoticnailsbyyuly/icons/icon-128x128.png',
+  '/exoticnailsbyyuly/icons/icon-144x144.png',
+  '/exoticnailsbyyuly/icons/icon-152x152.png',
+  '/exoticnailsbyyuly/icons/icon-192x192.png',
+  '/exoticnailsbyyuly/icons/icon-384x384.png',
+  '/exoticnailsbyyuly/icons/icon-512x512.png'
 ];
 
 // ============================================
@@ -108,7 +108,7 @@ self.addEventListener('fetch', event => {
           }
           // Si no hay cache y es imagen, devolver icon por defecto
           if (event.request.url.match(/\.(jpg|jpeg|png|gif|svg|webp)$/)) {
-            return caches.match('/gordis-nails/icons/icon-192x192.png');
+            return caches.match('/exoticnailsbyyuly/icons/icon-192x192.png');
           }
           return new Response('Error de red', { status: 408 });
         });
@@ -138,6 +138,6 @@ self.addEventListener('message', event => {
   }
 });
 
-console.log('✅ Service Worker configurado para GordisNailsbySandra');
+console.log('✅ Service Worker configurado para Exotic Nails by Yuly');
 console.log('📦 Cache:', CACHE_NAME);
 console.log('📄 Archivos a cachear:', urlsToCache.length);

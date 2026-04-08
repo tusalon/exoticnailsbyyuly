@@ -1,12 +1,12 @@
 // utils/config-negocio.js - VERSIÓN MULTI-TENANT CORREGIDA
-// CLIENTE: GordisNailsbySandra
+// CLIENTE: Exotic Nails by Yuly
 
 console.log('🏢 config-negocio.js cargado');
 
 // ============================================
 // 🔥 CONFIGURACIÓN POR CLIENTE - ¡LO ÚNICO QUE CAMBIA!
 // ============================================
-const NEGOCIO_ID_POR_DEFECTO = '935cc37b-ee0e-4187-9507-4409880a15c2'; // ID de GordisNailsbySandra
+const NEGOCIO_ID_POR_DEFECTO = '55e7df41-6cf7-45d7-9fc3-a17966e3645a'; // ID de Exotic Nails by Yuly
 
 // Hacer accesible globalmente
 window.NEGOCIO_ID_POR_DEFECTO = NEGOCIO_ID_POR_DEFECTO;
@@ -116,7 +116,7 @@ window.cargarConfiguracionNegocio = async function(forceRefresh = false) {
  */
 window.getNombreNegocio = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.nombre || 'GordisNailsbySandra';
+    return config?.nombre || 'Exotic Nails by Yuly';
 };
 
 /**
@@ -124,7 +124,7 @@ window.getNombreNegocio = async function() {
  */
 window.getTelefonoDuenno = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.telefono || '55002272';
+    return config?.telefono || '52541431';
 };
 
 /**
@@ -132,7 +132,7 @@ window.getTelefonoDuenno = async function() {
  */
 window.getEmailNegocio = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.email || 'migueldavidselgadosoto@gmail.com';
+    return config?.email || 'yulynails52@gmail.com';
 };
 
 /**
@@ -140,7 +140,7 @@ window.getEmailNegocio = async function() {
  */
 window.getInstagram = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.instagram || 'gordis_nails';
+    return config?.instagram || '';
 };
 
 /**
@@ -148,7 +148,7 @@ window.getInstagram = async function() {
  */
 window.getFacebook = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.facebook || 'gordis.nails';
+    return config?.facebook || '';
 };
 
 /**
@@ -156,7 +156,7 @@ window.getFacebook = async function() {
  */
 window.getHorarioAtencion = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.horario_atencion || 'Mar-Sáb 9:00-21:00, Dom cerrado';
+    return config?.horario_atencion || '';
 };
 
 /**
@@ -164,7 +164,7 @@ window.getHorarioAtencion = async function() {
  */
 window.getMensajeBienvenida = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.mensaje_bienvenida || '👋 Bienvenida a GordisNailsbySandra - Tu espacio de belleza';
+    return config?.mensaje_bienvenida || '¡Bienvenida a Exotic Nails by Yuly!';
 };
 
 /**
@@ -172,7 +172,7 @@ window.getMensajeBienvenida = async function() {
  */
 window.getMensajeConfirmacion = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.mensaje_confirmacion || '✅ Reserva confirmada en GordisNailsbySandra';
+    return config?.mensaje_confirmacion || 'Tu turno ha sido reservado con éxito';
 };
 
 /**
@@ -180,7 +180,7 @@ window.getMensajeConfirmacion = async function() {
  */
 window.getNtfyTopic = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.ntfy_topic || 'gordis-nails-notifications';
+    return config?.ntfy_topic || 'exoticnailsbyyuly';
 };
 
 /**
@@ -205,5 +205,5 @@ setTimeout(async () => {
     await window.cargarConfiguracionNegocio();
 }, 500);
 
-console.log('✅ config-negocio.js listo para GordisNailsbySandra');
+console.log('✅ config-negocio.js listo para Exotic Nails by Yuly');
 console.log('🏷️  ID configurado:', NEGOCIO_ID_POR_DEFECTO);
