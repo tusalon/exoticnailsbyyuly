@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargando...</title>
+    <meta name="description" content="Reservá tu turno en GordisNailsbySandra - Uñas y belleza">
+    
+    <!-- PWA Meta Tags con rutas RELATIVAS -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#9333ea">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="GordisNails">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+    
+    <!-- Script para service worker -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/gordis-nails/sw.js')
+                .then(registration => {
+                    console.log('✅ Service Worker registrado:', registration.scope);
+                })
+                .catch(error => {
+                    console.log('❌ Error registrando Service Worker:', error);
+                });
+        });
+    }
+</script>
+    
+    <!-- Scripts externos -->
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .animate-fade-in {
+                animation: fadeIn 0.5s ease-out forwards;
+            }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- Scripts (rutas relativas para los archivos JS) - ORDEN CORRECTO -->
+    <script src="utils/supabase-config.js"></script>
+    <script src="utils/config-negocio.js"></script>
+    <script src="utils/storage.js"></script>
+    <script src="utils/api.js"></script>
+    <script src="utils/timeLogic.js"></script>
+    <script src="utils/auth-clients.js"></script>
+    <script src="utils/auth-profesionales.js"></script>
+    <script src="utils/config.js"></script>
+    <script src="utils/servicios.js"></script>
+    <script src="utils/profesionales.js"></script>
+    <script src="utils/whatsapp-helper.js"></script>
+    <script src="utils/dias-cerrados.js"></script>
+
+    <!-- Componentes -->
+    <script src="components/Header.js" type="text/babel"></script>
+    <script src="components/ServiceSelection.js" type="text/babel"></script>
+    <script src="components/ProfesionalSelector.js" type="text/babel"></script>
+    <script src="components/Calendar.js" type="text/babel"></script>
+    <script src="components/TimeSlots.js" type="text/babel"></script>
+    <script src="components/BookingForm.js" type="text/babel"></script>
+    <script src="components/Confirmation.js" type="text/babel"></script>
+    <script src="components/WelcomeScreen.js" type="text/babel"></script>
+    <script src="components/WhatsAppButton.js" type="text/babel"></script>
+    <script src="components/ClientAuthScreen.js" type="text/babel"></script>
+    <script src="components/MyBookings.js" type="text/babel"></script>
+    <script src="components/InstallButton.js" type="text/babel"></script>
+    
+    <!-- App de clientes -->
+    <script src="client-app.js" type="text/babel"></script>
+    <script>
+// Actualizar título dinámico desde la base de datos
+(async function() {
+    try {
+        const nombre = await window.getNombreNegocio();
+        if (nombre) {
+            document.title = `${nombre} - Reserva de Turnos`;
+        }
+    } catch (error) {
+        console.error('Error cargando título:', error);
+    }
+})();
+</script>
+<script>
+    
+// FORZAR PROMPT DE INSTALACIÓN - ULTIMO RECURSO
+window.addEventListener('load', () => {
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('📱 App ya instalada');
+        return;
+    }
+
+    let deferredPrompt;
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        console.log('✅ beforeinstallprompt listo');
+        
+        const btn = document.createElement('button');
+        btn.innerText = '📲 INSTALAR APP';
+        btn.style.position = 'fixed';
+        btn.style.bottom = '20px';
+        btn.style.right = '20px';
+        btn.style.zIndex = '9999';
+        btn.style.background = '#9333ea';
+        btn.style.color = 'white';
+        btn.style.padding = '15px 30px';
+        btn.style.borderRadius = '50px';
+        btn.style.border = 'none';
+        btn.style.fontWeight = 'bold';
+        btn.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+        btn.style.cursor = 'pointer';
+        
+        btn.onclick = async () => {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`✅ Usuario: ${outcome}`);
+            deferredPrompt = null;
+            btn.remove();
+        };
+        
+        document.body.appendChild(btn);
+    });
+
+    setTimeout(() => {
+        if (!deferredPrompt && !window.matchMedia('(display-mode: standalone)').matches) {
+            const msg = document.createElement('div');
+            msg.innerHTML = '📱 Para instalar: menú 3 puntos → "Instalar aplicación"';
+            msg.style.position = 'fixed';
+            msg.style.bottom = '20px';
+            msg.style.left = '20px';
+            msg.style.background = '#333';
+            msg.style.color = 'white';
+            msg.style.padding = '10px 20px';
+            msg.style.borderRadius = '10px';
+            msg.style.fontSize = '14px';
+            msg.style.zIndex = '9999';
+            document.body.appendChild(msg);
+            
+            setTimeout(() => msg.remove(), 8000);
+        }
+    }, 5000);
+});
+</script>
+</body>
+</html>

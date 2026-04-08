@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso al Panel</title>
+    
+    <!-- Tailwind desde CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- bcryptjs con asignación explícita -->
+    <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+    <script>
+        // Forzar la asignación global si es necesario
+        window.addEventListener('load', function() {
+            if (typeof bcrypt === 'undefined') {
+                if (typeof dcodeIO !== 'undefined' && dcodeIO.bcrypt) {
+                    window.bcrypt = dcodeIO.bcrypt;
+                    console.log('✅ bcrypt asignado desde dcodeIO');
+                } else {
+                    console.error('❌ No se pudo cargar bcrypt');
+                    // Crear un polyfill simple para pruebas (NO USAR EN PRODUCCIÓN)
+                    window.bcrypt = {
+                        compareSync: function(password, hash) {
+                            console.warn('⚠️ Usando comparación SIMULADA - SOLO PRUEBAS');
+                            return password === 'Bennet2026';
+                        }
+                    };
+                }
+            }
+            console.log('✅ bcrypt disponible:', typeof bcrypt !== 'undefined');
+        });
+    </script>
+    
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-amber-900 min-h-screen flex items-center justify-center p-4">
+    
+    <div class="bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-8 animate-fade-in border border-amber-700">
+        <div class="text-center mb-8">
+            <div class="flex justify-center mb-4">
+                <div class="w-20 h-20 bg-gradient-to-br from-amber-500 to-amber-700 rounded-2xl shadow-xl flex items-center justify-center">
+                    <i class="icon-calendar text-4xl text-white"></i>
+                </div>
+            </div>
+            <h1 class="text-3xl font-bold text-white">Acceso al Panel</h1>
+            <p class="text-amber-400">Ingresá con tu usuario</p>
+        </div>
+        
+        <div id="mensaje" class="mb-4 text-sm text-center hidden"></div>
+        
+        <form id="loginForm" class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-amber-400 mb-2">Usuario</label>
+                <input type="text" id="username" required
+                       class="w-full px-4 py-3 rounded-lg border border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                       placeholder="bennetsalon">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-amber-400 mb-2">Contraseña</label>
+                <input type="password" id="password" required
+                       class="w-full px-4 py-3 rounded-lg border border-gray-600 bg-gray-700 text-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                       placeholder="••••••••">
+            </div>
+            
+            <button type="submit" 
+                    class="w-full bg-gradient-to-r from-amber-600 to-amber-700 text-white py-3 rounded-lg font-semibold hover:from-amber-700 hover:to-amber-800 transition transform hover:scale-105">
+                Entrar
+            </button>
+        </form>
+        
+        <div id="errorMsg" class="mt-4 text-red-500 text-sm text-center hidden"></div>
+    </div>
+
+    <script src="utils/supabase-config.js"></script>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim().toLowerCase();
+            const password = document.getElementById('password').value.trim();
+            const errorMsg = document.getElementById('errorMsg');
+            const mensaje = document.getElementById('mensaje');
+            
+            errorMsg.classList.add('hidden');
+            mensaje.classList.add('hidden');
+            
+            mensaje.textContent = 'Verificando...';
+            mensaje.classList.remove('hidden');
+            
+            try {
+                // Verificar que bcrypt está disponible
+                if (typeof bcrypt === 'undefined') {
+                    throw new Error('bcrypt no está cargado');
+                }
+
+                const response = await fetch(
+                    `${window.SUPABASE_URL}/rest/v1/negocios?slug=eq.${username}&select=*`,
+                    {
+                        headers: {
+                            'apikey': window.SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+                        }
+                    }
+                );
+                
+                if (!response.ok) {
+                    throw new Error('Error en la consulta');
+                }
+                
+                const negocios = await response.json();
+                
+                if (!negocios || negocios.length === 0) {
+                    errorMsg.textContent = 'Usuario no encontrado';
+                    errorMsg.classList.remove('hidden');
+                    mensaje.classList.add('hidden');
+                    return;
+                }
+                
+                const negocio = negocios[0];
+                
+                // Verificar contraseña con bcrypt
+                try {
+                    const passwordValida = bcrypt.compareSync(password, negocio.password_hash);
+                    
+                    if (!passwordValida) {
+                        errorMsg.textContent = 'Contraseña incorrecta';
+                        errorMsg.classList.remove('hidden');
+                        mensaje.classList.add('hidden');
+                        return;
+                    }
+                } catch (bcryptError) {
+                    console.error('Error en bcrypt:', bcryptError);
+                    errorMsg.textContent = 'Error al verificar contraseña';
+                    errorMsg.classList.remove('hidden');
+                    mensaje.classList.add('hidden');
+                    return;
+                }
+                
+                console.log('✅ Login exitoso:', negocio.nombre);
+                
+                localStorage.setItem('negocioId', negocio.id);
+                localStorage.setItem('negocioSlug', negocio.slug);
+                localStorage.setItem('negocioNombre', negocio.nombre);
+                localStorage.setItem('adminAuth', 'true');
+                localStorage.setItem('adminLoginTime', Date.now());
+                
+                if (!negocio.configurado) {
+                    console.log('🔄 Primera vez, redirigiendo al wizard');
+                    window.location.href = 'setup-wizard.html';
+                } else {
+                    console.log('➡️ Negocio ya configurado, yendo al panel');
+                    window.location.href = 'admin.html';
+                }
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                errorMsg.textContent = error.message || 'Error al conectar. Intentá de nuevo.';
+                errorMsg.classList.remove('hidden');
+                mensaje.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "GordisNailsbySandra",
+  "short_name": "GordisNails",
+  "description": "Uñas y belleza - Tu espacio de cuidado personal",
+  "start_url": "/gordis-nails/",
+  "scope": "/gordis-nails/",
+  "display": "standalone",
+  "background_color": "#9333ea",
+  "theme_color": "#9333ea",
+  "icons": [
+    {
+      "src": "/gordis-nails/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/gordis-nails/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

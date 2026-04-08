@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+
+    <!-- Scripts - ORDEN CORRECTO -->
+    <script src="utils/supabase-config.js"></script>
+    <script src="utils/config-negocio.js"></script>
+    <script src="utils/storage.js"></script>
+    <script src="utils/api.js"></script>
+    <script src="utils/timeLogic.js"></script>
+    <script src="utils/auth-clients.js"></script>
+    <script src="utils/auth-profesionales.js"></script>
+    <script src="utils/servicios.js"></script>
+    <script src="utils/profesionales.js"></script>
+    <script src="utils/config.js"></script>
+    <script src="utils/whatsapp-helper.js"></script>  <!-- ✅ AGREGADO - WHATSAPP GLOBAL -->
+
+    <!-- Componentes admin -->
+    <script src="components/admin/ConfigPanel.js" type="text/babel"></script>
+    <script src="components/admin/ServiciosPanel.js" type="text/babel"></script>
+    <script src="components/admin/ProfesionalesPanel.js" type="text/babel"></script>
+    <script src="components/admin/HorariosPorDiaPanel.js" type="text/babel"></script>
+    <script src="admin-app.js" type="text/babel"></script>
+
+    <script>
+        (function() {
+            const negocioId = localStorage.getItem('negocioId');
+            
+            if (!negocioId) {
+                console.log('🚫 No hay sesión, redirigiendo a login');
+                window.location.href = 'admin-login.html';
+                return;
+            }
+            
+            // Verificar sesión (8 horas)
+            const loginTime = localStorage.getItem('adminLoginTime');
+            const isValidSession = loginTime && (Date.now() - parseInt(loginTime)) < 8 * 60 * 60 * 1000;
+            
+            if (!isValidSession) {
+                localStorage.clear();
+                window.location.href = 'admin-login.html';
+            }
+        })();
+    </script>
+</body>
+</html>

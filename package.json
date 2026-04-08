@@ -1,0 +1,24 @@
+{
+  "name": "plantilla",
+  "version": "1.0.0",
+  "description": "",
+  "main": "admin-app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tusalon/Plantilla.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/tusalon/Plantilla/issues"
+  },
+  "homepage": "https://github.com/tusalon/Plantilla#readme",
+  "devDependencies": {
+    "supabase": "^2.76.15"
+  }
+}

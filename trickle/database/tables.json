@@ -1,0 +1,53 @@
+[
+  {
+    "name": "turnos",
+    "fields": [
+      {
+        "name": "cliente_nombre",
+        "type": "text",
+        "description": "Nombre del cliente",
+        "options": null
+      },
+      {
+        "name": "servicio",
+        "type": "text",
+        "description": "Nombre del servicio seleccionado",
+        "options": null
+      },
+      {
+        "name": "duracion",
+        "type": "number",
+        "description": "Duraci\u00f3n del servicio en minutos",
+        "options": null
+      },
+      {
+        "name": "fecha",
+        "type": "text",
+        "description": "Fecha del turno en formato YYYY-MM-DD",
+        "options": null
+      },
+      {
+        "name": "hora_inicio",
+        "type": "text",
+        "description": "Hora de inicio en formato HH:mm",
+        "options": null
+      },
+      {
+        "name": "hora_fin",
+        "type": "text",
+        "description": "Hora de finalizaci\u00f3n en formato HH:mm",
+        "options": null
+      },
+      {
+        "name": "estado",
+        "type": "text",
+        "description": "Estado del turno (Reservado, Confirmado, Cancelado)",
+        "options": [
+          "Reservado",
+          "Confirmado",
+          "Cancelado"
+        ]
+      }
+    ]
+  }
+]

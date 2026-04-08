@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Negocio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+    <style>
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+
+    <!-- Scripts necesarios -->
+    <script src="utils/supabase-config.js"></script>
+    <script src="utils/storage.js"></script>
+    <script src="utils/config-negocio.js"></script>
+    
+    <!-- Componente de edición -->
+    <script type="text/babel" src="components/admin/EditarNegocio.js"></script>
+
+    <script>
+        // Verificar autenticación
+        (function() {
+            const negocioId = localStorage.getItem('negocioId');
+            const adminAuth = localStorage.getItem('adminAuth') === 'true';
+            
+            if (!negocioId || !adminAuth) {
+                console.log('🚫 No hay sesión, redirigiendo a login');
+                window.location.href = 'admin-login.html';
+            }
+        })();
+    </script>
+</body>
+</html>

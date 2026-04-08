@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configura tu negocio - Rservas.Roma</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+    <style>
+        .step-active { @apply bg-amber-600 text-white; }
+        .step-completed { @apply bg-green-500 text-white; }
+        .step-pending { @apply bg-gray-200 text-gray-600; }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+
+    <!-- Scripts -->
+    <script src="utils/supabase-config.js"></script>
+    <script src="utils/storage.js"></script>
+    <script src="utils/config-negocio.js"></script>
+    
+    <!-- Componente del wizard -->
+    <script type="text/babel" src="components/admin/SetupWizard.js"></script>
+
+    <script>
+        // Verificar que hay negocioId en localStorage
+        (function() {
+            const negocioId = localStorage.getItem('negocioId');
+            if (!negocioId) {
+                console.log('🚫 No hay negocioId, redirigiendo a login');
+                window.location.href = 'admin-login.html';
+            }
+        })();
+    </script>
+</body>
+</html>
