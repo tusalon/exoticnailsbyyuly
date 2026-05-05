@@ -25,7 +25,7 @@ function generarLinkCalendarioCliente(booking) {
 
 function generarLineaCalendarioCliente(booking) {
     const link = generarLinkCalendarioCliente(booking);
-    return link ? `\nðŸ“… *Agregar a tu calendario:*\n${link}\n` : '';
+    return link ? `\n*Agregar a tu calendario:*\n${link}\n` : '';
 }
 
 async function getConfigNegocio() {
@@ -167,31 +167,31 @@ window.enviarMensajePago = async function(booking, configNegocio) {
         const lineaCalendario = generarLineaCalendarioCliente(booking);
 
         const mensajeFinal = 
-`ðŸ’… *${configNegocio.nombre || 'Mi SalÃ³n'} - ConfirmaciÃ³n de Turno*
+`*${configNegocio.nombre || 'Mi Salon'} - Confirmacion de Turno*
 
-âœ… *SOLICITUD DE TURNO REGISTRADA*
+*SOLICITUD DE TURNO REGISTRADA*
 
-ðŸ“… *Fecha:* ${fechaConDia}
-â° *Hora:* ${horaFormateada}
-ðŸ’… *Servicio:* ${booking.servicio}
-ðŸ‘©â€ðŸŽ¨ *Profesional:* ${profesional}
+*Fecha:* ${fechaConDia}
+*Hora:* ${horaFormateada}
+*Servicio:* ${booking.servicio}
+*Profesional:* ${profesional}
 
-ðŸ’° *Para confirmar tu turno*, envÃ­a el *anticipo de ${montoAnticipo} CUP* por:
+*Para confirmar tu turno*, envia el *anticipo de ${montoAnticipo} CUP* por:
 
-ðŸ¦ *Transferencia bancaria:* 
-   TÃ¡rjeta a transferir : ${configNegocio.cbu || 'XXXX XXXX XXXX XXXX'}
+*Transferencia bancaria:* 
+   Tarjeta a transferir: ${configNegocio.cbu || 'XXXX XXXX XXXX XXXX'}
    Alias: ${configNegocio.alias || 'alias.no.configurado'}
 
-ðŸ“± *Enviar comprobante a este WhatsApp:* 
+*Enviar comprobante a este WhatsApp:* 
    +53 ${configNegocio.telefono || '00000000'}
 
-â³ *Importante:* 
-El turno se cancelarÃ¡ automÃ¡ticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.
+*Importante:* 
+El turno se cancelara automaticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.
 
 ${lineaCalendario}
 Cuando confirmemos tu pago, tu turno quedara reservado.
 
-Â¡Gracias por elegirnos! ðŸ’–`;
+Gracias por elegirnos.`;
 
         window.enviarWhatsApp(booking.cliente_whatsapp, mensajeFinal);
         
@@ -230,18 +230,18 @@ window.enviarConfirmacionReserva = async function(booking, configNegocio) {
         const lineaCalendario = generarLineaCalendarioCliente(booking);
 
         const mensajeConfirmacion = 
-`âœ… *${configNegocio?.nombre || 'Mi SalÃ³n'} - Turno Confirmado*
+`*${configNegocio?.nombre || 'Mi Salon'} - Turno Confirmado*
 
 Hola *${booking.cliente_nombre}*, tu turno ha sido agendado.
 
-ðŸ“… *Fecha:* ${fechaConDia}
-â° *Hora:* ${horaFormateada}
-ðŸ’… *Servicio:*${booking.servicio}
-ðŸ‘©â€ðŸŽ¨ *Profesional:* ${booking.profesional_nombre || booking.trabajador_nombre}
+*Fecha:* ${fechaConDia}
+*Hora:* ${horaFormateada}
+*Servicio:* ${booking.servicio}
+*Profesional:* ${booking.profesional_nombre || booking.trabajador_nombre}
 
 ${lineaCalendario}
 
-Â¡Te esperamos! â¤ï¸`;
+Te esperamos.`;
 
         window.enviarWhatsApp(booking.cliente_whatsapp, mensajeConfirmacion);
         return true;
