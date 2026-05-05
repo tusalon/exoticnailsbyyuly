@@ -1054,11 +1054,11 @@ function AdminApp() {
     // FUNCIÓN PARA CONFIRMAR PAGO
     // ============================================
     const confirmarPago = async (id, bookingData) => {
-        if (!confirm(`¿Confirmar que se recibió el pago de ${bookingData.cliente_nombre}? El turno pasará a "Reservado".`)) return;
-        
+        if (!confirm(`Confirmar que se recibio el pago de ${bookingData.cliente_nombre}? El turno pasara a "Reservado".`)) return;
+
         try {
-            console.log(`💰 Confirmando pago para reserva ${id}`);
-            
+            console.log(`Confirmando pago para reserva ${id}`);
+
             const response = await fetch(
                 `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${getNegocioId()}&id=eq.${id}`,
                 {
@@ -1071,54 +1071,52 @@ function AdminApp() {
                     body: JSON.stringify({ estado: 'Reservado' })
                 }
             );
-            
+
             if (!response.ok) {
                 throw new Error('Error al confirmar pago');
             }
-            
-            console.log('📤 Enviando confirmación de turno al cliente...');
-            
+
+            console.log('Enviando confirmacion de turno al cliente...');
+
             const configNegocio = await window.cargarConfiguracionNegocio();
-            
-            const fechaConDia = window.formatFechaCompleta ? 
-                window.formatFechaCompleta(bookingData.fecha) : 
+            const fechaConDia = window.formatFechaCompleta ?
+                window.formatFechaCompleta(bookingData.fecha) :
                 bookingData.fecha;
-            
-            const horaFormateada = window.formatTo12Hour ? 
-                window.formatTo12Hour(bookingData.hora_inicio) : 
+            const horaFormateada = window.formatTo12Hour ?
+                window.formatTo12Hour(bookingData.hora_inicio) :
                 bookingData.hora_inicio;
-            
-            const nombreNegocio = configNegocio?.nombre || await window.getNombreNegocio ? 
-                await window.getNombreNegocio() : 
-                'Mi Negocio';
-            
-            const mensajeCliente = 
-`💅 *${nombreNegocio} - Turno Confirmado* 🎉
+            const nombreNegocio = configNegocio?.nombre || (window.getNombreNegocio ? await window.getNombreNegocio() : 'Mi Negocio');
+            const lineaCalendario = typeof generarLineaCalendarioCliente === 'function' ? generarLineaCalendarioCliente(bookingData) : '';
 
-Hola *${bookingData.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
+            const mensajeCliente =
+`*${nombreNegocio} - Turno Confirmado*
 
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-💅 *Servicio:* ${bookingData.servicio}
-👩‍🎨 *Profesional:* ${bookingData.profesional_nombre || bookingData.trabajador_nombre}
+Hola *${bookingData.cliente_nombre}*, tu turno ha sido CONFIRMADO.
 
-✅ *Pago recibido correctamente*
+*Fecha:* ${fechaConDia}
+*Hora:* ${horaFormateada}
+*Servicio:* ${bookingData.servicio}
+*Profesional:* ${bookingData.profesional_nombre || bookingData.trabajador_nombre}
 
-Te esperamos 💖
-Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipación.`;
+*Pago recibido correctamente*
+
+${lineaCalendario}
+
+Te esperamos.
+Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion.`;
 
             window.enviarWhatsApp(bookingData.cliente_whatsapp, mensajeCliente);
-            
-            alert('✅ Pago confirmado. Turno reservado y cliente notificado.');
+
+            alert('Pago confirmado. Turno reservado y cliente notificado.');
             fetchBookings();
-            
+
         } catch (error) {
             console.error('Error confirmando pago:', error);
-            alert('❌ Error al confirmar el pago');
+            alert('Error al confirmar el pago');
         }
     };
 
-    // ============================================
+
     // FUNCIÓN PARA BORRAR TODAS LAS RESERVAS CANCELADAS
     // ============================================
     const borrarCanceladas = async () => {

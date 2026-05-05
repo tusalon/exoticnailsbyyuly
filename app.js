@@ -184,22 +184,22 @@ const enviarCancelacionWhatsApp = (bookingData) => {
             window.formatFechaCompleta(bookingData.fecha) : 
             bookingData.fecha;
         
-        const mensaje = 
-`❌ *CANCELACIÓN DE TURNO - LAG.barberia*
+        const mensaje =
+`*CANCELACION DE TURNO - LAG.barberia*
 
 Hola *${bookingData.cliente_nombre}*, lamentamos informarte que tu turno ha sido cancelado.
 
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${formatTo12Hour(bookingData.hora_inicio)}
-💈 *Servicio:* ${bookingData.servicio}
-👨‍🎨 *Barbero:* ${bookingData.barbero_nombre || bookingData.trabajador_nombre || 'No asignado'}
+*Fecha:* ${fechaConDia}
+*Hora:* ${formatTo12Hour(bookingData.hora_inicio)}
+*Servicio:* ${bookingData.servicio}
+*Barbero:* ${bookingData.barbero_nombre || bookingData.trabajador_nombre || 'No asignado'}
 
-🔔 *Motivo:* Cancelación por administración
+*Motivo:* Cancelacion por administracion
 
-📱 *¿Querés reprogramar?*
-Podés hacerlo desde la app
+*Queres reprogramar?*
+Podes hacerlo desde la app
 
-Disculpá las molestias. Esperamos verte pronto en LAG.barberia ✂️
+Disculpa las molestias. Esperamos verte pronto en LAG.barberia.
 
 LAG.barberia - Nivel que se nota`;
 
@@ -663,7 +663,7 @@ function AdminApp() {
                 await loadClientesAutorizados();
                 alert(`✅ Cliente ${cliente.nombre} aprobado`);
                 
-                const mensaje = `✅ ¡Hola ${cliente.nombre}! Tu acceso a LAG.barberia ha sido APROBADO. Ya podés reservar turnos desde la app.`;
+                const mensaje = `Hola ${cliente.nombre}! Tu acceso a LAG.barberia ha sido APROBADO. Ya podes reservar turnos desde la app.`;
                 const telefono = cliente.whatsapp.replace(/\D/g, '');
                 const encodedText = encodeURIComponent(mensaje);
                 window.open(`https://api.whatsapp.com/send?phone=${telefono}&text=${encodedText}`, '_blank');
