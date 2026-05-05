@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agregar al calendario</title>
+    <meta name="theme-color" content="#ec4899">
+    <script src="utils/supabase-config.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            font-family: Arial, sans-serif;
+            background: #fff7fb;
+            color: #3f2736;
+            padding: 24px;
+        }
+        main {
+            width: min(100%, 420px);
+            background: #fff;
+            border: 1px solid #fbcfe8;
+            border-radius: 18px;
+            padding: 28px;
+            box-shadow: 0 20px 50px rgba(236, 72, 153, 0.14);
+        }
+        h1 {
+            margin: 0 0 10px;
+            font-size: 24px;
+            color: #be185d;
+        }
+        p {
+            margin: 0 0 18px;
+            line-height: 1.45;
+        }
+        .details {
+            display: grid;
+            gap: 8px;
+            margin: 18px 0;
+            padding: 14px;
+            border-radius: 12px;
+            background: #fdf2f8;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            border: 0;
+            border-radius: 12px;
+            padding: 14px 16px;
+            background: #ec4899;
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:disabled {
+            opacity: 0.55;
+            cursor: wait;
+        }
+        .error {
+            color: #be123c;
+            background: #fff1f2;
+            border: 1px solid #fecdd3;
+            border-radius: 12px;
+            padding: 12px;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Agregar al calendario</h1>
+        <p id="status">Buscando los datos de tu turno...</p>
+        <div id="details" class="details" hidden></div>
+        <button id="downloadBtn" disabled>Descargar recordatorio</button>
+    </main>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const detailsEl = document.getElementById('details');
+        const downloadBtn = document.getElementById('downloadBtn');
+        let currentBooking = null;
+        let currentBusinessName = 'Exotic Nails by Yuly';
+
+        function pad(value) {
+            return String(value).padStart(2, '0');
+        }
+
+        function cleanText(value) {
+            return String(value || '')
+                .replace(/\\/g, '\\\\')
+                .replace(/\n/g, '\\n')
+                .replace(/,/g, '\\,')
+                .replace(/;/g, '\\;');
+        }
+
+        function formatDateTime(dateValue, timeValue) {
+            const [year, month, day] = dateValue.split('-').map(Number);
+            const [hour, minute] = timeValue.split(':').map(Number);
+            return `${year}${pad(month)}${pad(day)}T${pad(hour)}${pad(minute)}00`;
+        }
+
+        function formatDisplayDate(dateValue) {
+            const [year, month, day] = dateValue.split('-').map(Number);
+            return new Date(year, month - 1, day).toLocaleDateString('es-CU', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        function formatDisplayTime(timeValue) {
+            const [hour, minute] = timeValue.split(':').map(Number);
+            return new Date(2026, 0, 1, hour, minute).toLocaleTimeString('es-CU', {
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+
+        function buildICS(booking, businessName) {
+            const now = new Date();
+            const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
+            const uid = `${booking.id || Date.now()}@exoticnailsbyyuly`;
+            const start = formatDateTime(booking.fecha, booking.hora_inicio);
+            const end = formatDateTime(booking.fecha, booking.hora_fin);
+            const professional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
+
+            return [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                `PRODID:-//${cleanText(businessName)}//Reservas//ES`,
+                'CALSCALE:GREGORIAN',
+                'METHOD:PUBLISH',
+                'X-WR-TIMEZONE:America/Havana',
+                'BEGIN:VEVENT',
+                `UID:${cleanText(uid)}`,
+                `DTSTAMP:${stamp}`,
+                `DTSTART;TZID=America/Havana:${start}`,
+                `DTEND;TZID=America/Havana:${end}`,
+                `SUMMARY:${cleanText(`${booking.servicio} con ${professional}`)}`,
+                `LOCATION:${cleanText(businessName)}`,
+                `DESCRIPTION:${cleanText(`Servicio: ${booking.servicio}\\nProfesional: ${professional}\\nCliente: ${booking.cliente_nombre}\\nWhatsApp: ${booking.cliente_whatsapp}`)}`,
+                'STATUS:CONFIRMED',
+                'BEGIN:VALARM',
+                'TRIGGER:-P1D',
+                'ACTION:DISPLAY',
+                'DESCRIPTION:Recordatorio de turno',
+                'END:VALARM',
+                'BEGIN:VALARM',
+                'TRIGGER:-PT1H',
+                'ACTION:DISPLAY',
+                'DESCRIPTION:Tu turno es en 1 hora',
+                'END:VALARM',
+                'END:VEVENT',
+                'END:VCALENDAR'
+            ].join('\r\n');
+        }
+
+        function downloadICS() {
+            if (!currentBooking) return;
+
+            const content = buildICS(currentBooking, currentBusinessName);
+            const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const safeName = String(currentBooking.cliente_nombre || 'cliente')
+                .toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^a-z0-9-]/g, '');
+
+            link.href = url;
+            link.download = `turno-${currentBooking.fecha.replace(/-/g, '')}-${currentBooking.hora_inicio.replace(':', '')}-${safeName}.ics`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        async function fetchJson(url) {
+            const response = await fetch(url, {
+                headers: {
+                    apikey: window.SUPABASE_ANON_KEY,
+                    Authorization: `Bearer ${window.SUPABASE_ANON_KEY}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            return response.json();
+        }
+
+        async function loadBooking() {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            const negocioId = params.get('negocio');
+
+            if (!id) {
+                throw new Error('Falta el identificador del turno.');
+            }
+
+            let bookingUrl = `${window.SUPABASE_URL}/rest/v1/reservas?id=eq.${encodeURIComponent(id)}&select=*&limit=1`;
+            if (negocioId) {
+                bookingUrl += `&negocio_id=eq.${encodeURIComponent(negocioId)}`;
+            }
+
+            const bookings = await fetchJson(bookingUrl);
+            if (!bookings.length) {
+                throw new Error('No encontramos ese turno.');
+            }
+
+            currentBooking = bookings[0];
+
+            if (currentBooking.negocio_id) {
+                try {
+                    const businesses = await fetchJson(`${window.SUPABASE_URL}/rest/v1/negocios?id=eq.${encodeURIComponent(currentBooking.negocio_id)}&select=nombre&limit=1`);
+                    currentBusinessName = businesses[0]?.nombre || currentBusinessName;
+                } catch (error) {
+                    console.warn('No se pudo cargar el nombre del negocio:', error);
+                }
+            }
+
+            const professional = currentBooking.profesional_nombre || currentBooking.trabajador_nombre || 'No asignada';
+            detailsEl.innerHTML = `
+                <strong>${currentBusinessName}</strong>
+                <span>${currentBooking.servicio}</span>
+                <span>${formatDisplayDate(currentBooking.fecha)} - ${formatDisplayTime(currentBooking.hora_inicio)}</span>
+                <span>Profesional: ${professional}</span>
+            `;
+            detailsEl.hidden = false;
+            statusEl.textContent = 'Tu recordatorio esta listo para descargarlo y guardarlo en el calendario.';
+            downloadBtn.disabled = false;
+        }
+
+        downloadBtn.addEventListener('click', downloadICS);
+
+        loadBooking().catch(error => {
+            console.error(error);
+            statusEl.className = 'error';
+            statusEl.textContent = 'No pudimos preparar el recordatorio. Revisa el enlace o intenta de nuevo.';
+        });
+    </script>
+</body>
+</html>

@@ -1,13 +1,33 @@
-// utils/whatsapp-helper.js - VERSIÓN GENÉRICA COMPLETA
+﻿// utils/whatsapp-helper.js - VERSIÃ“N GENÃ‰RICA COMPLETA
 // CON FORMATO EXACTO DE MENSAJE
-// + Función unificada para confirmación de reserva
+// + FunciÃ³n unificada para confirmaciÃ³n de reserva
 // + Servicio incluido en notificaciones push
 
-console.log('📱 whatsapp-helper.js - VERSIÓN GENÉRICA');
+console.log('ðŸ“± whatsapp-helper.js - VERSIÃ“N GENÃ‰RICA');
 
 // ============================================
-// FUNCIÓN PARA OBTENER CONFIGURACIÓN DEL NEGOCIO
+// FUNCIÃ“N PARA OBTENER CONFIGURACIÃ“N DEL NEGOCIO
 // ============================================
+function generarLinkCalendarioCliente(booking) {
+    if (!booking?.id) return '';
+
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    const basePath = pathParts.length > 1 ? `/${pathParts[0]}/` : '/';
+    const calendarUrl = new URL('calendar.html', `${window.location.origin}${basePath}`);
+
+    calendarUrl.searchParams.set('id', booking.id);
+    if (booking.negocio_id) {
+        calendarUrl.searchParams.set('negocio', booking.negocio_id);
+    }
+
+    return calendarUrl.toString();
+}
+
+function generarLineaCalendarioCliente(booking) {
+    const link = generarLinkCalendarioCliente(booking);
+    return link ? `\nðŸ“… *Agregar a tu calendario:*\n${link}\n` : '';
+}
+
 async function getConfigNegocio() {
     try {
         const config = await window.cargarConfiguracionNegocio();
@@ -17,7 +37,7 @@ async function getConfigNegocio() {
             ntfyTopic: config?.ntfy_topic || 'notificaciones'
         };
     } catch (error) {
-        console.error('Error obteniendo configuración:', error);
+        console.error('Error obteniendo configuraciÃ³n:', error);
         return {
             nombre: 'Mi Negocio',
             telefono: '00000000',
@@ -36,11 +56,11 @@ window.esIOS = function() {
 };
 
 // ============================================
-// FUNCIÓN UNIVERSAL WHATSAPP (CORREGIDA - USA api.whatsapp.com Y location.href)
+// FUNCIÃ“N UNIVERSAL WHATSAPP (CORREGIDA - USA api.whatsapp.com Y location.href)
 // ============================================
 window.enviarWhatsApp = function(telefono, mensaje) {
     try {
-        console.log('📤 enviarWhatsApp llamado a:', telefono);
+        console.log('ðŸ“¤ enviarWhatsApp llamado a:', telefono);
         
         const telefonoLimpio = telefono.toString().replace(/\D/g, '');
         let numeroCompleto = telefonoLimpio;
@@ -52,25 +72,25 @@ window.enviarWhatsApp = function(telefono, mensaje) {
         
         const url = `https://api.whatsapp.com/send?phone=${numeroCompleto}&text=${mensajeCodificado}`;
         
-        console.log('🔗 Abriendo WhatsApp:', url);
+        console.log('ðŸ”— Abriendo WhatsApp:', url);
         
         window.location.href = url;
         return true;
     } catch (error) {
-        console.error('❌ Error en enviarWhatsApp:', error);
+        console.error('âŒ Error en enviarWhatsApp:', error);
         return false;
     }
 };
 
 // ============================================
-// FUNCIÓN PARA ENVIAR NOTIFICACIÓN PUSH
+// FUNCIÃ“N PARA ENVIAR NOTIFICACIÃ“N PUSH
 // ============================================
 window.enviarNotificacionPush = async function(titulo, mensaje, etiquetas = 'bell', prioridad = 'default') {
     try {
         const config = await getConfigNegocio();
         const topic = config.ntfyTopic;
         
-        console.log(`📢 Enviando push a ntfy.sh/${topic}:`, titulo);
+        console.log(`ðŸ“¢ Enviando push a ntfy.sh/${topic}:`, titulo);
         
         const tituloLimpio = titulo.replace(/[^\x00-\x7F]/g, '');
         
@@ -85,36 +105,36 @@ window.enviarNotificacionPush = async function(titulo, mensaje, etiquetas = 'bel
         });
         
         if (response.ok) {
-            console.log('✅ Push enviado correctamente');
+            console.log('âœ… Push enviado correctamente');
             return true;
         } else {
-            console.error('❌ Error en push:', await response.text());
+            console.error('âŒ Error en push:', await response.text());
             return false;
         }
     } catch (error) {
-        console.error('❌ Error enviando push:', error);
+        console.error('âŒ Error enviando push:', error);
         return false;
     }
 };
 
 // ============================================
-// FUNCIÓN: ENVIAR MENSAJE DE PAGO PERSONALIZADO (AL CLIENTE Y DUEÑA)
+// FUNCIÃ“N: ENVIAR MENSAJE DE PAGO PERSONALIZADO (AL CLIENTE Y DUEÃ‘A)
 // ============================================
 window.enviarMensajePago = async function(booking, configNegocio) {
     try {
         if (!booking) {
-            console.error('❌ No hay datos de reserva');
+            console.error('âŒ No hay datos de reserva');
             return false;
         }
 
-        console.log('💰 Enviando mensaje de pago personalizado...');
+        console.log('ðŸ’° Enviando mensaje de pago personalizado...');
 
         if (!configNegocio) {
             configNegocio = await window.cargarConfiguracionNegocio();
         }
 
         if (!configNegocio?.requiere_anticipo) {
-            console.log('ℹ️ El negocio no requiere anticipo, no se envía mensaje de pago');
+            console.log('â„¹ï¸ El negocio no requiere anticipo, no se envÃ­a mensaje de pago');
             return false;
         }
 
@@ -144,34 +164,38 @@ window.enviarMensajePago = async function(booking, configNegocio) {
             booking.hora_inicio;
 
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
+        const lineaCalendario = generarLineaCalendarioCliente(booking);
 
         const mensajeFinal = 
-`💅 *${configNegocio.nombre || 'Mi Salón'} - Confirmación de Turno*
+`ðŸ’… *${configNegocio.nombre || 'Mi SalÃ³n'} - ConfirmaciÃ³n de Turno*
 
-✅ *SOLICITUD DE TURNO REGISTRADA*
+âœ… *SOLICITUD DE TURNO REGISTRADA*
 
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-💅 *Servicio:* ${booking.servicio}
-👩‍🎨 *Profesional:* ${profesional}
+ðŸ“… *Fecha:* ${fechaConDia}
+â° *Hora:* ${horaFormateada}
+ðŸ’… *Servicio:* ${booking.servicio}
+ðŸ‘©â€ðŸŽ¨ *Profesional:* ${profesional}
 
-💰 *Para confirmar tu turno*, envía el *anticipo de ${montoAnticipo} CUP* por:
+ðŸ’° *Para confirmar tu turno*, envÃ­a el *anticipo de ${montoAnticipo} CUP* por:
 
-🏦 *Transferencia bancaria:* 
-   Tárjeta a transferir : ${configNegocio.cbu || 'XXXX XXXX XXXX XXXX'}
+ðŸ¦ *Transferencia bancaria:* 
+   TÃ¡rjeta a transferir : ${configNegocio.cbu || 'XXXX XXXX XXXX XXXX'}
    Alias: ${configNegocio.alias || 'alias.no.configurado'}
 
-📱 *Enviar comprobante a este WhatsApp:* 
+ðŸ“± *Enviar comprobante a este WhatsApp:* 
    +53 ${configNegocio.telefono || '00000000'}
 
-⏳ *Importante:* 
-El turno se cancelará automáticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.
+â³ *Importante:* 
+El turno se cancelarÃ¡ automÃ¡ticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.
 
-¡Gracias por elegirnos! 💖`;
+${lineaCalendario}
+Cuando confirmemos tu pago, tu turno quedara reservado.
+
+Â¡Gracias por elegirnos! ðŸ’–`;
 
         window.enviarWhatsApp(booking.cliente_whatsapp, mensajeFinal);
         
-        console.log('✅ Mensaje de pago enviado al CLIENTE');
+        console.log('âœ… Mensaje de pago enviado al CLIENTE');
         return true;
 
     } catch (error) {
@@ -181,16 +205,16 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
 };
 
 // ============================================
-// 🆕 FUNCIÓN: ENVIAR CONFIRMACIÓN DE RESERVA (SIN ANTICIPO)
+// ðŸ†• FUNCIÃ“N: ENVIAR CONFIRMACIÃ“N DE RESERVA (SIN ANTICIPO)
 // ============================================
 window.enviarConfirmacionReserva = async function(booking, configNegocio) {
     try {
         if (!booking) {
-            console.error('❌ No hay datos de reserva');
+            console.error('âŒ No hay datos de reserva');
             return false;
         }
 
-        console.log('📱 Enviando confirmación de reserva al cliente (sin anticipo)...');
+        console.log('ðŸ“± Enviando confirmaciÃ³n de reserva al cliente (sin anticipo)...');
 
         if (!configNegocio) {
             configNegocio = await window.cargarConfiguracionNegocio();
@@ -203,18 +227,21 @@ window.enviarConfirmacionReserva = async function(booking, configNegocio) {
         const horaFormateada = window.formatTo12Hour ? 
             window.formatTo12Hour(booking.hora_inicio) : 
             booking.hora_inicio;
+        const lineaCalendario = generarLineaCalendarioCliente(booking);
 
         const mensajeConfirmacion = 
-`✅ *${configNegocio?.nombre || 'Mi Salón'} - Turno Confirmado*
+`âœ… *${configNegocio?.nombre || 'Mi SalÃ³n'} - Turno Confirmado*
 
 Hola *${booking.cliente_nombre}*, tu turno ha sido agendado.
 
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-💅 *Servicio:*${booking.servicio}
-👩‍🎨 *Profesional:* ${booking.profesional_nombre || booking.trabajador_nombre}
+ðŸ“… *Fecha:* ${fechaConDia}
+â° *Hora:* ${horaFormateada}
+ðŸ’… *Servicio:*${booking.servicio}
+ðŸ‘©â€ðŸŽ¨ *Profesional:* ${booking.profesional_nombre || booking.trabajador_nombre}
 
-¡Te esperamos! ❤️`;
+${lineaCalendario}
+
+Â¡Te esperamos! â¤ï¸`;
 
         window.enviarWhatsApp(booking.cliente_whatsapp, mensajeConfirmacion);
         return true;
@@ -226,16 +253,16 @@ Hola *${booking.cliente_nombre}*, tu turno ha sido agendado.
 };
 
 // ============================================
-// FUNCIÓN: ENVIAR CONFIRMACIÓN DE PAGO (CUANDO EL ADMIN CONFIRMA)
+// FUNCIÃ“N: ENVIAR CONFIRMACIÃ“N DE PAGO (CUANDO EL ADMIN CONFIRMA)
 // ============================================
 window.enviarConfirmacionPago = async function(booking, configNegocio) {
     try {
         if (!booking) {
-            console.error('❌ No hay datos de reserva');
+            console.error('âŒ No hay datos de reserva');
             return false;
         }
 
-        console.log('🎉 Enviando confirmación de pago al cliente...');
+        console.log('ðŸŽ‰ Enviando confirmaciÃ³n de pago al cliente...');
 
         if (!configNegocio) {
             configNegocio = await window.cargarConfiguracionNegocio();
@@ -249,26 +276,26 @@ window.enviarConfirmacionPago = async function(booking, configNegocio) {
             window.formatTo12Hour(booking.hora_inicio) : 
             booking.hora_inicio;
 
-        const nombreNegocio = configNegocio?.nombre || 'Mi Salón';
+        const nombreNegocio = configNegocio?.nombre || 'Mi SalÃ³n';
 
         const mensajeConfirmacion = 
-`💅 *${nombreNegocio} - Turno Confirmado* 🎉
+`ðŸ’… *${nombreNegocio} - Turno Confirmado* ðŸŽ‰
 
-Hola *${booking.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
+Hola *${booking.cliente_nombre}*, Â¡tu turno ha sido CONFIRMADO!
 
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-💅 *Servicio:* ${booking.servicio}
-👩‍🎨 *Profesional:* ${booking.profesional_nombre || booking.trabajador_nombre}
+ðŸ“… *Fecha:* ${fechaConDia}
+â° *Hora:* ${horaFormateada}
+ðŸ’… *Servicio:* ${booking.servicio}
+ðŸ‘©â€ðŸŽ¨ *Profesional:* ${booking.profesional_nombre || booking.trabajador_nombre}
 
-✅ *Pago recibido correctamente*
+âœ… *Pago recibido correctamente*
 
-Te esperamos ❤️
-Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipación.`;
+Te esperamos â¤ï¸
+Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ³n.`;
 
         window.enviarWhatsApp(booking.cliente_whatsapp, mensajeConfirmacion);
         
-        console.log('✅ Mensaje de confirmación de pago enviado');
+        console.log('âœ… Mensaje de confirmaciÃ³n de pago enviado');
         return true;
 
     } catch (error) {
@@ -278,16 +305,16 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
 };
 
 // ============================================
-// NOTIFICACIÓN DE NUEVA RESERVA (SIN ANTICIPO) - CON PUSH
+// NOTIFICACIÃ“N DE NUEVA RESERVA (SIN ANTICIPO) - CON PUSH
 // ============================================
 window.notificarNuevaReserva = async function(booking) {
     try {
         if (!booking) {
-            console.error('❌ No hay datos de reserva');
+            console.error('âŒ No hay datos de reserva');
             return false;
         }
 
-        console.log('📤 Procesando notificación de NUEVA RESERVA (CONFIRMADA)');
+        console.log('ðŸ“¤ Procesando notificaciÃ³n de NUEVA RESERVA (CONFIRMADA)');
 
         const config = await getConfigNegocio();
         
@@ -302,34 +329,34 @@ window.notificarNuevaReserva = async function(booking) {
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
         
         const mensajeWhatsApp = 
-`🎉 *NUEVA RESERVA - ${config.nombre}*
+`ðŸŽ‰ *NUEVA RESERVA - ${config.nombre}*
 
-👤 *Cliente:* ${booking.cliente_nombre}
-📱 *WhatsApp:* ${booking.cliente_whatsapp}
-💅 *Servicio:* ${booking.servicio} (${booking.duracion} min)
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-👩‍🎨 *Profesional:* ${profesional}
+ðŸ‘¤ *Cliente:* ${booking.cliente_nombre}
+ðŸ“± *WhatsApp:* ${booking.cliente_whatsapp}
+ðŸ’… *Servicio:* ${booking.servicio} (${booking.duracion} min)
+ðŸ“… *Fecha:* ${fechaConDia}
+â° *Hora:* ${horaFormateada}
+ðŸ‘©â€ðŸŽ¨ *Profesional:* ${profesional}
 
-✅ Reserva confirmada automáticamente.`;
+âœ… Reserva confirmada automÃ¡ticamente.`;
 
         window.enviarWhatsApp(config.telefono, mensajeWhatsApp);
         
         const mensajePush = 
-`🆕 NUEVA RESERVA - ${config.nombre}
-👤 Cliente: ${booking.cliente_nombre}
-💅 Servicio: ${booking.servicio}
-📅 Fecha: ${fechaConDia}
-⏰ Hora: ${horaFormateada}`;
+`ðŸ†• NUEVA RESERVA - ${config.nombre}
+ðŸ‘¤ Cliente: ${booking.cliente_nombre}
+ðŸ’… Servicio: ${booking.servicio}
+ðŸ“… Fecha: ${fechaConDia}
+â° Hora: ${horaFormateada}`;
 
         await window.enviarNotificacionPush(
-            `📅 ${config.nombre} - Nuevo turno`,
+            `ðŸ“… ${config.nombre} - Nuevo turno`,
             mensajePush,
             'calendar',
             'default'
         );
         
-        console.log('✅ Notificaciones de nueva reserva enviadas (WhatsApp + Push)');
+        console.log('âœ… Notificaciones de nueva reserva enviadas (WhatsApp + Push)');
         return true;
     } catch (error) {
         console.error('Error en notificarNuevaReserva:', error);
@@ -338,21 +365,21 @@ window.notificarNuevaReserva = async function(booking) {
 };
 
 // ============================================
-// NOTIFICACIÓN DE RESERVA PENDIENTE (CON ANTICIPO) - CON DATOS DE PAGO A LA DUEÑA
+// NOTIFICACIÃ“N DE RESERVA PENDIENTE (CON ANTICIPO) - CON DATOS DE PAGO A LA DUEÃ‘A
 // ============================================
 window.notificarReservaPendiente = async function(booking) {
     try {
         if (!booking) {
-            console.error('❌ No hay datos de reserva');
+            console.error('âŒ No hay datos de reserva');
             return false;
         }
 
-        console.log('📤 Procesando notificación de RESERVA PENDIENTE (CON DATOS DE PAGO A LA DUEÑA)');
+        console.log('ðŸ“¤ Procesando notificaciÃ³n de RESERVA PENDIENTE (CON DATOS DE PAGO A LA DUEÃ‘A)');
 
         const configNegocio = await window.cargarConfiguracionNegocio();
         
         if (window.enviarMensajePago) {
-            console.log('💰 Enviando mensaje con datos de pago a la DUEÑA');
+            console.log('ðŸ’° Enviando mensaje con datos de pago a la DUEÃ‘A');
             
             let montoAnticipo = 0;
             if (configNegocio.tipo_anticipo === 'fijo') {
@@ -381,49 +408,49 @@ window.notificarReservaPendiente = async function(booking) {
             const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
 
             const mensajeFinal = 
-`💅 *${configNegocio.nombre || 'Mi Salón'} - Confirmación de Turno*
+`ðŸ’… *${configNegocio.nombre || 'Mi SalÃ³n'} - ConfirmaciÃ³n de Turno*
 
-✅ *SOLICITUD DE TURNO REGISTRADA*
+âœ… *SOLICITUD DE TURNO REGISTRADA*
 
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-💅 *Servicio:* ${booking.servicio}
-👩‍🎨 *Profesional:* ${profesional}
+ðŸ“… *Fecha:* ${fechaConDia}
+â° *Hora:* ${horaFormateada}
+ðŸ’… *Servicio:* ${booking.servicio}
+ðŸ‘©â€ðŸŽ¨ *Profesional:* ${profesional}
 
-💰 *Para confirmar tu turno*, envía el *anticipo de ${montoAnticipo} CUP* por:
+ðŸ’° *Para confirmar tu turno*, envÃ­a el *anticipo de ${montoAnticipo} CUP* por:
 
-🏦 *Transferencia bancária:* 
-   Tárjeta a transferir : ${configNegocio.cbu || 'XXXX XXXX XXXX XXXX'}
+ðŸ¦ *Transferencia bancÃ¡ria:* 
+   TÃ¡rjeta a transferir : ${configNegocio.cbu || 'XXXX XXXX XXXX XXXX'}
    Alias: ${configNegocio.alias || 'alias.no.configurado'}
 
-📱 *Enviar comprobante a este WhatsApp:* 
+ðŸ“± *Enviar comprobante a este WhatsApp:* 
    +53 ${configNegocio.telefono || '00000000'}
 
-⏳ *Importante:* 
-El turno se cancelará automáticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.
+â³ *Importante:* 
+El turno se cancelarÃ¡ automÃ¡ticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.
 
-¡Gracias por elegirnos! 💖`;
+Â¡Gracias por elegirnos! ðŸ’–`;
 
             window.enviarWhatsApp(configNegocio.telefono, mensajeFinal);
             
             const mensajePush = 
-`🆕 RESERVA PENDIENTE - ${configNegocio.nombre}
-👤 Cliente: ${booking.cliente_nombre}
-💅 Servicio: ${booking.servicio}
-💰 Monto: $${montoAnticipo}`;
+`ðŸ†• RESERVA PENDIENTE - ${configNegocio.nombre}
+ðŸ‘¤ Cliente: ${booking.cliente_nombre}
+ðŸ’… Servicio: ${booking.servicio}
+ðŸ’° Monto: $${montoAnticipo}`;
 
             await window.enviarNotificacionPush(
-                `💰 ${configNegocio.nombre} - Pago pendiente`,
+                `ðŸ’° ${configNegocio.nombre} - Pago pendiente`,
                 mensajePush,
                 'moneybag',
                 'high'
             );
             
-            console.log('✅ Dueña notificada con DATOS DE PAGO + Push');
+            console.log('âœ… DueÃ±a notificada con DATOS DE PAGO + Push');
             return true;
         }
         
-        console.log('⚠️ Usando notificación simple (fallback)');
+        console.log('âš ï¸ Usando notificaciÃ³n simple (fallback)');
         const config = await getConfigNegocio();
         
         const fechaConDia = window.formatFechaCompleta ? 
@@ -437,34 +464,34 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
         
         const mensajeWhatsApp = 
-`🆕 *RESERVA PENDIENTE DE PAGO - ${config.nombre}*
+`ðŸ†• *RESERVA PENDIENTE DE PAGO - ${config.nombre}*
 
-👤 *Cliente:* ${booking.cliente_nombre}
-📱 *WhatsApp:* ${booking.cliente_whatsapp}
-💅 *Servicio:* ${booking.servicio} (${booking.duracion} min)
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-👩‍🎨 *Profesional:* ${profesional}
-💰 *Estado:* Pendiente de pago
+ðŸ‘¤ *Cliente:* ${booking.cliente_nombre}
+ðŸ“± *WhatsApp:* ${booking.cliente_whatsapp}
+ðŸ’… *Servicio:* ${booking.servicio} (${booking.duracion} min)
+ðŸ“… *Fecha:* ${fechaConDia}
+â° *Hora:* ${horaFormateada}
+ðŸ‘©â€ðŸŽ¨ *Profesional:* ${profesional}
+ðŸ’° *Estado:* Pendiente de pago
 
-✅ Ingresá al panel para confirmar el pago:`;
+âœ… IngresÃ¡ al panel para confirmar el pago:`;
 
         window.enviarWhatsApp(config.telefono, mensajeWhatsApp);
         
         const mensajePush = 
-`🆕 RESERVA PENDIENTE - ${config.nombre}
-👤 Cliente: ${booking.cliente_nombre}
-💅 Servicio: ${booking.servicio}
-💰 Estado: Pendiente de pago`;
+`ðŸ†• RESERVA PENDIENTE - ${config.nombre}
+ðŸ‘¤ Cliente: ${booking.cliente_nombre}
+ðŸ’… Servicio: ${booking.servicio}
+ðŸ’° Estado: Pendiente de pago`;
 
         await window.enviarNotificacionPush(
-            `💰 ${config.nombre} - Pago pendiente`,
+            `ðŸ’° ${config.nombre} - Pago pendiente`,
             mensajePush,
             'moneybag',
             'high'
         );
         
-        console.log('✅ Notificación de reserva pendiente enviada (WhatsApp simple + Push)');
+        console.log('âœ… NotificaciÃ³n de reserva pendiente enviada (WhatsApp simple + Push)');
         return true;
         
     } catch (error) {
@@ -474,16 +501,16 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
 };
 
 // ============================================
-// NOTIFICACIÓN DE CANCELACIÓN (CORREGIDA)
+// NOTIFICACIÃ“N DE CANCELACIÃ“N (CORREGIDA)
 // ============================================
 window.notificarCancelacion = async function(booking) {
     try {
         if (!booking) {
-            console.error('❌ No hay datos de reserva');
+            console.error('âŒ No hay datos de reserva');
             return false;
         }
 
-        console.log('📤 Procesando notificación de CANCELACIÓN');
+        console.log('ðŸ“¤ Procesando notificaciÃ³n de CANCELACIÃ“N');
 
         const config = await getConfigNegocio();
         
@@ -498,63 +525,63 @@ window.notificarCancelacion = async function(booking) {
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
         const canceladoPor = booking.cancelado_por || 'admin';
         
-        // Mensaje para el dueño (si canceló el cliente)
+        // Mensaje para el dueÃ±o (si cancelÃ³ el cliente)
         const mensajeDuenno = 
-`❌ *CANCELACIÓN - ${config.nombre}*
+`âŒ *CANCELACIÃ“N - ${config.nombre}*
 
-👤 *Cliente:* ${booking.cliente_nombre}
-📱 *WhatsApp:* ${booking.cliente_whatsapp}
-💅 *Servicio:* ${booking.servicio}
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-👩‍🎨 *Profesional:* ${profesional}
+ðŸ‘¤ *Cliente:* ${booking.cliente_nombre}
+ðŸ“± *WhatsApp:* ${booking.cliente_whatsapp}
+ðŸ’… *Servicio:* ${booking.servicio}
+ðŸ“… *Fecha:* ${fechaConDia}
+â° *Hora:* ${horaFormateada}
+ðŸ‘©â€ðŸŽ¨ *Profesional:* ${profesional}
 
-El cliente canceló su turno.`;
+El cliente cancelÃ³ su turno.`;
 
-        // Mensaje para el cliente (si canceló el admin)
+        // Mensaje para el cliente (si cancelÃ³ el admin)
         const mensajeCliente = 
-`❌ *CANCELACIÓN DE TURNO - ${config.nombre}*
+`âŒ *CANCELACIÃ“N DE TURNO - ${config.nombre}*
 
 Hola *${booking.cliente_nombre}*, lamentamos informarte que tu turno ha sido cancelado.
 
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-💅 *Servicio:* ${booking.servicio}
-👩‍🎨 *Profesional:* ${profesional}
+ðŸ“… *Fecha:* ${fechaConDia}
+â° *Hora:* ${horaFormateada}
+ðŸ’… *Servicio:* ${booking.servicio}
+ðŸ‘©â€ðŸŽ¨ *Profesional:* ${profesional}
 
-🔔 *Motivo:* Cancelación por administración
+ðŸ”” *Motivo:* CancelaciÃ³n por administraciÃ³n
 
-📱 *¿Querés reprogramar?* Podés hacerlo desde la app`;
+ðŸ“± *Â¿QuerÃ©s reprogramar?* PodÃ©s hacerlo desde la app`;
 
-        // Enviar según quién canceló
+        // Enviar segÃºn quiÃ©n cancelÃ³
         if (canceladoPor === 'cliente') {
-            // El cliente canceló: avisar al admin
+            // El cliente cancelÃ³: avisar al admin
             window.enviarWhatsApp(config.telefono, mensajeDuenno);
-            console.log('📱 Admin notificado de cancelación por cliente');
+            console.log('ðŸ“± Admin notificado de cancelaciÃ³n por cliente');
         } else {
-            // El admin canceló: avisar al cliente
+            // El admin cancelÃ³: avisar al cliente
             const telefonoCliente = booking.cliente_whatsapp.replace(/\D/g, '');
             window.enviarWhatsApp(telefonoCliente, mensajeCliente);
-            console.log('📱 Cliente notificado de cancelación por admin');
+            console.log('ðŸ“± Cliente notificado de cancelaciÃ³n por admin');
         }
 
-        // Notificación push (siempre, para ambos casos)
+        // NotificaciÃ³n push (siempre, para ambos casos)
         const mensajePush = 
-`❌ CANCELACION - ${config.nombre}
-👤 Cliente: ${booking.cliente_nombre}
-📱 WhatsApp: ${booking.cliente_whatsapp}
-💅 Servicio: ${booking.servicio}
-📅 Fecha: ${fechaConDia}
-${canceladoPor === 'cliente' ? '🔔 Cancelado por cliente' : '🔔 Cancelado por admin'}`;
+`âŒ CANCELACION - ${config.nombre}
+ðŸ‘¤ Cliente: ${booking.cliente_nombre}
+ðŸ“± WhatsApp: ${booking.cliente_whatsapp}
+ðŸ’… Servicio: ${booking.servicio}
+ðŸ“… Fecha: ${fechaConDia}
+${canceladoPor === 'cliente' ? 'ðŸ”” Cancelado por cliente' : 'ðŸ”” Cancelado por admin'}`;
 
         await window.enviarNotificacionPush(
-            `❌ ${config.nombre} - Cancelación`,
+            `âŒ ${config.nombre} - CancelaciÃ³n`,
             mensajePush,
             'x',
             'default'
         );
         
-        console.log('✅ Notificaciones de cancelación enviadas');
+        console.log('âœ… Notificaciones de cancelaciÃ³n enviadas');
         return true;
     } catch (error) {
         console.error('Error en notificarCancelacion:', error);
@@ -562,4 +589,4 @@ ${canceladoPor === 'cliente' ? '🔔 Cancelado por cliente' : '🔔 Cancelado po
     }
 };
 
-console.log('✅ whatsapp-helper.js - VERSIÓN GENÉRICA CARGADA (CON FORMATO EXACTO)');
+console.log('âœ… whatsapp-helper.js - VERSIÃ“N GENÃ‰RICA CARGADA (CON FORMATO EXACTO)');

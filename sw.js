@@ -6,6 +6,7 @@ const urlsToCache = [
   '/exoticnailsbyyuly/index.html',
   '/exoticnailsbyyuly/admin.html',
   '/exoticnailsbyyuly/admin-login.html',
+  '/exoticnailsbyyuly/calendar.html',
   '/exoticnailsbyyuly/setup-wizard.html',
   '/exoticnailsbyyuly/editar-negocio.html',
   '/exoticnailsbyyuly/manifest.json',
