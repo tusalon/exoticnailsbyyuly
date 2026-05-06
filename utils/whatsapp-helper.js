@@ -100,10 +100,24 @@ window.enviarWhatsApp = function(telefono, mensaje) {
     }
 };
 
+function sanitizeNtfyHeader(value, fallback = '') {
+    const cleanValue = String(value || fallback)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\x20-\x7E]/g, '')
+        .replace(/[\r\n]+/g, ' ')
+        .trim();
+
+    return cleanValue || fallback;
+}
+
 window.enviarNotificacionPush = async function(titulo, mensaje, etiquetas = 'bell', prioridad = 'default') {
     try {
         const config = await getConfigNegocio();
         const topic = config.ntfyTopic || 'notificaciones';
+        const safeTitle = sanitizeNtfyHeader(titulo, `${config.nombre || 'Reserva'} - Notificacion`);
+        const safeTags = sanitizeNtfyHeader(etiquetas, 'bell');
+        const safePriority = sanitizeNtfyHeader(prioridad, 'default');
 
         console.log(`📢 Enviando push a ntfy.sh/${topic}:`, titulo);
 
@@ -111,9 +125,9 @@ window.enviarNotificacionPush = async function(titulo, mensaje, etiquetas = 'bel
             method: 'POST',
             body: mensaje,
             headers: {
-                'Title': titulo,
-                'Priority': prioridad,
-                'Tags': etiquetas
+                'Title': safeTitle,
+                'Priority': safePriority,
+                'Tags': safeTags
             }
         });
 
