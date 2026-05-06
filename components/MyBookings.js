@@ -283,6 +283,9 @@ Si no puedes asistir, contactanos por WhatsApp al +53 ${telefonoDuenno}`;
                                 booking.fecha;
                             
                             const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
+                            const calendarLink = window.generarLinkCalendarioCliente ? 
+                                window.generarLinkCalendarioCliente(booking) : 
+                                '';
                             
                             return (
                                 <div
@@ -337,6 +340,18 @@ Si no puedes asistir, contactanos por WhatsApp al +53 ${telefonoDuenno}`;
                                                 <span>{puedeCancelarBooking ? '💡' : '⚠️'}</span>
                                                 <span>{tiempoRestante}</span>
                                             </div>
+                                        )}
+
+                                        {booking.estado !== 'Cancelado' && calendarLink && (
+                                            <a
+                                                href={calendarLink}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="w-full py-2 rounded-lg font-medium transition flex items-center justify-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border border-pink-300 mb-2"
+                                            >
+                                                <i className="icon-calendar text-base"></i>
+                                                Agregar al calendario
+                                            </a>
                                         )}
                                         
                                         {booking.estado !== 'Cancelado' && (
