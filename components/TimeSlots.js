@@ -8,6 +8,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
     const [diaTrabaja, setDiaTrabaja] = React.useState(true);
     const [verificacionCompleta, setVerificacionCompleta] = React.useState(false);
     const [maxAntelacionDias, setMaxAntelacionDias] = React.useState(30);
+    const [minAntelacionHoras, setMinAntelacionHoras] = React.useState(2);
 
     const indiceToHoraLegible = (indice) => {
         const horas = Math.floor(indice / 2);
@@ -23,6 +24,9 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                     console.log('⚙️ Configuración cargada en TimeSlots:', config);
                     if (config && config.max_antelacion_dias) {
                         setMaxAntelacionDias(config.max_antelacion_dias);
+                    }
+                    if (config && config.min_antelacion_horas !== undefined) {
+                        setMinAntelacionHoras(config.min_antelacion_horas);
                     }
                 }
             } catch (error) {
@@ -165,7 +169,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                 const horaActual = ahora.getHours();
                 const minutosActuales = ahora.getMinutes();
                 const totalMinutosActual = horaActual * 60 + minutosActuales;
-                const minAllowedMinutes = totalMinutosActual + 120;
+                const minAllowedMinutes = totalMinutosActual + (minAntelacionHoras * 60);
                 
                 console.log('🕐 Hora actual:', `${horaActual}:${minutosActuales}`);
                 console.log('⏱️ Hora mínima permitida (actual + 2h):', 
@@ -210,7 +214,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
         };
 
         loadSlots();
-    }, [service, date, profesional, horariosPorDia, diaTrabaja, verificacionCompleta, maxAntelacionDias]);
+    }, [service, date, profesional, horariosPorDia, diaTrabaja, verificacionCompleta, maxAntelacionDias, minAntelacionHoras]);
 
     if (!service || !date || !profesional) return null;
 
@@ -293,8 +297,8 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                         <div className="text-sm text-pink-600 bg-pink-50 p-3 rounded-lg flex items-center gap-2 border border-pink-200">
                             <span className="text-pink-500">⏰</span>
                             <span>
-                                Solo se muestran horarios con al menos 2 horas de anticipación 
-                                (hora actual + 2h)
+                                Solo se muestran horarios con al menos {minAntelacionHoras} horas de anticipación 
+                                (hora actual + {minAntelacionHoras}h)
                             </span>
                         </div>
                     )}

@@ -212,7 +212,20 @@ END:VCALENDAR`;
             const endTime = calculateEndTime(time, service.duracion);
             
             const configNegocio = await window.cargarConfiguracionNegocio();
+            const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
+            const minAntelacionHoras = configGlobal?.min_antelacion_horas ?? 2;
             const requiereAnticipo = configNegocio?.requiere_anticipo === true;
+
+            const [year, month, day] = date.split('-').map(Number);
+            const [hours, minutes] = time.split(':').map(Number);
+            const fechaTurno = new Date(year, month - 1, day, hours, minutes, 0);
+            const minFechaPermitida = new Date(Date.now() + (minAntelacionHoras * 60 * 60 * 1000));
+
+            if (fechaTurno < minFechaPermitida) {
+                setError(`Solo se puede reservar con al menos ${minAntelacionHoras} hora(s) de anticipaciÃ³n.`);
+                setSubmitting(false);
+                return;
+            }
 
             const bookingData = {
                 cliente_nombre: cliente.nombre,

@@ -24,7 +24,9 @@ let configuracionGlobal = {
     duracion_turnos: 60,
     intervalo_entre_turnos: 0,
     modo_24h: false,
-    max_antelacion_dias: 30
+    max_antelacion_dias: 30,
+    min_antelacion_horas: 2,
+    min_cancelacion_horas: 1
 };
 
 let horariosProfesionales = {};
@@ -136,7 +138,9 @@ window.salonConfig = {
                 duracion_turnos: nuevaConfig.duracion_turnos || 60,
                 intervalo_entre_turnos: nuevaConfig.intervalo_entre_turnos || 0,
                 modo_24h: nuevaConfig.modo_24h || false,
-                max_antelacion_dias: nuevaConfig.max_antelacion_dias || 30
+                max_antelacion_dias: nuevaConfig.max_antelacion_dias || 30,
+                min_antelacion_horas: nuevaConfig.min_antelacion_horas ?? 2,
+                min_cancelacion_horas: nuevaConfig.min_cancelacion_horas ?? 1
             };
             
             console.log('📤 Datos a enviar:', datosAGuardar);

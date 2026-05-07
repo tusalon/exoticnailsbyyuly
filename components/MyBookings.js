@@ -7,12 +7,25 @@ function MyBookings({ cliente, onVolver }) {
     const [filtro, setFiltro] = React.useState('activas');
     const [mensajeError, setMensajeError] = React.useState('');
     const [negocioId, setNegocioId] = React.useState(null);
+    const [minCancelacionHoras, setMinCancelacionHoras] = React.useState(1);
 
     // Obtener negocioId
     React.useEffect(() => {
         const id = localStorage.getItem('negocioId') || window.NEGOCIO_ID_POR_DEFECTO;
         setNegocioId(id);
         console.log('🏢 MyBookings - Negocio ID:', id);
+    }, []);
+
+    React.useEffect(() => {
+        if (!window.salonConfig) return;
+
+        window.salonConfig.get().then(config => {
+            if (config && config.min_cancelacion_horas !== undefined) {
+                setMinCancelacionHoras(config.min_cancelacion_horas);
+            }
+        }).catch(error => {
+            console.error('Error cargando configuraciÃ³n de cancelaciÃ³n:', error);
+        });
     }, []);
 
     React.useEffect(() => {
@@ -64,7 +77,7 @@ function MyBookings({ cliente, onVolver }) {
             const diffMs = fechaTurno - ahora;
             const diffMinutos = Math.floor(diffMs / (1000 * 60));
             
-            return diffMinutos > 60;
+            return diffMinutos > (minCancelacionHoras * 60);
             
         } catch (error) {
             console.error('Error verificando cancelación:', error);
@@ -87,7 +100,7 @@ function MyBookings({ cliente, onVolver }) {
             
             if (diffMinutos <= 0) {
                 return "⏰ El turno ya pasó";
-            } else if (diffMinutos <= 60) {
+            } else if (diffMinutos <= (minCancelacionHoras * 60)) {
                 return `⚠️ Faltan menos de ${diffMinutos} minutos - No puedes cancelar`;
             } else if (diffHoras > 0) {
                 return `🕐 Faltan ${diffHoras}h ${minutosRestantes}m - Puedes cancelar`;
@@ -109,11 +122,11 @@ const handleCancelarReserva = async (id, bookingData) => {
         // 🔥 OBTENER TELÉFONO DE LA BD
         const telefonoDuenno = await window.getTelefonoDuenno();
         
-        const mensaje = `❌ No puedes cancelar este turno porque faltan menos de 1 hora.
+        const mensaje = `❌ No puedes cancelar este turno porque faltan menos de ${minCancelacionHoras} hora(s).
             
 📅 Tu turno es el ${fechaConDia} a las ${window.formatTo12Hour ? window.formatTo12Hour(bookingData.hora_inicio) : bookingData.hora_inicio}
 
-⏰ Solo se permiten cancelaciones con al menos 1 hora de anticipación.
+⏰ Solo se permiten cancelaciones con al menos ${minCancelacionHoras} hora(s) de anticipación.
 
 Si no puedes asistir, contactanos por WhatsApp al +53 ${telefonoDuenno}`;
         
@@ -365,7 +378,7 @@ Si no puedes asistir, contactanos por WhatsApp al +53 ${telefonoDuenno}`;
                                                         : 'bg-pink-50 text-pink-400 cursor-not-allowed'}
                                                     disabled:opacity-50 disabled:cursor-not-allowed
                                                 `}
-                                                title={!puedeCancelarBooking ? "Solo se puede cancelar con al menos 1 hora de anticipación" : ""}
+                                                title={!puedeCancelarBooking ? "Solo se puede cancelar con la antelación configurada" : ""}
                                             >
                                                 {cancelando ? (
                                                     <>
@@ -377,7 +390,7 @@ Si no puedes asistir, contactanos por WhatsApp al +53 ${telefonoDuenno}`;
                                                         <span>❌</span>
                                                         {puedeCancelarBooking 
                                                             ? 'Cancelar turno' 
-                                                            : 'No se puede cancelar (menos de 1h)'}
+                                                            : 'No se puede cancelar aún'}
                                                     </>
                                                 )}
                                             </button>
