@@ -291,6 +291,7 @@ window.notificarNuevaReserva = async function(booking) {
         const config = await getConfigNegocio();
         const { fechaConDia, horaFormateada } = getFechaHora(booking);
         const profesional = getProfesional(booking);
+        const lineaCalendario = generarLineaCalendarioCliente(booking);
 
         const mensajeWhatsApp =
 `🎉 *NUEVA RESERVA - ${config.nombre}*
@@ -301,6 +302,7 @@ window.notificarNuevaReserva = async function(booking) {
 📅 *Fecha:* ${fechaConDia}
 ⏰ *Hora:* ${horaFormateada}
 👩‍🎨 *Profesional:* ${profesional}
+${lineaCalendario}
 
 ✅ Reserva confirmada automáticamente.`;
 
@@ -341,6 +343,7 @@ window.notificarReservaPendiente = async function(booking) {
         const montoAnticipo = await calcularMontoAnticipo(configNegocio, booking.servicio);
         const { fechaConDia, horaFormateada } = getFechaHora(booking);
         const profesional = getProfesional(booking);
+        const lineaCalendario = generarLineaCalendarioCliente(booking);
 
         const mensajeFinal =
 `💅 *${configNegocio.nombre || 'Mi Salón'} - Confirmación de Turno*
@@ -363,6 +366,7 @@ window.notificarReservaPendiente = async function(booking) {
 
 ⏳ *Importante:*
 El turno se cancelará automáticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.
+${lineaCalendario}
 
 ¡Gracias por elegirnos! 💖`;
 
