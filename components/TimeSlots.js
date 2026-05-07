@@ -5,6 +5,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState(null);
     const [horariosPorDia, setHorariosPorDia] = React.useState({});
+    const [descansosPorDia, setDescansosPorDia] = React.useState({});
     const [diaTrabaja, setDiaTrabaja] = React.useState(true);
     const [verificacionCompleta, setVerificacionCompleta] = React.useState(false);
     const [maxAntelacionDias, setMaxAntelacionDias] = React.useState(30);
@@ -56,6 +57,15 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
         return hours * 60 + minutes;
     };
 
+    const slotTieneDescanso = (slotStart, slotEnd, descansosDelDia = []) => {
+        return descansosDelDia.some(descanso => {
+            if (!descanso?.inicio || !descanso?.fin) return false;
+            const descansoStart = timeToMinutes(descanso.inicio);
+            const descansoEnd = timeToMinutes(descanso.fin);
+            return (slotStart < descansoEnd) && (slotEnd > descansoStart);
+        });
+    };
+
     React.useEffect(() => {
         if (!profesional) return;
         
@@ -64,8 +74,12 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
             try {
                 console.log(`📅 Cargando horarios por día de ${profesional.nombre}...`);
                 const horarios = await window.salonConfig.getHorariosPorDia(profesional.id);
+                const descansos = window.salonConfig.getDescansosPorDia ?
+                    await window.salonConfig.getDescansosPorDia(profesional.id) :
+                    {};
                 console.log(`✅ Horarios por día de ${profesional.nombre}:`, horarios);
                 setHorariosPorDia(horarios);
+                setDescansosPorDia(descansos);
                 
                 const tieneHorarios = Object.keys(horarios).length > 0;
                 if (!tieneHorarios) {
@@ -143,6 +157,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                 const diaSemana = diasSemana[fechaLocal.getDay()];
                 
                 const indicesDelDia = horariosPorDia[diaSemana] || [];
+                const descansosDelDia = descansosPorDia[diaSemana] || [];
                 
                 if (indicesDelDia.length === 0) {
                     console.log(`⚠️ No hay horas configuradas para ${diaSemana}`);
@@ -187,6 +202,10 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                         return false;
                     }
 
+                    if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) {
+                        return false;
+                    }
+
                     const hasConflict = bookings.some(booking => {
                         const bookingStart = timeToMinutes(booking.hora_inicio);
                         const bookingEnd = timeToMinutes(booking.hora_fin);
@@ -214,7 +233,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
         };
 
         loadSlots();
-    }, [service, date, profesional, horariosPorDia, diaTrabaja, verificacionCompleta, maxAntelacionDias, minAntelacionHoras]);
+    }, [service, date, profesional, horariosPorDia, descansosPorDia, diaTrabaja, verificacionCompleta, maxAntelacionDias, minAntelacionHoras]);
 
     if (!service || !date || !profesional) return null;
 

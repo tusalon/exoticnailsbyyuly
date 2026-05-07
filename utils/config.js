@@ -106,6 +106,7 @@ async function cargarHorariosProfesionales() {
         (data || []).forEach(item => {
             horarios[item.profesional_id] = {
                 horariosPorDia: item.horarios_por_dia || {},
+                descansosPorDia: item.descansos_por_dia || {},
                 horas: item.horas || [],
                 dias: item.dias || []
             };
@@ -235,8 +236,31 @@ window.salonConfig = {
             return {};
         }
     },
+
+    getDescansosPorDia: async function(profesionalId) {
+        try {
+            const negocioId = getNegocioId();
+            const response = await fetch(
+                `${window.SUPABASE_URL}/rest/v1/horarios_profesionales?negocio_id=eq.${negocioId}&profesional_id=eq.${profesionalId}&select=descansos_por_dia`,
+                {
+                    headers: {
+                        'apikey': window.SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+                    }
+                }
+            );
+
+            if (!response.ok) return {};
+
+            const data = await response.json();
+            return data[0]?.descansos_por_dia || {};
+        } catch (error) {
+            console.error('Error cargando descansos:', error);
+            return {};
+        }
+    },
     
-    guardarHorariosPorDia: async function(profesionalId, horariosPorDia) {
+    guardarHorariosPorDia: async function(profesionalId, horariosPorDia, descansosPorDia = null) {
         try {
             const negocioId = getNegocioId();
             console.log(`💾 Guardando horarios por día para profesional ${profesionalId} (negocio: ${negocioId}):`, horariosPorDia);
@@ -272,6 +296,7 @@ window.salonConfig = {
                 method = 'PATCH';
                 body = JSON.stringify({
                     horarios_por_dia: horariosPorDia,
+                    ...(descansosPorDia ? { descansos_por_dia: descansosPorDia } : {}),
                     horas: horasArray,
                     dias: diasQueTrabajan
                 });
@@ -283,6 +308,7 @@ window.salonConfig = {
                     negocio_id: negocioId,
                     profesional_id: profesionalId,
                     horarios_por_dia: horariosPorDia,
+                    ...(descansosPorDia ? { descansos_por_dia: descansosPorDia } : {}),
                     horas: horasArray,
                     dias: diasQueTrabajan
                 });
@@ -311,6 +337,7 @@ window.salonConfig = {
             
             horariosProfesionales[profesionalId] = {
                 horariosPorDia: horariosPorDia,
+                descansosPorDia: descansosPorDia || horariosProfesionales[profesionalId]?.descansosPorDia || {},
                 horas: horasArray,
                 dias: diasQueTrabajan
             };
@@ -349,12 +376,13 @@ window.salonConfig = {
                 return {
                     horas: data[0].horas || [],
                     dias: data[0].dias || [],
-                    horariosPorDia: data[0].horarios_por_dia || {}
+                    horariosPorDia: data[0].horarios_por_dia || {},
+                    descansosPorDia: data[0].descansos_por_dia || {}
                 };
             }
-            return { horas: [], dias: [], horariosPorDia: {} };
+            return { horas: [], dias: [], horariosPorDia: {}, descansosPorDia: {} };
         } catch (error) {
-            return { horas: [], dias: [], horariosPorDia: {} };
+            return { horas: [], dias: [], horariosPorDia: {}, descansosPorDia: {} };
         }
     },
     

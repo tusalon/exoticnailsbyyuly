@@ -268,6 +268,15 @@ const timeToMinutes = (time) => {
     return hours * 60 + minutes;
 };
 
+const slotTieneDescanso = (slotStart, slotEnd, descansosDelDia = []) => {
+    return descansosDelDia.some(descanso => {
+        if (!descanso?.inicio || !descanso?.fin) return false;
+        const descansoStart = timeToMinutes(descanso.inicio);
+        const descansoEnd = timeToMinutes(descanso.fin);
+        return (slotStart < descansoEnd) && (slotEnd > descansoStart);
+    });
+};
+
 const formatTo12Hour = (time) => {
     const [hours, minutes] = time.split(':');
     const h = parseInt(hours);
@@ -317,6 +326,7 @@ function AdminApp() {
     const [configVersion, setConfigVersion] = React.useState(0);
     
     const [tabActivo, setTabActivo] = React.useState('reservas');
+    const [agendaDate, setAgendaDate] = React.useState(new Date());
     
     const [showClientesRegistrados, setShowClientesRegistrados] = React.useState(false);
     const [clientesRegistrados, setClientesRegistrados] = React.useState([]);
@@ -324,6 +334,7 @@ function AdminApp() {
     const [cargandoClientes, setCargandoClientes] = React.useState(false);
 
     const [showNuevaReservaModal, setShowNuevaReservaModal] = React.useState(false);
+    const [reservaEditando, setReservaEditando] = React.useState(null);
     const [nuevaReservaData, setNuevaReservaData] = React.useState({
         cliente_nombre: '',
         cliente_whatsapp: '',
@@ -484,12 +495,17 @@ function AdminApp() {
                 if (!servicio) return;
 
                 const horarios = await window.salonConfig.getHorariosProfesional(nuevaReservaData.profesional_id);
-                const horasTrabajo = horarios.horas || [];
+                const [year, month, day] = nuevaReservaData.fecha.split('-').map(Number);
+                const fechaLocal = new Date(year, month - 1, day);
+                const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+                const diaSemana = nombresDias[fechaLocal.getDay()];
+                const horasTrabajo = horarios.horariosPorDia?.[diaSemana] || horarios.horas || [];
+                const descansosDelDia = horarios.descansosPorDia?.[diaSemana] || [];
                 
                 const slotsTrabajo = horasTrabajo.map(indice => indiceToHoraLegible(indice));
                 
                 const response = await fetch(
-                    `${window.SUPABASE_URL}/rest/v1/reservas?fecha=eq.${nuevaReservaData.fecha}&profesional_id=eq.${nuevaReservaData.profesional_id}&estado=neq.Cancelado&select=hora_inicio,hora_fin`,
+                    `${window.SUPABASE_URL}/rest/v1/reservas?fecha=eq.${nuevaReservaData.fecha}&profesional_id=eq.${nuevaReservaData.profesional_id}&estado=neq.Cancelado&select=id,hora_inicio,hora_fin`,
                     {
                         headers: {
                             'apikey': window.SUPABASE_ANON_KEY,
@@ -498,7 +514,7 @@ function AdminApp() {
                     }
                 );
                 
-                const reservas = await response.json();
+                const reservas = (await response.json()).filter(reserva => reserva.id !== reservaEditando?.id);
 
                 const ahora = new Date();
                 const horaActual = ahora.getHours();
@@ -515,6 +531,10 @@ function AdminApp() {
                     const slotEnd = slotStart + servicio.duracion;
 
                     if (esHoy && slotStart < minAllowedMinutes) {
+                        return false;
+                    }
+
+                    if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) {
                         return false;
                     }
 
@@ -542,7 +562,7 @@ function AdminApp() {
         };
 
         cargarHorarios();
-    }, [nuevaReservaData.profesional_id, nuevaReservaData.fecha, nuevaReservaData.servicio, serviciosList]);
+    }, [nuevaReservaData.profesional_id, nuevaReservaData.fecha, nuevaReservaData.servicio, serviciosList, reservaEditando]);
 
     // ============================================
     // FUNCIONES DE DISPONIBILIDAD
@@ -640,6 +660,7 @@ function AdminApp() {
             const horasTrabajo = horarios.horas || [];
             const diasTrabajo = horarios.dias || [];
             const horariosPorDia = horarios.horariosPorDia || {};
+            const descansosPorDia = horarios.descansosPorDia || {};
             
             console.log('=========================================');
             console.log(`📊 Profesional ID: ${profesionalId}`);
@@ -691,6 +712,7 @@ function AdminApp() {
                 const diaSemana = nombresDias[fechaActual.getDay()];
                 
                 const horariosDelDia = horariosPorDia[diaSemana] || [];
+                const descansosDelDia = descansosPorDia[diaSemana] || [];
                 
                 if (horariosDelDia.length === 0) {
                     disponibilidad[fechaStr] = false;
@@ -708,6 +730,7 @@ function AdminApp() {
                 }
                 
                 let horariosOcupados = 0;
+                let horariosDisponiblesDia = 0;
                 const reservasDia = reservasPorFecha[fechaStr] || [];
                 
                 const hoy = getCurrentLocalDate();
@@ -722,6 +745,12 @@ function AdminApp() {
                     const [horas, minutos] = slotStr.split(':').map(Number);
                     const slotStart = horas * 60 + minutos;
                     const slotEnd = slotStart + 60;
+
+                    if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) {
+                        continue;
+                    }
+
+                    horariosDisponiblesDia++;
                     
                     const tieneConflicto = reservasDia.some(reserva => {
                         const reservaStart = timeToMinutes(reserva.hora_inicio);
@@ -741,7 +770,7 @@ function AdminApp() {
                     }
                 }
                 
-                const tieneDisponibilidad = horariosOcupados < horariosDelDia.length;
+                const tieneDisponibilidad = horariosDisponiblesDia > 0 && horariosOcupados < horariosDisponiblesDia;
                 
                 if (fechaStr === hoy) {
                     console.log(`   📊 Total horarios del día: ${horariosDelDia.length}, Ocupados: ${horariosOcupados}`);
@@ -884,13 +913,52 @@ function AdminApp() {
 
             console.log('📤 Creando reserva manual. Requiere anticipo:', requiereAnticipo);
             
-            const result = await createBooking(bookingData);
+            let result;
+            if (reservaEditando) {
+                const response = await fetch(
+                    `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${getNegocioId()}&id=eq.${reservaEditando.id}`,
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            'apikey': window.SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify({
+                            servicio: bookingData.servicio,
+                            duracion: bookingData.duracion,
+                            profesional_id: bookingData.profesional_id,
+                            profesional_nombre: bookingData.profesional_nombre,
+                            trabajador_nombre: bookingData.profesional_nombre,
+                            fecha: bookingData.fecha,
+                            hora_inicio: bookingData.hora_inicio,
+                            hora_fin: bookingData.hora_fin
+                        })
+                    }
+                );
+
+                if (!response.ok) {
+                    result = { success: false, error: await response.text() };
+                } else {
+                    const data = await response.json();
+                    result = { success: true, data: Array.isArray(data) ? data[0] : data };
+                }
+            } else {
+                result = await createBooking(bookingData);
+            }
             
             if (result.success && result.data) {
                 alert(`✅ Reserva creada exitosamente como "${result.data.estado}"`);
                 
                 try {
-                    if (requiereAnticipo) {
+                    if (reservaEditando) {
+                        const fechaConDia = window.formatFechaCompleta ? window.formatFechaCompleta(result.data.fecha) : result.data.fecha;
+                        const horaFormateada = window.formatTo12Hour ? window.formatTo12Hour(result.data.hora_inicio) : result.data.hora_inicio;
+                        const lineaCalendario = typeof generarLineaCalendarioCliente === 'function' ? generarLineaCalendarioCliente(result.data) : '';
+                        const mensajeCliente = `Hola *${result.data.cliente_nombre}*, tu turno fue reprogramado.\n\n*Servicio:* ${result.data.servicio}\n*Fecha:* ${fechaConDia}\n*Hora:* ${horaFormateada}\n*Profesional:* ${result.data.profesional_nombre || result.data.trabajador_nombre}\n${lineaCalendario}\nTe esperamos.`;
+                        window.enviarWhatsApp(result.data.cliente_whatsapp, mensajeCliente);
+                    } else if (requiereAnticipo) {
                         if (window.enviarMensajePago) {
                             await window.enviarMensajePago(result.data, configNegocio);
                         }
@@ -905,6 +973,7 @@ function AdminApp() {
                 }
                 
                 setShowNuevaReservaModal(false);
+                setReservaEditando(null);
                 setNuevaReservaData({
                     cliente_nombre: '',
                     cliente_whatsapp: '',
@@ -1038,7 +1107,7 @@ function AdminApp() {
 
     React.useEffect(() => {
         fetchBookings();
-        
+
         if (userRole === 'admin' || (userRole === 'profesional' && userNivel >= 2)) {
             loadClientesRegistrados();
         }
@@ -1227,10 +1296,60 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
     const canceladasCount = bookings.filter(b => b.estado === 'Cancelado').length;
     const filteredBookings = getFilteredBookings();
 
+    const startOfWeek = (date) => {
+        const base = new Date(date);
+        const day = base.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        base.setDate(base.getDate() + diff);
+        base.setHours(0, 0, 0, 0);
+        return base;
+    };
+
+    const addDays = (date, daysToAdd) => {
+        const next = new Date(date);
+        next.setDate(next.getDate() + daysToAdd);
+        return next;
+    };
+
+    const agendaWeekStart = startOfWeek(agendaDate);
+    const agendaDays = Array.from({ length: 7 }, (_, index) => addDays(agendaWeekStart, index));
+    const agendaStartStr = formatDate(agendaDays[0]);
+    const agendaEndStr = formatDate(agendaDays[6]);
+    const agendaBookings = bookings
+        .filter(b => b.fecha >= agendaStartStr && b.fecha <= agendaEndStr && b.estado !== 'Cancelado')
+        .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.hora_inicio.localeCompare(b.hora_inicio));
+    const agendaToday = getCurrentLocalDate();
+    const agendaHours = Array.from({ length: 14 }, (_, index) => index + 7);
+    const agendaStartMinutes = 7 * 60;
+    const agendaPxPerMinute = 1.2;
+    const agendaGridHeight = 14 * 60 * agendaPxPerMinute;
+    const agendaStatusStyle = {
+        Reservado: 'bg-pink-500 border-pink-600 text-white',
+        Pendiente: 'bg-amber-400 border-amber-500 text-amber-950',
+        Completado: 'bg-emerald-500 border-emerald-600 text-white'
+    };
+
+    const getAgendaDayBookings = (date) => {
+        const dateStr = formatDate(date);
+        return agendaBookings.filter(b => b.fecha === dateStr);
+    };
+
+    const getBookingTop = (booking) => {
+        return Math.max(0, (timeToMinutes(booking.hora_inicio) - agendaStartMinutes) * agendaPxPerMinute);
+    };
+
+    const getBookingHeight = (booking) => {
+        const start = timeToMinutes(booking.hora_inicio);
+        const end = timeToMinutes(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60));
+        return Math.max(44, (end - start) * agendaPxPerMinute - 4);
+    };
+
     const getTabsDisponibles = () => {
         const tabs = [];
         tabs.push({ id: 'reservas', icono: '📅', label: userRole === 'profesional' ? 'Mis Reservas' : 'Reservas' });
         
+        tabs.push({ id: 'agenda', icono: '▦', label: 'Agenda' });
+
         if (userRole === 'admin' || (userRole === 'profesional' && userNivel >= 2)) {
             tabs.push({ id: 'configuracion', icono: '⚙️', label: 'Configuración' });
             tabs.push({ id: 'clientes', icono: '👤', label: 'Clientes' });
@@ -1245,6 +1364,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
     };
 
     const abrirModalNuevaReserva = () => {
+        setReservaEditando(null);
         setNuevaReservaData({
             cliente_nombre: '',
             cliente_whatsapp: '',
@@ -1257,6 +1377,27 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
         setCurrentDate(new Date());
         setDiasLaborales([]);
         setFechasConHorarios({});
+        setShowNuevaReservaModal(true);
+    };
+
+    const abrirModalReprogramar = (booking) => {
+        const servicio = serviciosList.find(s => s.nombre === booking.servicio);
+        setReservaEditando(booking);
+        setNuevaReservaData({
+            cliente_nombre: booking.cliente_nombre || '',
+            cliente_whatsapp: String(booking.cliente_whatsapp || '').replace(/^53/, '').replace(/\D/g, ''),
+            servicio: booking.servicio || '',
+            profesional_id: booking.profesional_id || '',
+            fecha: booking.fecha || '',
+            hora_inicio: booking.hora_inicio || '',
+            requiereAnticipo: booking.estado === 'Pendiente'
+        });
+        setCurrentDate(booking.fecha ? new Date(`${booking.fecha}T00:00:00`) : new Date());
+        setDiasLaborales([]);
+        setFechasConHorarios({});
+        if (booking.fecha && booking.hora_inicio) {
+            setHorariosDisponibles(prev => Array.from(new Set([...(prev || []), booking.hora_inicio])).sort());
+        }
         setShowNuevaReservaModal(true);
     };
 
@@ -1453,8 +1594,8 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                     </div>
                                 )}
                                 <div className="flex gap-3 pt-4">
-                                    <button onClick={() => setShowNuevaReservaModal(false)} className="flex-1 px-4 py-2 border rounded-lg">Cancelar</button>
-                                    <button onClick={handleCrearReservaManual} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg">Crear Reserva</button>
+                                    <button onClick={() => { setShowNuevaReservaModal(false); setReservaEditando(null); }} className="flex-1 px-4 py-2 border rounded-lg">Cancelar</button>
+                                    <button onClick={handleCrearReservaManual} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg">{reservaEditando ? 'Guardar cambios' : 'Crear Reserva'}</button>
                                 </div>
                             </div>
                         </div>
@@ -1586,6 +1727,128 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                     </div>
                 )}
 
+                {/* AGENDA CALENDARIO */}
+                {tabActivo === 'agenda' && (
+                    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                        <div className="p-4 sm:p-5 border-b bg-gradient-to-r from-white to-pink-50">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-pink-500 font-bold">Agenda semanal</p>
+                                    <h2 className="text-2xl font-bold text-gray-900">
+                                        {agendaDays[0].toLocaleDateString('es-CU', { day: 'numeric', month: 'short' })} - {agendaDays[6].toLocaleDateString('es-CU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </h2>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <button onClick={() => setAgendaDate(addDays(agendaDate, -7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">Semana anterior</button>
+                                    <button onClick={() => setAgendaDate(new Date())} className="px-3 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 text-sm font-medium">Hoy</button>
+                                    <button onClick={() => setAgendaDate(addDays(agendaDate, 7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">Semana siguiente</button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+                                <div className="rounded-lg border border-pink-100 bg-white p-3">
+                                    <p className="text-xs text-gray-500">Turnos semana</p>
+                                    <p className="text-2xl font-bold text-gray-900">{agendaBookings.length}</p>
+                                </div>
+                                <div className="rounded-lg border border-amber-100 bg-white p-3">
+                                    <p className="text-xs text-gray-500">Pendientes</p>
+                                    <p className="text-2xl font-bold text-amber-600">{agendaBookings.filter(b => b.estado === 'Pendiente').length}</p>
+                                </div>
+                                <div className="rounded-lg border border-emerald-100 bg-white p-3">
+                                    <p className="text-xs text-gray-500">Completados</p>
+                                    <p className="text-2xl font-bold text-emerald-600">{agendaBookings.filter(b => b.estado === 'Completado').length}</p>
+                                </div>
+                                <div className="rounded-lg border border-blue-100 bg-white p-3">
+                                    <p className="text-xs text-gray-500">Profesionales</p>
+                                    <p className="text-2xl font-bold text-blue-600">{new Set(agendaBookings.map(b => b.profesional_id || b.profesional_nombre)).size}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <div className="min-w-[1080px]">
+                                <div className="grid grid-cols-[72px_repeat(7,minmax(140px,1fr))] border-b bg-white sticky top-0 z-10">
+                                    <div className="p-3 text-xs font-semibold text-gray-400 border-r">Hora</div>
+                                    {agendaDays.map(day => {
+                                        const dateStr = formatDate(day);
+                                        const dayBookings = getAgendaDayBookings(day);
+                                        const isToday = dateStr === agendaToday;
+                                        return (
+                                            <div key={dateStr} className={`p-3 border-r last:border-r-0 ${isToday ? 'bg-pink-50' : ''}`}>
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-xs font-bold uppercase text-gray-500">{day.toLocaleDateString('es-CU', { weekday: 'short' })}</p>
+                                                        <p className={`text-xl font-bold ${isToday ? 'text-pink-600' : 'text-gray-900'}`}>{day.getDate()}</p>
+                                                    </div>
+                                                    <span className={`text-xs px-2 py-1 rounded-full ${dayBookings.length ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                                        {dayBookings.length}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="grid grid-cols-[72px_repeat(7,minmax(140px,1fr))] relative" style={{ height: `${agendaGridHeight}px` }}>
+                                    <div className="border-r bg-gray-50">
+                                        {agendaHours.map(hour => (
+                                            <div key={hour} className="relative border-b border-gray-100 text-right pr-2 text-xs text-gray-400" style={{ height: `${60 * agendaPxPerMinute}px` }}>
+                                                <span className="relative -top-2">{formatTo12Hour(`${String(hour).padStart(2, '0')}:00`)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {agendaDays.map(day => {
+                                        const dateStr = formatDate(day);
+                                        const dayBookings = getAgendaDayBookings(day);
+                                        const isToday = dateStr === agendaToday;
+                                        return (
+                                            <div key={dateStr} className={`relative border-r last:border-r-0 ${isToday ? 'bg-pink-50/40' : 'bg-white'}`}>
+                                                {agendaHours.map(hour => (
+                                                    <div key={hour} className="border-b border-gray-100" style={{ height: `${60 * agendaPxPerMinute}px` }}></div>
+                                                ))}
+
+                                                {dayBookings.map(booking => {
+                                                    const statusClass = agendaStatusStyle[booking.estado] || 'bg-gray-500 border-gray-600 text-white';
+                                                    return (
+                                                        <div
+                                                            key={booking.id}
+                                                            className={`absolute left-2 right-2 rounded-lg border shadow-sm p-2 overflow-hidden ${statusClass}`}
+                                                            style={{ top: `${getBookingTop(booking)}px`, height: `${getBookingHeight(booking)}px` }}
+                                                            title={`${booking.cliente_nombre} - ${booking.servicio}`}
+                                                        >
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs font-bold leading-tight">{formatTo12Hour(booking.hora_inicio)} - {formatTo12Hour(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60))}</p>
+                                                                    <p className="font-bold text-sm truncate">{booking.cliente_nombre}</p>
+                                                                    <p className="text-xs truncate opacity-90">{booking.servicio}</p>
+                                                                    <p className="text-xs truncate opacity-80">{booking.profesional_nombre || booking.trabajador_nombre || 'Sin profesional'}</p>
+                                                                </div>
+                                                                {(booking.estado === 'Reservado' || booking.estado === 'Pendiente') && (
+                                                                    <button onClick={() => abrirModalReprogramar(booking)} className="shrink-0 bg-white/20 hover:bg-white/30 rounded px-2 py-1 text-[11px] font-bold">
+                                                                        Editar
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t bg-gray-50 flex flex-wrap gap-3 text-xs">
+                            <span className="inline-flex items-center gap-2"><span className="w-3 h-3 rounded bg-pink-500"></span>Reservado</span>
+                            <span className="inline-flex items-center gap-2"><span className="w-3 h-3 rounded bg-amber-400"></span>Pendiente</span>
+                            <span className="inline-flex items-center gap-2"><span className="w-3 h-3 rounded bg-emerald-500"></span>Completado</span>
+                        </div>
+                    </div>
+                )}
+
                 {/* RESERVAS */}
                 {tabActivo === 'reservas' && (
                     <>
@@ -1642,6 +1905,9 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                                     {b.estado}
                                                 </span>
                                                 <div className="flex gap-2">
+                                                    {(b.estado === 'Pendiente' || b.estado === 'Reservado') && (
+                                                        <button onClick={() => abrirModalReprogramar(b)} className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600">Reprogramar</button>
+                                                    )}
                                                     {b.estado === 'Pendiente' && (
                                                         <button onClick={() => confirmarPago(b.id, b)} className="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">✅ Confirmar pago</button>
                                                     )}
