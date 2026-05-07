@@ -357,10 +357,53 @@ function AdminApp() {
 
     const [serviciosList, setServiciosList] = React.useState([]);
     const [profesionalesList, setProfesionalesList] = React.useState([]);
+    const [profesionalesManualFiltrados, setProfesionalesManualFiltrados] = React.useState([]);
     const [horariosDisponibles, setHorariosDisponibles] = React.useState([]);
     const [currentDate, setCurrentDate] = React.useState(new Date());
     const [diasLaborales, setDiasLaborales] = React.useState([]);
     const [fechasConHorarios, setFechasConHorarios] = React.useState({});
+
+    const getServiciosSeleccionadosManual = (servicioNombre = nuevaReservaData.servicio) => {
+        const nombres = String(servicioNombre || '').split(' + ').map(nombre => nombre.trim()).filter(Boolean);
+        return serviciosList.filter(servicio => nombres.includes(servicio.nombre));
+    };
+
+    const getHorariosComunesServicios = (servicios) => {
+        const listas = servicios
+            .map(servicio => servicio.horarios_permitidos || [])
+            .filter(lista => lista.length > 0);
+
+        if (listas.length === 0) return [];
+        return listas.reduce((comunes, lista) => comunes.filter(hora => lista.includes(hora)));
+    };
+
+    const getServicioManual = (servicioNombre = nuevaReservaData.servicio) => {
+        const servicios = getServiciosSeleccionadosManual(servicioNombre);
+        if (servicios.length === 0) return null;
+
+        return {
+            nombre: servicios.map(servicio => servicio.nombre).join(' + '),
+            duracion: servicios.reduce((total, servicio) => total + (parseInt(servicio.duracion) || 0), 0),
+            precio: servicios.reduce((total, servicio) => total + (parseFloat(servicio.precio) || 0), 0),
+            horarios_permitidos: getHorariosComunesServicios(servicios),
+            items: servicios
+        };
+    };
+
+    const toggleServicioManual = (servicio) => {
+        const actuales = getServiciosSeleccionadosManual();
+        const existe = actuales.some(item => item.id === servicio.id);
+        const siguientes = existe
+            ? actuales.filter(item => item.id !== servicio.id)
+            : [...actuales, servicio];
+
+        setNuevaReservaData({
+            ...nuevaReservaData,
+            servicio: siguientes.map(item => item.nombre).join(' + '),
+            fecha: '',
+            hora_inicio: ''
+        });
+    };
 
     // ============================================
     // FUNCIÓN PARA CARGAR DÍAS CERRADOS DIRECTAMENTE DE SUPABASE
@@ -451,10 +494,54 @@ function AdminApp() {
             if (window.salonProfesionales) {
                 const profesionales = await window.salonProfesionales.getAll(true);
                 setProfesionalesList(profesionales || []);
+                setProfesionalesManualFiltrados(profesionales || []);
             }
         };
         cargarDatosModal();
     }, []);
+
+    React.useEffect(() => {
+        const filtrarProfesionalesManual = async () => {
+            if (!nuevaReservaData.servicio) {
+                setProfesionalesManualFiltrados(profesionalesList);
+                return;
+            }
+
+            try {
+                const servicios = getServiciosSeleccionadosManual();
+                if (!window.getProfesionalesPorServicio || servicios.length === 0) {
+                    setProfesionalesManualFiltrados(profesionalesList);
+                    return;
+                }
+
+                const listasPorServicio = await Promise.all(
+                    servicios.map(servicio => window.getProfesionalesPorServicio(servicio.id))
+                );
+                const idsComunes = listasPorServicio.reduce((ids, lista, index) => {
+                    const idsActuales = lista.map(prof => prof.id);
+                    if (index === 0) return idsActuales;
+                    return ids.filter(id => idsActuales.includes(id));
+                }, []);
+
+                const filtrados = profesionalesList.filter(prof => idsComunes.includes(prof.id));
+                setProfesionalesManualFiltrados(filtrados);
+
+                if (nuevaReservaData.profesional_id && !filtrados.some(prof => prof.id === parseInt(nuevaReservaData.profesional_id))) {
+                    setNuevaReservaData(prev => ({
+                        ...prev,
+                        profesional_id: '',
+                        fecha: '',
+                        hora_inicio: ''
+                    }));
+                }
+            } catch (error) {
+                console.error('Error filtrando profesionales del modal:', error);
+                setProfesionalesManualFiltrados(profesionalesList);
+            }
+        };
+
+        filtrarProfesionalesManual();
+    }, [nuevaReservaData.servicio, profesionalesList, serviciosList]);
 
     // 🔥 CARGAR DÍAS CERRADOS AL INICIO
     React.useEffect(() => {
@@ -498,7 +585,7 @@ function AdminApp() {
             }
 
             try {
-                const servicio = serviciosList.find(s => s.nombre === nuevaReservaData.servicio);
+                const servicio = getServicioManual();
                 if (!servicio) return;
 
                 const horarios = await window.salonConfig.getHorariosProfesional(nuevaReservaData.profesional_id);
@@ -581,7 +668,11 @@ function AdminApp() {
         try {
             const year = fecha.getFullYear();
             const month = fecha.getMonth();
-            const servicio = serviciosList.find(s => s.nombre === nuevaReservaData.servicio);
+            const servicio = getServicioManual();
+            if (!servicio && !reservaEditando) {
+                setFechasConHorarios({});
+                return;
+            }
             const duracion = servicio?.duracion || reservaEditando?.duracion || 60;
             
             const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
@@ -911,7 +1002,7 @@ function AdminApp() {
         }
 
         try {
-            const servicio = serviciosList.find(s => s.nombre === nuevaReservaData.servicio);
+            const servicio = getServicioManual();
             if (!servicio) {
                 alert('Servicio no encontrado');
                 return;
@@ -1609,17 +1700,41 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Servicio *</label>
-                                    <select value={nuevaReservaData.servicio} onChange={(e) => setNuevaReservaData({...nuevaReservaData, servicio: e.target.value})} className="w-full border rounded-lg px-3 py-2">
-                                        <option value="">Seleccionar servicio</option>
-                                        {serviciosList.map(s => (<option key={s.id} value={s.nombre}>{s.nombre} ({s.duracion} min - ${s.precio})</option>))}
-                                    </select>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {serviciosList.map(s => {
+                                            const seleccionado = getServiciosSeleccionadosManual().some(item => item.id === s.id);
+                                            return (
+                                                <button
+                                                    key={s.id}
+                                                    type="button"
+                                                    onClick={() => toggleServicioManual(s)}
+                                                    className={`text-left p-3 rounded-lg border text-sm ${seleccionado ? 'bg-pink-50 border-pink-500 ring-2 ring-pink-200' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+                                                >
+                                                    <div className="font-semibold text-gray-800">{s.nombre}</div>
+                                                    <div className="text-xs text-gray-500">{s.duracion} min - ${s.precio}</div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {nuevaReservaData.servicio && (
+                                        <div className="mt-2 p-3 rounded-lg bg-pink-50 border border-pink-200 text-sm text-pink-700">
+                                            <div className="flex justify-between gap-3">
+                                                <span className="font-semibold">Total seleccionado</span>
+                                                <span className="font-bold">${getServicioManual()?.precio || 0} - {getServicioManual()?.duracion || 0} min</span>
+                                            </div>
+                                            <p className="text-xs mt-1">{nuevaReservaData.servicio}</p>
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Profesional *</label>
                                     <select value={nuevaReservaData.profesional_id} onChange={(e) => setNuevaReservaData({...nuevaReservaData, profesional_id: e.target.value})} className="w-full border rounded-lg px-3 py-2">
                                         <option value="">Seleccionar profesional</option>
-                                        {profesionalesList.map(p => (<option key={p.id} value={p.id}>{p.nombre} - {p.especialidad}</option>))}
+                                        {profesionalesManualFiltrados.map(p => (<option key={p.id} value={p.id}>{p.nombre} - {p.especialidad}</option>))}
                                     </select>
+                                    {nuevaReservaData.servicio && profesionalesManualFiltrados.length === 0 && (
+                                        <p className="text-xs text-red-500 mt-1">No hay profesionales asignados a todos los servicios seleccionados.</p>
+                                    )}
                                 </div>
                                 {userRole === 'admin' && (
                                     <div className="flex items-center gap-3 bg-yellow-50 p-3 rounded-lg">
@@ -1627,7 +1742,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                         <label htmlFor="requiereAnticipo" className="text-sm font-medium text-yellow-800">💰 Requerir anticipo al cliente</label>
                                     </div>
                                 )}
-                                {nuevaReservaData.profesional_id && (
+                                {nuevaReservaData.servicio && nuevaReservaData.profesional_id && (
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Fecha *</label>
                                         <div className="bg-white rounded-xl border">

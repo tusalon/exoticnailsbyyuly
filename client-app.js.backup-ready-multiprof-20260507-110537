@@ -106,7 +106,7 @@ function ClientApp() {
     // No bajamos automaticamente al profesional: permite seleccionar varios servicios primero.
 
     React.useEffect(() => {
-        if (isProfesionalSelectionReady()) {
+        if (selectedProfesional) {
             setTimeout(() => {
                 document.getElementById('calendar-section')?.scrollIntoView({ 
                     behavior: 'smooth', 
@@ -156,18 +156,6 @@ function ClientApp() {
                 block: 'start'
             });
         }, 80);
-    };
-
-    const isProfesionalSelectionReady = () => {
-        if (!selectedProfesional) return false;
-        if (!selectedProfesional.assignments) return true;
-        return selectedProfesional.assignments.length > 0 && selectedProfesional.assignments.every(a => a.profesional);
-    };
-
-    const handleProfesionalSelect = (profesional) => {
-        setSelectedProfesional(profesional);
-        setSelectedDate('');
-        setSelectedTime('');
     };
 
     const handleLogout = () => {
@@ -255,7 +243,7 @@ function ClientApp() {
                             {selectedService && (
                                 <div id="profesional-section">
                                     <ProfesionalSelector 
-                                        onSelect={handleProfesionalSelect} 
+                                        onSelect={setSelectedProfesional} 
                                         selectedProfesional={selectedProfesional}
                                         selectedService={selectedService}
                                     />
@@ -263,7 +251,7 @@ function ClientApp() {
                             )}
                             
                             {/* SECCIÓN 3: CALENDARIO */}
-                            {isProfesionalSelectionReady() && (
+                            {selectedProfesional && (
                                 <div id="calendar-section">
                                     <Calendar 
                                         onDateSelect={setSelectedDate} 

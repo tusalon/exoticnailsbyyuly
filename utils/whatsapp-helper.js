@@ -51,8 +51,14 @@ async function calcularMontoAnticipo(configNegocio, servicioNombre) {
     let precioServicio = 0;
     if (window.salonServicios) {
         const servicios = await window.salonServicios.getAll(true);
-        const servicio = servicios.find(s => s.nombre === servicioNombre);
-        if (servicio) precioServicio = servicio.precio || 0;
+        const nombres = String(servicioNombre || '').split(' + ').map(nombre => nombre.trim()).filter(Boolean);
+        const serviciosEncontrados = servicios.filter(s => nombres.includes(s.nombre));
+        if (serviciosEncontrados.length > 0) {
+            precioServicio = serviciosEncontrados.reduce((total, servicio) => total + (parseFloat(servicio.precio) || 0), 0);
+        } else {
+            const servicio = servicios.find(s => s.nombre === servicioNombre);
+            if (servicio) precioServicio = servicio.precio || 0;
+        }
     }
 
     const porcentaje = (configNegocio.valor_anticipo || 0) / 100;

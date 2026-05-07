@@ -103,10 +103,19 @@ function ClientApp() {
     // ============================================
     // FUNCIONES DE SCROLL AUTOMÁTICO
     // ============================================
-    // No bajamos automaticamente al profesional: permite seleccionar varios servicios primero.
+    React.useEffect(() => {
+        if (selectedService) {
+            setTimeout(() => {
+                document.getElementById('profesional-section')?.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+            }, 300);
+        }
+    }, [selectedService]);
 
     React.useEffect(() => {
-        if (isProfesionalSelectionReady()) {
+        if (selectedProfesional) {
             setTimeout(() => {
                 document.getElementById('calendar-section')?.scrollIntoView({ 
                     behavior: 'smooth', 
@@ -145,27 +154,6 @@ function ClientApp() {
     const handleServiceSelect = (service) => {
         setSelectedService(service);
         setSelectedProfesional(null);
-        setSelectedDate('');
-        setSelectedTime('');
-    };
-
-    const handleContinueServices = () => {
-        setTimeout(() => {
-            document.getElementById('profesional-section')?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }, 80);
-    };
-
-    const isProfesionalSelectionReady = () => {
-        if (!selectedProfesional) return false;
-        if (!selectedProfesional.assignments) return true;
-        return selectedProfesional.assignments.length > 0 && selectedProfesional.assignments.every(a => a.profesional);
-    };
-
-    const handleProfesionalSelect = (profesional) => {
-        setSelectedProfesional(profesional);
         setSelectedDate('');
         setSelectedTime('');
     };
@@ -248,14 +236,13 @@ function ClientApp() {
                             <ServiceSelection 
                                 onSelect={handleServiceSelect} 
                                 selectedService={selectedService}
-                                onContinue={handleContinueServices}
                             />
                             
                             {/* SECCIÓN 2: PROFESIONALES - CON selectedService */}
                             {selectedService && (
                                 <div id="profesional-section">
                                     <ProfesionalSelector 
-                                        onSelect={handleProfesionalSelect} 
+                                        onSelect={setSelectedProfesional} 
                                         selectedProfesional={selectedProfesional}
                                         selectedService={selectedService}
                                     />
@@ -263,7 +250,7 @@ function ClientApp() {
                             )}
                             
                             {/* SECCIÓN 3: CALENDARIO */}
-                            {isProfesionalSelectionReady() && (
+                            {selectedProfesional && (
                                 <div id="calendar-section">
                                     <Calendar 
                                         onDateSelect={setSelectedDate} 

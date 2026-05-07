@@ -1,6 +1,6 @@
 // components/ServiceSelection.js - Versión femenina
 
-function ServiceSelection({ onSelect, selectedService, onContinue }) {
+function ServiceSelection({ onSelect, selectedService }) {
     const [services, setServices] = React.useState([]);
     const [cargando, setCargando] = React.useState(true);
 
@@ -79,7 +79,7 @@ function ServiceSelection({ onSelect, selectedService, onContinue }) {
                     1. Marca uno o varios servicios
                 </h2>
             <p className="text-xs text-pink-600 bg-pink-50 border border-pink-200 rounded-lg p-3">
-                Puedes tocar mas de un servicio. Cuando termines, toca el boton de continuar.
+                Puedes tocar mas de un servicio. Cuando termines, baja a elegir profesional.
             </p>
                 <div className="text-center py-8">
                     <div className="animate-spin h-8 w-8 border-b-2 border-pink-500 rounded-full mx-auto"></div>
@@ -101,7 +101,7 @@ function ServiceSelection({ onSelect, selectedService, onContinue }) {
                 )}
             </h2>
             <p className="text-xs text-pink-600 bg-pink-50 border border-pink-200 rounded-lg p-3">
-                Puedes tocar mas de un servicio. Cuando termines, toca el boton de continuar.
+                Puedes tocar mas de un servicio. Cuando termines, baja a elegir profesional.
             </p>
             
             {services.length === 0 ? (
@@ -166,13 +166,6 @@ function ServiceSelection({ onSelect, selectedService, onContinue }) {
                         <span className="font-bold">${selectedService.precio} - {selectedService.duracion} min</span>
                     </div>
                     <p className="text-xs text-pink-500 mt-1">{selectedService.nombre}</p>
-                    <button
-                        type="button"
-                        onClick={onContinue}
-                        className="mt-3 w-full bg-pink-500 text-white py-3 rounded-xl font-bold hover:bg-pink-600 transition-colors"
-                    >
-                        Ya marque mis servicios
-                    </button>
                 </div>
             )}
         </div>

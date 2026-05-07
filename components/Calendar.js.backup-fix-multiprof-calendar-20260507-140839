@@ -1,7 +1,6 @@
 // components/Calendar.js - VERSIÓN CON DÍAS CERRADOS
 
 function Calendar({ onDateSelect, selectedDate, profesional }) {
-    const TODOS_DIAS_CALENDARIO = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const [currentDate, setCurrentDate] = React.useState(new Date());
     const [diasLaborales, setDiasLaborales] = React.useState([]);
     const [diasCerrados, setDiasCerrados] = React.useState([]);
@@ -28,17 +27,10 @@ function Calendar({ onDateSelect, selectedDate, profesional }) {
         
         const cargarDisponibilidad = async () => {
             setCargandoHorarios(true);
-            try {                const profesionales = getProfesionalesCalendario();
-                const horariosLista = await Promise.all(
-                    profesionales.map(p => window.salonConfig.getHorariosProfesional(p.id))
-                );
-                const diasPorProfesional = horariosLista.map(h => (h.dias && h.dias.length > 0) ? h.dias : TODOS_DIAS_CALENDARIO);
-                const diasComunes = diasPorProfesional.reduce((comunes, dias, index) => {
-                    if (index === 0) return dias;
-                    return comunes.filter(dia => dias.includes(dia));
-                }, []);
-                console.log('Dias laborales comunes:', diasComunes);
-                setDiasLaborales(diasComunes);
+            try {
+                const horarios = await window.salonConfig.getHorariosProfesional(profesional.id);
+                console.log(`📅 Días laborales de ${profesional.nombre}:`, horarios.dias);
+                setDiasLaborales(horarios.dias || []);
                 
                 const diasCerradosList = await window.getDiasCerrados();
                 setDiasCerrados(diasCerradosList.map(d => d.fecha));

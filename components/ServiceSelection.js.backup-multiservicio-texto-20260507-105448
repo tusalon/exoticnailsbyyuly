@@ -1,6 +1,6 @@
 // components/ServiceSelection.js - Versión femenina
 
-function ServiceSelection({ onSelect, selectedService, onContinue }) {
+function ServiceSelection({ onSelect, selectedService }) {
     const [services, setServices] = React.useState([]);
     const [cargando, setCargando] = React.useState(true);
 
@@ -76,11 +76,8 @@ function ServiceSelection({ onSelect, selectedService, onContinue }) {
             <div className="space-y-4 animate-fade-in">
                 <h2 className="text-lg font-semibold text-pink-700 flex items-center gap-2">
                     <span className="text-2xl">💅</span>
-                    1. Marca uno o varios servicios
+                    1. Elegí tu servicio
                 </h2>
-            <p className="text-xs text-pink-600 bg-pink-50 border border-pink-200 rounded-lg p-3">
-                Puedes tocar mas de un servicio. Cuando termines, toca el boton de continuar.
-            </p>
                 <div className="text-center py-8">
                     <div className="animate-spin h-8 w-8 border-b-2 border-pink-500 rounded-full mx-auto"></div>
                     <p className="text-pink-400 mt-4">Cargando servicios...</p>
@@ -93,16 +90,13 @@ function ServiceSelection({ onSelect, selectedService, onContinue }) {
         <div className="space-y-4 animate-fade-in">
             <h2 className="text-lg font-semibold text-pink-700 flex items-center gap-2">
                 <span className="text-2xl">💅</span>
-                1. Marca uno o varios servicios
+                1. Elegí tu servicio
                 {selectedService && (
                     <span className="text-xs bg-pink-100 text-pink-700 px-2 py-1 rounded-full ml-2">
-                        Seleccionado
+                        ✓ Seleccionado
                     </span>
                 )}
             </h2>
-            <p className="text-xs text-pink-600 bg-pink-50 border border-pink-200 rounded-lg p-3">
-                Puedes tocar mas de un servicio. Cuando termines, toca el boton de continuar.
-            </p>
             
             {services.length === 0 ? (
                 <div className="text-center p-8 bg-white/80 backdrop-blur-sm rounded-xl border border-pink-200">
@@ -166,13 +160,6 @@ function ServiceSelection({ onSelect, selectedService, onContinue }) {
                         <span className="font-bold">${selectedService.precio} - {selectedService.duracion} min</span>
                     </div>
                     <p className="text-xs text-pink-500 mt-1">{selectedService.nombre}</p>
-                    <button
-                        type="button"
-                        onClick={onContinue}
-                        className="mt-3 w-full bg-pink-500 text-white py-3 rounded-xl font-bold hover:bg-pink-600 transition-colors"
-                    >
-                        Ya marque mis servicios
-                    </button>
                 </div>
             )}
         </div>

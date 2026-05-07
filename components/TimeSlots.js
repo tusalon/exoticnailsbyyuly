@@ -1,11 +1,9 @@
-// components/TimeSlots.js - Versión femenina con filtro de horarios permitidos por servicio
+// components/TimeSlots.js - horarios compatibles con multiples profesionales
 
 function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
     const [slots, setSlots] = React.useState([]);
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState(null);
-    const [horariosPorDia, setHorariosPorDia] = React.useState({});
-    const [descansosPorDia, setDescansosPorDia] = React.useState({});
     const [diaTrabaja, setDiaTrabaja] = React.useState(true);
     const [verificacionCompleta, setVerificacionCompleta] = React.useState(false);
     const [maxAntelacionDias, setMaxAntelacionDias] = React.useState(30);
@@ -17,24 +15,33 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
         return `${horas.toString().padStart(2, '0')}:${minutos}`;
     };
 
+    const getAssignments = () => {
+        if (profesional?.assignments?.length) {
+            return profesional.assignments.filter(a => a.profesional && a.servicio);
+        }
+        if (profesional && service) {
+            const servicios = Array.isArray(service.items) ? service.items : [service];
+            return servicios.map(servicio => ({ servicio, profesional }));
+        }
+        return [];
+    };
+
+    const assignments = getAssignments();
+    const totalDuracion = assignments.reduce((total, a) => total + (parseInt(a.servicio.duracion) || 0), 0) || service?.duracion || 0;
+    const profesionalesLabel = Array.from(new Set(assignments.map(a => a.profesional.nombre))).join(' + ');
+
     React.useEffect(() => {
         const cargarConfiguracion = async () => {
             try {
                 if (window.salonConfig) {
                     const config = await window.salonConfig.get();
-                    console.log('⚙️ Configuración cargada en TimeSlots:', config);
-                    if (config && config.max_antelacion_dias) {
-                        setMaxAntelacionDias(config.max_antelacion_dias);
-                    }
-                    if (config && config.min_antelacion_horas !== undefined) {
-                        setMinAntelacionHoras(config.min_antelacion_horas);
-                    }
+                    if (config && config.max_antelacion_dias) setMaxAntelacionDias(config.max_antelacion_dias);
+                    if (config && config.min_antelacion_horas !== undefined) setMinAntelacionHoras(config.min_antelacion_horas);
                 }
             } catch (error) {
-                console.error('Error cargando configuración:', error);
+                console.error('Error cargando configuracion:', error);
             }
         };
-        
         cargarConfiguracion();
     }, []);
 
@@ -57,6 +64,12 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
         return hours * 60 + minutes;
     };
 
+    const minutesToTime = (minutes) => {
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    };
+
     const slotTieneDescanso = (slotStart, slotEnd, descansosDelDia = []) => {
         return descansosDelDia.some(descanso => {
             if (!descanso?.inicio || !descanso?.fin) return false;
@@ -66,210 +79,121 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
         });
     };
 
-    React.useEffect(() => {
-        if (!profesional) return;
-        
-        const cargarHorarios = async () => {
-            setVerificacionCompleta(false);
-            try {
-                console.log(`📅 Cargando horarios por día de ${profesional.nombre}...`);
-                const horarios = await window.salonConfig.getHorariosPorDia(profesional.id);
-                const descansos = window.salonConfig.getDescansosPorDia ?
-                    await window.salonConfig.getDescansosPorDia(profesional.id) :
-                    {};
-                console.log(`✅ Horarios por día de ${profesional.nombre}:`, horarios);
-                setHorariosPorDia(horarios);
-                setDescansosPorDia(descansos);
-                
-                const tieneHorarios = Object.keys(horarios).length > 0;
-                if (!tieneHorarios) {
-                    console.log('⚠️ No hay horarios configurados para este profesional');
-                }
-            } catch (error) {
-                console.error('Error cargando horarios:', error);
-                setHorariosPorDia({});
-            }
-        };
-        
-        cargarHorarios();
-    }, [profesional]);
-
-    React.useEffect(() => {
-        if (!profesional || !date) {
-            setVerificacionCompleta(false);
-            return;
-        }
-
-        console.log('🔍 Verificando disponibilidad para:', {
-            profesional: profesional.nombre,
-            fecha: date,
-            horariosPorDia
-        });
-
-        const [año, mes, día] = date.split('-').map(Number);
-        const fechaLocal = new Date(año, mes - 1, día);
-        
+    const getDiaSemana = () => {
+        const [year, month, day] = date.split('-').map(Number);
+        const fechaLocal = new Date(year, month - 1, day);
         const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-        const diaSemana = diasSemana[fechaLocal.getDay()];
-        
-        const horariosDelDia = horariosPorDia[diaSemana] || [];
-        const trabaja = horariosDelDia.length > 0;
-        
-        console.log(`🎯 ¿${profesional.nombre} trabaja el ${diaSemana}?`, trabaja);
-        if (!trabaja && horariosDelDia.length === 0) {
-            console.log(`⚠️ No hay horarios configurados para ${diaSemana}`);
-        }
-        
-        setDiaTrabaja(trabaja);
-        setVerificacionCompleta(true);
-        
-    }, [profesional, horariosPorDia, date]);
+        return diasSemana[fechaLocal.getDay()];
+    };
 
     React.useEffect(() => {
-        if (!service || !date || !profesional || !verificacionCompleta) return;
-        
-        if (!diaTrabaja) {
-            setSlots([]);
+        if (!service || !date || assignments.length === 0) {
+            setVerificacionCompleta(false);
             return;
         }
 
         const loadSlots = async () => {
             setLoading(true);
             setError(null);
+            setVerificacionCompleta(false);
             try {
-                // Validar antelación máxima
                 const hoy = new Date();
                 const fechaSeleccionada = new Date(date + 'T00:00:00');
-                const diffTime = fechaSeleccionada - hoy;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
+                const diffDays = Math.ceil((fechaSeleccionada - hoy) / (1000 * 60 * 60 * 24));
                 if (diffDays > maxAntelacionDias) {
-                    console.log(`🚫 Fecha ${date} supera antelación máxima de ${maxAntelacionDias} días`);
-                    setError(`Solo se puede reservar con hasta ${maxAntelacionDias} días de antelación`);
+                    setError(`Solo se puede reservar con hasta ${maxAntelacionDias} dias de antelacion`);
                     setSlots([]);
-                    setLoading(false);
+                    setDiaTrabaja(false);
                     return;
                 }
-                
-                const [año, mes, día] = date.split('-').map(Number);
-                const fechaLocal = new Date(año, mes - 1, día);
-                const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-                const diaSemana = diasSemana[fechaLocal.getDay()];
-                
-                const indicesDelDia = horariosPorDia[diaSemana] || [];
-                const descansosDelDia = descansosPorDia[diaSemana] || [];
-                
-                if (indicesDelDia.length === 0) {
-                    console.log(`⚠️ No hay horas configuradas para ${diaSemana}`);
+
+                const diaSemana = getDiaSemana();
+                const horariosPorProfesional = await Promise.all(
+                    assignments.map(a => window.salonConfig.getHorariosProfesional(a.profesional.id))
+                );
+
+                const bookingsPorProfesional = await Promise.all(
+                    assignments.map(a => getBookingsByDateAndProfesional(date, a.profesional.id))
+                );
+
+                const primeraAsignacion = assignments[0];
+                const primerHorario = horariosPorProfesional[0];
+                let baseIndices = primerHorario.horariosPorDia?.[diaSemana] || primerHorario.horas || [];
+                if (primeraAsignacion.servicio.horarios_permitidos?.length) {
+                    baseIndices = baseIndices.filter(indice => primeraAsignacion.servicio.horarios_permitidos.includes(indiceToHoraLegible(indice)));
+                }
+
+                if (baseIndices.length === 0) {
                     setSlots([]);
-                    setLoading(false);
+                    setDiaTrabaja(false);
                     return;
                 }
-                
-                // Slots base (todos los horarios del profesional para ese día)
-                let baseSlots = indicesDelDia.map(indice => indiceToHoraLegible(indice));
-                
-                // 🔥 FILTRO POR HORARIOS PERMITIDOS DEL SERVICIO (si existen)
-                if (service.horarios_permitidos && service.horarios_permitidos.length > 0) {
-                    baseSlots = baseSlots.filter(slot => service.horarios_permitidos.includes(slot));
-                    console.log(`📋 Slots filtrados por horarios permitidos del servicio:`, baseSlots);
-                }
-                
-                console.log(`📋 Slots base para ${diaSemana} (después de filtro de servicio):`, baseSlots);
-                
+
                 const todayStr = getCurrentLocalDate();
                 const esHoy = date === todayStr;
-                
                 const ahora = new Date();
-                const horaActual = ahora.getHours();
-                const minutosActuales = ahora.getMinutes();
-                const totalMinutosActual = horaActual * 60 + minutosActuales;
-                const minAllowedMinutes = totalMinutosActual + (minAntelacionHoras * 60);
-                
-                console.log('🕐 Hora actual:', `${horaActual}:${minutosActuales}`);
-                console.log('⏱️ Hora mínima permitida (actual + 2h):', 
-                    `${Math.floor(minAllowedMinutes / 60)}:${minAllowedMinutes % 60}`);
-                console.log('📅 Fecha seleccionada:', date, 'es hoy?', esHoy);
-                
-                const bookings = await getBookingsByDateAndProfesional(date, profesional.id);
-                
-                let availableSlots = baseSlots.filter(slotStartStr => {
-                    const slotStart = timeToMinutes(slotStartStr);
-                    const slotEnd = slotStart + service.duracion;
+                const minAllowedMinutes = (ahora.getHours() * 60 + ahora.getMinutes()) + (minAntelacionHoras * 60);
 
-                    if (esHoy && slotStart < minAllowedMinutes) {
-                        console.log(`⏰ Slot ${slotStartStr} es menor a hora mínima - EXCLUIDO`);
-                        return false;
+                const disponibles = baseIndices.map(indiceToHoraLegible).filter(slotStartStr => {
+                    let cursor = timeToMinutes(slotStartStr);
+                    const inicioTotal = cursor;
+
+                    if (esHoy && inicioTotal < minAllowedMinutes) return false;
+
+                    for (let i = 0; i < assignments.length; i++) {
+                        const asignacion = assignments[i];
+                        const horarios = horariosPorProfesional[i];
+                        const bookings = bookingsPorProfesional[i] || [];
+                        const duracion = parseInt(asignacion.servicio.duracion) || 0;
+                        const inicio = cursor;
+                        const fin = cursor + duracion;
+                        const horaInicio = minutesToTime(inicio);
+                        const indicesDia = horarios.horariosPorDia?.[diaSemana] || horarios.horas || [];
+                        const horasDia = indicesDia.map(indiceToHoraLegible);
+                        const descansosDelDia = horarios.descansosPorDia?.[diaSemana] || [];
+
+                        if (!horasDia.includes(horaInicio)) return false;
+                        if (asignacion.servicio.horarios_permitidos?.length && !asignacion.servicio.horarios_permitidos.includes(horaInicio)) return false;
+                        if (slotTieneDescanso(inicio, fin, descansosDelDia)) return false;
+
+                        const conflicto = bookings.some(booking => {
+                            const bookingStart = timeToMinutes(booking.hora_inicio);
+                            const bookingEnd = timeToMinutes(booking.hora_fin);
+                            return (inicio < bookingEnd) && (fin > bookingStart);
+                        });
+                        if (conflicto) return false;
+
+                        cursor = fin;
                     }
+                    return true;
+                }).sort();
 
-                    if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) {
-                        return false;
-                    }
-
-                    const hasConflict = bookings.some(booking => {
-                        const bookingStart = timeToMinutes(booking.hora_inicio);
-                        const bookingEnd = timeToMinutes(booking.hora_fin);
-                        return (slotStart < bookingEnd) && (slotEnd > bookingStart);
-                    });
-
-                    if (!hasConflict) {
-                        console.log(`✅ Slot ${slotStartStr} disponible`);
-                        return true;
-                    } else {
-                        console.log(`❌ Slot ${slotStartStr} tiene conflicto - EXCLUIDO`);
-                        return false;
-                    }
-                });
-                
-                availableSlots.sort();
-                console.log(`✅ Slots disponibles para ${profesional.nombre} el ${date}:`, availableSlots);
-                setSlots(availableSlots);
+                setDiaTrabaja(disponibles.length > 0);
+                setSlots(disponibles);
             } catch (err) {
                 console.error(err);
-                setError("Error al cargar horarios");
+                setError('Error al cargar horarios');
+                setSlots([]);
             } finally {
+                setVerificacionCompleta(true);
                 setLoading(false);
             }
         };
 
         loadSlots();
-    }, [service, date, profesional, horariosPorDia, descansosPorDia, diaTrabaja, verificacionCompleta, maxAntelacionDias, minAntelacionHoras]);
+    }, [service, date, profesional, maxAntelacionDias, minAntelacionHoras]);
 
-    if (!service || !date || !profesional) return null;
+    if (!service || !date || assignments.length === 0) return null;
 
-    if (!verificacionCompleta) {
+    if (!verificacionCompleta || loading) {
         return (
             <div className="space-y-4 animate-fade-in">
                 <h2 className="text-lg font-semibold text-pink-700 flex items-center gap-2">
-                    <span className="text-2xl">⏰</span>
-                    4. Elegí un horario con {profesional.nombre}
+                    <span className="text-2xl">*</span>
+                    4. Elige un horario
                 </h2>
                 <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-                </div>
-            </div>
-        );
-    }
-
-    if (!diaTrabaja) {
-        const [año, mes, día] = date.split('-').map(Number);
-        const fechaLocal = new Date(año, mes - 1, día);
-        const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-        const diaSemana = diasSemana[fechaLocal.getDay()];
-        const diaCapitalizado = diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1);
-        
-        return (
-            <div className="space-y-4 animate-fade-in">
-                <h2 className="text-lg font-semibold text-pink-700 flex items-center gap-2">
-                    <span className="text-2xl">⏰</span>
-                    4. Elegí un horario con {profesional.nombre}
-                </h2>
-                <div className="text-center p-8 bg-pink-50 rounded-xl border border-pink-200">
-                    <div className="text-5xl text-pink-400 mb-3">📅❌</div>
-                    <p className="text-pink-700 font-medium">
-                        {profesional.nombre} no trabaja los {diaCapitalizado}s
-                    </p>
-                    <p className="text-sm text-pink-500 mt-1">Elegí otro día de la semana</p>
                 </div>
             </div>
         );
@@ -278,78 +202,51 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
     return (
         <div className="space-y-4 animate-fade-in">
             <h2 className="text-lg font-semibold text-pink-700 flex items-center gap-2">
-                <span className="text-2xl">⏰</span>
-                4. Elegí un horario con {profesional.nombre}
+                <span className="text-2xl">*</span>
+                4. Elige un horario
                 {selectedTime && (
-                    <span className="text-xs bg-pink-100 text-pink-700 px-2 py-1 rounded-full ml-2">
-                        ✓ Horario seleccionado
-                    </span>
+                    <span className="text-xs bg-pink-100 text-pink-700 px-2 py-1 rounded-full ml-2">Horario seleccionado</span>
                 )}
             </h2>
 
-            {loading ? (
-                <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+            <div className="text-sm bg-gradient-to-r from-pink-50 to-pink-100 p-4 rounded-xl border border-pink-200">
+                <div className="font-medium text-pink-700">Duracion total: {totalDuracion} min</div>
+                <div className="text-xs text-pink-500 mt-1">Profesionales: {profesionalesLabel}</div>
+                {assignments.length > 1 && (
+                    <div className="text-xs text-pink-600 mt-2">
+                        Los servicios se agendan consecutivos, en el mismo orden seleccionado.
+                    </div>
+                )}
+            </div>
+
+            {date === getCurrentLocalDate() && (
+                <div className="text-sm text-pink-600 bg-pink-50 p-3 rounded-lg border border-pink-200">
+                    Solo se muestran horarios con al menos {minAntelacionHoras} horas de anticipacion.
                 </div>
-            ) : error ? (
+            )}
+
+            {error ? (
                 <div className="p-4 bg-pink-50 text-pink-600 rounded-lg text-sm border border-pink-200">{error}</div>
             ) : slots.length === 0 ? (
                 <div className="text-center p-8 bg-pink-50 rounded-xl border border-pink-200">
-                    <div className="text-5xl text-pink-400 mb-3">⏰❌</div>
-                    <p className="text-pink-700 font-medium">
-                        No hay horarios disponibles para {profesional.nombre} el {formatDateLocal(date)}
-                    </p>
-                    <p className="text-sm text-pink-500 mt-1">Probá con otra fecha</p>
+                    <p className="text-pink-700 font-medium">No hay horarios disponibles para esa combinacion el {formatDateLocal(date)}</p>
+                    <p className="text-sm text-pink-500 mt-1">Prueba con otra fecha u otra profesional.</p>
                 </div>
             ) : (
-                <>
-                    <div className="text-sm bg-gradient-to-r from-pink-50 to-pink-100 p-4 rounded-xl border border-pink-200">
-                        <div className="flex items-center gap-2 text-pink-700">
-                            <span className="text-pink-500">⏰</span>
-                            <span className="font-medium">
-                                Horarios disponibles de {profesional.nombre} para {formatDateLocal(date)}:
-                            </span>
-                        </div>
-                    </div>
-                    
-                    {date === getCurrentLocalDate() && (
-                        <div className="text-sm text-pink-600 bg-pink-50 p-3 rounded-lg flex items-center gap-2 border border-pink-200">
-                            <span className="text-pink-500">⏰</span>
-                            <span>
-                                Solo se muestran horarios con al menos {minAntelacionHoras} horas de anticipación 
-                                (hora actual + {minAntelacionHoras}h)
-                            </span>
-                        </div>
-                    )}
-                    
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mt-4">
-                        {slots.map(time24h => {
-                            const time12h = formatTo12Hour(time24h);
-                            const isSelected = selectedTime === time24h;
-                            const esMediaHora = time24h.includes(':30');
-                            
-                            return (
-                                <button
-                                    key={time24h}
-                                    onClick={() => onTimeSelect(time24h)}
-                                    className={`
-                                        py-3 px-2 rounded-lg text-base font-semibold transition-all transform flex flex-col items-center
-                                        ${isSelected
-                                            ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg scale-105 ring-2 ring-pink-300'
-                                            : 'bg-white text-pink-700 border-2 border-pink-200 hover:border-pink-400 hover:bg-pink-50 hover:scale-105 hover:shadow-md'}
-                                    `}
-                                >
-                                    <span className="text-sm">{esMediaHora ? '⏱️' : '⌛'}</span>
-                                    <span>{time12h}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                    
-                    <p className="text-xs text-pink-400 mt-3 text-center">
-                        ⏰ Horarios cada 30 minutos
-                    </p>
-                </>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mt-4">
+                    {slots.map(time24h => {
+                        const isSelected = selectedTime === time24h;
+                        return (
+                            <button
+                                key={time24h}
+                                onClick={() => onTimeSelect(time24h)}
+                                className={`py-3 px-2 rounded-lg text-base font-semibold transition-all flex flex-col items-center ${isSelected ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg ring-2 ring-pink-300' : 'bg-white text-pink-700 border-2 border-pink-200 hover:border-pink-400 hover:bg-pink-50'}`}
+                            >
+                                <span>{window.formatTo12Hour ? window.formatTo12Hour(time24h) : time24h}</span>
+                            </button>
+                        );
+                    })}
+                </div>
             )}
         </div>
     );
