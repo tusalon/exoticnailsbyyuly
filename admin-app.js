@@ -1376,6 +1376,53 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
         return Math.max(44, (end - start) * agendaPxPerMinute - 4);
     };
 
+    const normalizePhone = (phone) => String(phone || '').replace(/\D/g, '').replace(/^53/, '');
+
+    const getClienteScore = (cliente) => {
+        const phone = normalizePhone(cliente.whatsapp);
+        const reservasCliente = bookings.filter(b => normalizePhone(b.cliente_whatsapp) === phone);
+        const total = reservasCliente.length;
+        const completadas = reservasCliente.filter(b => b.estado === 'Completado').length;
+        const canceladas = reservasCliente.filter(b => b.estado === 'Cancelado').length;
+        const pendientes = reservasCliente.filter(b => b.estado === 'Pendiente').length;
+        const activas = reservasCliente.filter(b => b.estado === 'Reservado').length;
+        const cancelRate = total ? Math.round((canceladas / total) * 100) : 0;
+        const completionRate = total ? Math.round((completadas / total) * 100) : 0;
+        const score = Math.max(0, Math.min(100, 50 + completadas * 12 + activas * 4 - canceladas * 18 - pendientes * 3));
+        const sorted = [...reservasCliente].sort((a, b) => `${b.fecha} ${b.hora_inicio}`.localeCompare(`${a.fecha} ${a.hora_inicio}`));
+        const ultima = sorted[0] || null;
+
+        let label = 'Nuevo';
+        let tone = 'bg-gray-100 text-gray-700 border-gray-200';
+        if (total >= 3 && cancelRate >= 50) {
+            label = 'Riesgo alto';
+            tone = 'bg-red-50 text-red-700 border-red-200';
+        } else if (score >= 80) {
+            label = 'Excelente';
+            tone = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        } else if (total >= 3) {
+            label = 'Frecuente';
+            tone = 'bg-blue-50 text-blue-700 border-blue-200';
+        } else if (pendientes > 0) {
+            label = 'Pendiente';
+            tone = 'bg-amber-50 text-amber-700 border-amber-200';
+        }
+
+        return {
+            total,
+            completadas,
+            canceladas,
+            pendientes,
+            activas,
+            cancelRate,
+            completionRate,
+            score,
+            label,
+            tone,
+            ultima
+        };
+    };
+
     const getAgendaTitle = () => {
         if (agendaMode === 'dia') {
             return agendaDate.toLocaleDateString('es-CU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -1758,21 +1805,77 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
 
                 {tabActivo === 'clientes' && (userRole === 'admin' || userNivel >= 2) && (
                     <div className="bg-white rounded-xl shadow-sm p-6">
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-5">
                             <h2 className="text-xl font-bold">👥 Clientes Registrados ({clientesRegistrados.length})</h2>
-                            <button onClick={() => { setShowClientesRegistrados(!showClientesRegistrados); if (!showClientesRegistrados) loadClientesRegistrados(); }} className="text-pink-600 text-sm">
+                            <p className="text-sm text-gray-500">Score calculado con el historial de reservas, completadas y canceladas.</p>
+                            <button onClick={() => { setShowClientesRegistrados(!showClientesRegistrados); if (!showClientesRegistrados) loadClientesRegistrados(); }} className="px-4 py-2 rounded-lg bg-pink-50 text-pink-600 text-sm font-medium hover:bg-pink-100">
                                 {showClientesRegistrados ? '▲ Ocultar' : '▼ Mostrar'}
                             </button>
                         </div>
                         {showClientesRegistrados && (
-                            <div className="space-y-2 max-h-96 overflow-y-auto">
-                                {clientesRegistrados.length === 0 ? <p className="text-center text-gray-500">No hay clientes registrados</p> :
-                                    clientesRegistrados.map((cliente, idx) => (
-                                        <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                            <div><p className="font-medium">{cliente.nombre}</p><p className="text-sm text-gray-500">+{cliente.whatsapp}</p></div>
-                                            {(userRole === 'admin' || userNivel >= 3) && <button onClick={() => handleEliminarCliente(cliente.whatsapp)} className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm">Quitar</button>}
-                                        </div>
-                                    ))}
+                            <div className="space-y-3 max-h-[34rem] overflow-y-auto pr-1">
+                                {cargandoClientes ? <p className="text-center text-pink-500">Cargando clientes...</p> : clientesRegistrados.length === 0 ? <p className="text-center text-gray-500">No hay clientes registrados</p> :
+                                    clientesRegistrados.map((cliente, idx) => {
+                                        const score = getClienteScore(cliente);
+                                        const ultimaCita = score.ultima
+                                            ? `${window.formatFechaCompleta ? window.formatFechaCompleta(score.ultima.fecha) : score.ultima.fecha} ${formatTo12Hour(score.ultima.hora_inicio)}`
+                                            : 'Sin citas';
+
+                                        return (
+                                            <div key={idx} className="p-4 bg-gray-50 border border-gray-100 rounded-xl">
+                                                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                                                    <div className="min-w-0">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <p className="font-bold text-gray-900 truncate">{cliente.nombre}</p>
+                                                            <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${score.tone}`}>{score.label}</span>
+                                                            <span className="px-2.5 py-1 rounded-full bg-white border text-xs font-semibold text-gray-700">Score {score.score}/100</span>
+                                                        </div>
+                                                        <p className="text-sm text-gray-500 mt-1">+{cliente.whatsapp}</p>
+                                                        <p className="text-xs text-gray-500 mt-1">Ultima cita: {ultimaCita}</p>
+                                                    </div>
+
+                                                    {(userRole === 'admin' || userNivel >= 3) && (
+                                                        <button onClick={() => handleEliminarCliente(cliente.whatsapp)} className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600">
+                                                            Quitar
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-4">
+                                                    <div className="bg-white rounded-lg p-3 border">
+                                                        <p className="text-xs text-gray-500">Total</p>
+                                                        <p className="text-lg font-bold text-gray-900">{score.total}</p>
+                                                    </div>
+                                                    <div className="bg-white rounded-lg p-3 border">
+                                                        <p className="text-xs text-gray-500">Activas</p>
+                                                        <p className="text-lg font-bold text-pink-600">{score.activas}</p>
+                                                    </div>
+                                                    <div className="bg-white rounded-lg p-3 border">
+                                                        <p className="text-xs text-gray-500">Pendientes</p>
+                                                        <p className="text-lg font-bold text-amber-600">{score.pendientes}</p>
+                                                    </div>
+                                                    <div className="bg-white rounded-lg p-3 border">
+                                                        <p className="text-xs text-gray-500">Completadas</p>
+                                                        <p className="text-lg font-bold text-emerald-600">{score.completadas}</p>
+                                                    </div>
+                                                    <div className="bg-white rounded-lg p-3 border">
+                                                        <p className="text-xs text-gray-500">Canceladas</p>
+                                                        <p className="text-lg font-bold text-red-600">{score.canceladas}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-3">
+                                                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                                        <span>Completadas {score.completionRate}%</span>
+                                                        <span>Cancelacion {score.cancelRate}%</span>
+                                                    </div>
+                                                    <div className="h-2 bg-white rounded-full overflow-hidden border">
+                                                        <div className="h-full bg-emerald-400" style={{ width: `${score.completionRate}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                             </div>
                         )}
                     </div>
