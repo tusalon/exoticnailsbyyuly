@@ -485,6 +485,12 @@ function AdminApp() {
     }, [showNuevaReservaModal]);
 
     React.useEffect(() => {
+        if (showNuevaReservaModal && nuevaReservaData.profesional_id) {
+            cargarDisponibilidadMes(currentDate, nuevaReservaData.profesional_id);
+        }
+    }, [showNuevaReservaModal, nuevaReservaData.servicio, nuevaReservaData.profesional_id, reservaEditando]);
+
+    React.useEffect(() => {
         const cargarHorarios = async () => {
             if (!nuevaReservaData.profesional_id || !nuevaReservaData.fecha || !nuevaReservaData.servicio) {
                 setHorariosDisponibles([]);
@@ -575,14 +581,14 @@ function AdminApp() {
         try {
             const year = fecha.getFullYear();
             const month = fecha.getMonth();
+            const servicio = serviciosList.find(s => s.nombre === nuevaReservaData.servicio);
+            const duracion = servicio?.duracion || reservaEditando?.duracion || 60;
             
             const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
             const horasTrabajo = horarios.horas || [];
-            
-            if (horasTrabajo.length === 0) {
-                setFechasConHorarios({});
-                return;
-            }
+            const diasTrabajo = horarios.dias || [];
+            const horariosPorDia = horarios.horariosPorDia || {};
+            const descansosPorDia = horarios.descansosPorDia || {};
             
             const primerDia = new Date(year, month, 1);
             const ultimoDia = new Date(year, month + 1, 0);
@@ -591,7 +597,7 @@ function AdminApp() {
             const fechaFin = ultimoDia.toISOString().split('T')[0];
             
             const response = await fetch(
-                `${window.SUPABASE_URL}/rest/v1/reservas?fecha=gte.${fechaInicio}&fecha=lte.${fechaFin}&profesional_id=eq.${profesionalId}&estado=neq.Cancelado&select=fecha,hora_inicio,hora_fin`,
+                `${window.SUPABASE_URL}/rest/v1/reservas?fecha=gte.${fechaInicio}&fecha=lte.${fechaFin}&profesional_id=eq.${profesionalId}&estado=neq.Cancelado&select=id,fecha,hora_inicio,hora_fin`,
                 {
                     headers: {
                         'apikey': window.SUPABASE_ANON_KEY,
@@ -600,7 +606,7 @@ function AdminApp() {
                 }
             );
             
-            const reservas = await response.json();
+            const reservas = (await response.json()).filter(reserva => reserva.id !== reservaEditando?.id);
             
             const reservasPorFecha = {};
             (reservas || []).forEach(r => {
@@ -612,32 +618,54 @@ function AdminApp() {
             
             const disponibilidad = {};
             const diasEnMes = ultimoDia.getDate();
+            const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+            const profesionalObj = profesionalesList.find(p => p.id === parseInt(profesionalId));
+            const fechasLibresPersonales = profesionalObj?.fechas_libres || [];
             
             for (let d = 1; d <= diasEnMes; d++) {
                 const fechaStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
-                
-                let horariosOcupados = 0;
+                const fechaActual = new Date(year, month, d);
+                const diaSemana = nombresDias[fechaActual.getDay()];
+
+                if (diasCerradosFechas.includes(fechaStr) || fechasLibresPersonales.includes(fechaStr)) {
+                    disponibilidad[fechaStr] = false;
+                    continue;
+                }
+
+                if (diasTrabajo.length > 0 && !diasTrabajo.includes(diaSemana)) {
+                    disponibilidad[fechaStr] = false;
+                    continue;
+                }
+
+                let horariosDelDia = horariosPorDia[diaSemana] || horasTrabajo;
+                if (servicio?.horarios_permitidos?.length) {
+                    horariosDelDia = horariosDelDia.filter(indice => servicio.horarios_permitidos.includes(indiceToHoraLegible(indice)));
+                }
+
+                if (horariosDelDia.length === 0) {
+                    disponibilidad[fechaStr] = false;
+                    continue;
+                }
+
+                const descansosDelDia = descansosPorDia[diaSemana] || [];
                 const reservasDia = reservasPorFecha[fechaStr] || [];
-                
-                for (const horaIndice of horasTrabajo) {
+                const tieneSlotLibre = horariosDelDia.some(horaIndice => {
                     const slotStr = indiceToHoraLegible(horaIndice);
-                    const [horas, minutos] = slotStr.split(':').map(Number);
-                    const slotStart = horas * 60 + minutos;
-                    const slotEnd = slotStart + 60;
-                    
-                    const tieneConflicto = reservasDia.some(reserva => {
+                    const slotStart = timeToMinutes(slotStr);
+                    const slotEnd = slotStart + duracion;
+
+                    if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) {
+                        return false;
+                    }
+
+                    return !reservasDia.some(reserva => {
                         const reservaStart = timeToMinutes(reserva.hora_inicio);
                         const reservaEnd = timeToMinutes(reserva.hora_fin);
                         return (slotStart < reservaEnd) && (slotEnd > reservaStart);
                     });
-                    
-                    if (tieneConflicto) {
-                        horariosOcupados++;
-                    }
-                }
+                });
                 
-                const tieneDisponibilidad = horariosOcupados < horasTrabajo.length;
-                disponibilidad[fechaStr] = tieneDisponibilidad;
+                disponibilidad[fechaStr] = tieneSlotLibre;
             }
             
             setFechasConHorarios(disponibilidad);
@@ -1606,6 +1634,18 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                 )}
                                 <div className="flex gap-3 pt-4">
                                     <button onClick={() => { setShowNuevaReservaModal(false); setReservaEditando(null); }} className="flex-1 px-4 py-2 border rounded-lg">Cancelar</button>
+                                    {reservaEditando?.estado === 'Pendiente' && (
+                                        <button
+                                            onClick={async () => {
+                                                await confirmarPago(reservaEditando.id, reservaEditando);
+                                                setShowNuevaReservaModal(false);
+                                                setReservaEditando(null);
+                                            }}
+                                            className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg"
+                                        >
+                                            Confirmar pago
+                                        </button>
+                                    )}
                                     <button onClick={handleCrearReservaManual} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg">{reservaEditando ? 'Guardar cambios' : 'Crear Reserva'}</button>
                                 </div>
                             </div>
