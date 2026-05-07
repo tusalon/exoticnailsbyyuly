@@ -327,6 +327,7 @@ function AdminApp() {
     
     const [tabActivo, setTabActivo] = React.useState('reservas');
     const [agendaDate, setAgendaDate] = React.useState(new Date());
+    const [agendaMode, setAgendaMode] = React.useState('dia');
     
     const [showClientesRegistrados, setShowClientesRegistrados] = React.useState(false);
     const [clientesRegistrados, setClientesRegistrados] = React.useState([]);
@@ -1318,6 +1319,9 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
     const agendaBookings = bookings
         .filter(b => b.fecha >= agendaStartStr && b.fecha <= agendaEndStr && b.estado !== 'Cancelado')
         .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.hora_inicio.localeCompare(b.hora_inicio));
+    const agendaDateStr = formatDate(agendaDate);
+    const agendaDayBookings = agendaBookings.filter(b => b.fecha === agendaDateStr);
+    const agendaVisibleBookings = agendaMode === 'dia' ? agendaDayBookings : agendaBookings;
     const agendaToday = getCurrentLocalDate();
     const agendaHours = Array.from({ length: 14 }, (_, index) => index + 7);
     const agendaStartMinutes = 7 * 60;
@@ -1342,6 +1346,13 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
         const start = timeToMinutes(booking.hora_inicio);
         const end = timeToMinutes(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60));
         return Math.max(44, (end - start) * agendaPxPerMinute - 4);
+    };
+
+    const getAgendaTitle = () => {
+        if (agendaMode === 'dia') {
+            return agendaDate.toLocaleDateString('es-CU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        }
+        return `${agendaDays[0].toLocaleDateString('es-CU', { day: 'numeric', month: 'short' })} - ${agendaDays[6].toLocaleDateString('es-CU', { day: 'numeric', month: 'short', year: 'numeric' })}`;
     };
 
     const getTabsDisponibles = () => {
@@ -1733,39 +1744,114 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                         <div className="p-4 sm:p-5 border-b bg-gradient-to-r from-white to-pink-50">
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                 <div>
-                                    <p className="text-xs uppercase tracking-wide text-pink-500 font-bold">Agenda semanal</p>
+                                    <p className="text-xs uppercase tracking-wide text-pink-500 font-bold">Agenda {agendaMode === 'dia' ? 'diaria' : 'semanal'}</p>
                                     <h2 className="text-2xl font-bold text-gray-900">
-                                        {agendaDays[0].toLocaleDateString('es-CU', { day: 'numeric', month: 'short' })} - {agendaDays[6].toLocaleDateString('es-CU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        {getAgendaTitle()}
                                     </h2>
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <button onClick={() => setAgendaDate(addDays(agendaDate, -7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">Semana anterior</button>
+                                    <div className="inline-flex bg-gray-100 rounded-lg p-1">
+                                        <button onClick={() => setAgendaMode('dia')} className={`px-3 py-1.5 rounded-md text-sm font-medium ${agendaMode === 'dia' ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-600'}`}>Día</button>
+                                        <button onClick={() => setAgendaMode('semana')} className={`px-3 py-1.5 rounded-md text-sm font-medium ${agendaMode === 'semana' ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-600'}`}>Semana</button>
+                                    </div>
+                                    <button onClick={() => setAgendaDate(addDays(agendaDate, agendaMode === 'dia' ? -1 : -7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">{agendaMode === 'dia' ? 'Día anterior' : 'Semana anterior'}</button>
                                     <button onClick={() => setAgendaDate(new Date())} className="px-3 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 text-sm font-medium">Hoy</button>
-                                    <button onClick={() => setAgendaDate(addDays(agendaDate, 7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">Semana siguiente</button>
+                                    <button onClick={() => setAgendaDate(addDays(agendaDate, agendaMode === 'dia' ? 1 : 7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">{agendaMode === 'dia' ? 'Día siguiente' : 'Semana siguiente'}</button>
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-7 gap-1 mt-5 rounded-xl bg-white border border-gray-100 p-2">
+                                {agendaDays.map(day => {
+                                    const dateStr = formatDate(day);
+                                    const selected = dateStr === agendaDateStr;
+                                    const isToday = dateStr === agendaToday;
+                                    return (
+                                        <button
+                                            key={dateStr}
+                                            onClick={() => { setAgendaDate(day); setAgendaMode('dia'); }}
+                                            className={`py-2 rounded-lg text-center transition ${selected ? 'bg-gray-900 text-white shadow-sm' : isToday ? 'bg-pink-50 text-pink-700' : 'hover:bg-gray-50 text-gray-700'}`}
+                                        >
+                                            <span className="block text-xs font-semibold uppercase">{day.toLocaleDateString('es-CU', { weekday: 'short' }).charAt(0)}</span>
+                                            <span className="block text-lg font-bold leading-tight">{day.getDate()}</span>
+                                            <span className={`mx-auto mt-1 block h-1.5 w-1.5 rounded-full ${getAgendaDayBookings(day).length ? selected ? 'bg-white' : 'bg-pink-500' : 'bg-transparent'}`}></span>
+                                        </button>
+                                    );
+                                })}
                             </div>
 
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
                                 <div className="rounded-lg border border-pink-100 bg-white p-3">
-                                    <p className="text-xs text-gray-500">Turnos semana</p>
-                                    <p className="text-2xl font-bold text-gray-900">{agendaBookings.length}</p>
+                                    <p className="text-xs text-gray-500">Turnos</p>
+                                    <p className="text-2xl font-bold text-gray-900">{agendaVisibleBookings.length}</p>
                                 </div>
                                 <div className="rounded-lg border border-amber-100 bg-white p-3">
                                     <p className="text-xs text-gray-500">Pendientes</p>
-                                    <p className="text-2xl font-bold text-amber-600">{agendaBookings.filter(b => b.estado === 'Pendiente').length}</p>
+                                    <p className="text-2xl font-bold text-amber-600">{agendaVisibleBookings.filter(b => b.estado === 'Pendiente').length}</p>
                                 </div>
                                 <div className="rounded-lg border border-emerald-100 bg-white p-3">
                                     <p className="text-xs text-gray-500">Completados</p>
-                                    <p className="text-2xl font-bold text-emerald-600">{agendaBookings.filter(b => b.estado === 'Completado').length}</p>
+                                    <p className="text-2xl font-bold text-emerald-600">{agendaVisibleBookings.filter(b => b.estado === 'Completado').length}</p>
                                 </div>
                                 <div className="rounded-lg border border-blue-100 bg-white p-3">
                                     <p className="text-xs text-gray-500">Profesionales</p>
-                                    <p className="text-2xl font-bold text-blue-600">{new Set(agendaBookings.map(b => b.profesional_id || b.profesional_nombre)).size}</p>
+                                    <p className="text-2xl font-bold text-blue-600">{new Set(agendaVisibleBookings.map(b => b.profesional_id || b.profesional_nombre)).size}</p>
                                 </div>
                             </div>
                         </div>
 
+                        {agendaMode === 'dia' && (
+                            <div className="p-3 sm:p-5">
+                                <div className="relative border rounded-xl overflow-hidden bg-white" style={{ height: `${agendaGridHeight}px` }}>
+                                    <div className="absolute left-0 top-0 bottom-0 w-16 bg-gray-50 border-r z-0">
+                                        {agendaHours.map(hour => (
+                                            <div key={hour} className="relative border-b border-gray-100 text-right pr-2 text-xs text-gray-400" style={{ height: `${60 * agendaPxPerMinute}px` }}>
+                                                <span className="relative -top-2">{formatTo12Hour(`${String(hour).padStart(2, '0')}:00`).replace(':00', '')}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="absolute left-16 right-0 top-0 bottom-0">
+                                        {agendaHours.map(hour => (
+                                            <div key={hour} className="border-b border-gray-100" style={{ height: `${60 * agendaPxPerMinute}px` }}></div>
+                                        ))}
+
+                                        {agendaDayBookings.length === 0 && (
+                                            <div className="absolute inset-x-4 top-8 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-center text-gray-500">
+                                                No hay citas para este día
+                                            </div>
+                                        )}
+
+                                        {agendaDayBookings.map(booking => {
+                                            const statusClass = agendaStatusStyle[booking.estado] || 'bg-gray-500 border-gray-600 text-white';
+                                            return (
+                                                <div
+                                                    key={booking.id}
+                                                    className={`absolute left-2 right-2 rounded-lg border shadow-sm p-3 overflow-hidden ${statusClass}`}
+                                                    style={{ top: `${getBookingTop(booking)}px`, height: `${getBookingHeight(booking)}px` }}
+                                                >
+                                                    <div className="flex h-full justify-between gap-3">
+                                                        <div className="min-w-0">
+                                                            <p className="text-xs font-bold opacity-90">{formatTo12Hour(booking.hora_inicio)} - {formatTo12Hour(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60))}</p>
+                                                            <p className="text-base font-bold truncate">{booking.cliente_nombre}</p>
+                                                            <p className="text-sm truncate opacity-90">{booking.servicio}</p>
+                                                            <p className="text-xs truncate opacity-80">{booking.profesional_nombre || booking.trabajador_nombre || 'Sin profesional'}</p>
+                                                        </div>
+                                                        {(booking.estado === 'Reservado' || booking.estado === 'Pendiente') && (
+                                                            <button onClick={() => abrirModalReprogramar(booking)} className="self-start shrink-0 bg-white/20 hover:bg-white/30 rounded-full px-3 py-1 text-xs font-bold">
+                                                                Editar
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {agendaMode === 'semana' && (
                         <div className="overflow-x-auto">
                             <div className="min-w-[1080px]">
                                 <div className="grid grid-cols-[72px_repeat(7,minmax(140px,1fr))] border-b bg-white sticky top-0 z-10">
@@ -1840,6 +1926,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                 </div>
                             </div>
                         </div>
+                        )}
 
                         <div className="p-4 border-t bg-gray-50 flex flex-wrap gap-3 text-xs">
                             <span className="inline-flex items-center gap-2"><span className="w-3 h-3 rounded bg-pink-500"></span>Reservado</span>
