@@ -6,6 +6,32 @@
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState(null);
+    const getBookingAssignments = () => {
+        if (profesional?.assignments?.length) {
+            return profesional.assignments.filter(a => a.servicio && a.profesional);
+        }
+        const servicios = Array.isArray(service.items) ? service.items : [service];
+        return servicios.map(servicio => ({ servicio, profesional }));
+    };
+
+    const minutesToTime = (minutes) => {
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    };
+
+    const timeToMinutesLocal = (timeStr) => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+    };
+
+    const getTotalDuracion = () => {
+        return getBookingAssignments().reduce((total, asignacion) => total + (parseInt(asignacion.servicio.duracion) || 0), 0) || service.duracion;
+    };
+
+    const getProfesionalesLabel = () => {
+        return Array.from(new Set(getBookingAssignments().map(a => a.profesional.nombre))).join(' + ');
+    };
 
     // ============================================
     // FUNCIÓN PARA PARTIR LÍNEAS LARGAS (RFC 5545)
@@ -198,18 +224,33 @@ END:VCALENDAR`;
         setSubmitting(true);
         setError(null);
 
-        try {
-            const bookings = await getBookingsByDateAndProfesional(date, profesional.id);
-            const baseSlots = [time];
-            const available = filterAvailableSlots(baseSlots, service.duracion, bookings);
-
-            if (available.length === 0) {
-                setError("Ese horario ya no está disponible.");
+        try {            const assignments = getBookingAssignments();
+            if (assignments.length === 0 || assignments.some(a => !a.profesional)) {
+                setError("Falta seleccionar profesional para algun servicio.");
                 setSubmitting(false);
                 return;
             }
 
-            const endTime = calculateEndTime(time, service.duracion);
+            let cursorMinutos = timeToMinutesLocal(time);
+            const partesReserva = [];
+            for (const asignacion of assignments) {
+                const inicio = minutesToTime(cursorMinutos);
+                const duracionParte = parseInt(asignacion.servicio.duracion) || 0;
+                const fin = minutesToTime(cursorMinutos + duracionParte);
+                const bookings = await getBookingsByDateAndProfesional(date, asignacion.profesional.id);
+                const available = filterAvailableSlots([inicio], duracionParte, bookings);
+
+                if (available.length === 0) {
+                    setError(`El horario ya no esta disponible para ${asignacion.profesional.nombre} en ${asignacion.servicio.nombre}.`);
+                    setSubmitting(false);
+                    return;
+                }
+
+                partesReserva.push({ asignacion, inicio, fin, duracionParte });
+                cursorMinutos += duracionParte;
+            }
+
+            const endTime = minutesToTime(cursorMinutos);
             
             const configNegocio = await window.cargarConfiguracionNegocio();
             const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
@@ -225,22 +266,43 @@ END:VCALENDAR`;
                 setError(`Solo se puede reservar con al menos ${minAntelacionHoras} hora(s) de anticipaciÃ³n.`);
                 setSubmitting(false);
                 return;
-            }
-
-            const bookingData = {
+            }            const bookingData = {
                 cliente_nombre: cliente.nombre,
                 cliente_whatsapp: cliente.whatsapp,
                 servicio: service.nombre,
-                duracion: service.duracion,
-                profesional_id: profesional.id,
-                profesional_nombre: profesional.nombre,
+                duracion: getTotalDuracion(),
+                profesional_id: assignments[0].profesional.id,
+                profesional_nombre: getProfesionalesLabel(),
                 fecha: date,
                 hora_inicio: time,
                 hora_fin: endTime,
                 estado: requiereAnticipo ? "Pendiente" : "Reservado"
             };
 
-            const result = await createBooking(bookingData);
+            let result;
+            if (partesReserva.length > 1 || partesReserva.some(p => p.asignacion.profesional.id !== assignments[0].profesional.id)) {
+                const creadas = [];
+                for (const parte of partesReserva) {
+                    const parteData = {
+                        cliente_nombre: cliente.nombre,
+                        cliente_whatsapp: cliente.whatsapp,
+                        servicio: parte.asignacion.servicio.nombre,
+                        duracion: parte.duracionParte,
+                        profesional_id: parte.asignacion.profesional.id,
+                        profesional_nombre: parte.asignacion.profesional.nombre,
+                        fecha: date,
+                        hora_inicio: parte.inicio,
+                        hora_fin: parte.fin,
+                        estado: requiereAnticipo ? "Pendiente" : "Reservado"
+                    };
+                    const parteResult = await createBooking(parteData);
+                    if (!parteResult.success || !parteResult.data) throw new Error('Error creando una parte de la reserva');
+                    creadas.push(parteResult.data);
+                }
+                result = { success: true, data: { ...bookingData, id: creadas[0]?.id, partes: creadas } };
+            } else {
+                result = await createBooking(bookingData);
+            }
             
             if (result.success && result.data) {
                 console.log(`✅ Reserva creada en estado ${result.data.estado}`);
@@ -321,7 +383,7 @@ END:VCALENDAR`;
                         
                         <div className="flex items-center gap-3 text-pink-700">
                             <span className="text-2xl">👩‍🎨</span>
-                            <span>Con: <strong>{profesional.nombre}</strong></span>
+                            <span>Con: <strong>{getProfesionalesLabel()}</strong></span>
                         </div>
                         
                         <div className="flex items-center gap-3 text-pink-700">
@@ -330,7 +392,7 @@ END:VCALENDAR`;
                         </div>
                         <div className="flex items-center gap-3 text-pink-700">
                             <span className="text-2xl">⏰</span>
-                            <span>{window.formatTo12Hour ? window.formatTo12Hour(time) : time} ({service.duracion} min)</span>
+                            <span>{window.formatTo12Hour ? window.formatTo12Hour(time) : time} ({getTotalDuracion()} min)</span>
                         </div>
                     </div>
 

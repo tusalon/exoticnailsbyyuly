@@ -333,9 +333,6 @@ function AdminApp() {
     const [clientesRegistrados, setClientesRegistrados] = React.useState([]);
     const [errorClientes, setErrorClientes] = React.useState('');
     const [cargandoClientes, setCargandoClientes] = React.useState(false);
-    const [clientesBloqueados, setClientesBloqueados] = React.useState([]);
-    const [cargandoBloqueados, setCargandoBloqueados] = React.useState(false);
-    const [nuevoBloqueo, setNuevoBloqueo] = React.useState({ nombre: '', whatsapp: '', motivo: '' });
 
     const [showNuevaReservaModal, setShowNuevaReservaModal] = React.useState(false);
     const [reservaEditando, setReservaEditando] = React.useState(null);
@@ -366,13 +363,46 @@ function AdminApp() {
     const [diasLaborales, setDiasLaborales] = React.useState([]);
     const [fechasConHorarios, setFechasConHorarios] = React.useState({});
 
-    const getServicioManual = (servicioNombre = nuevaReservaData.servicio) => {
-        if (!servicioNombre) return null;
-        const servicio = serviciosList.find(s => s.nombre === servicioNombre);
-        if (servicio) return servicio;
+    const getServiciosSeleccionadosManual = (servicioNombre = nuevaReservaData.servicio) => {
+        const nombres = String(servicioNombre || '').split(' + ').map(nombre => nombre.trim()).filter(Boolean);
+        return serviciosList.filter(servicio => nombres.includes(servicio.nombre));
+    };
 
-        const primerNombre = String(servicioNombre).split(' + ')[0]?.trim();
-        return serviciosList.find(s => s.nombre === primerNombre) || null;
+    const getHorariosComunesServicios = (servicios) => {
+        const listas = servicios
+            .map(servicio => servicio.horarios_permitidos || [])
+            .filter(lista => lista.length > 0);
+
+        if (listas.length === 0) return [];
+        return listas.reduce((comunes, lista) => comunes.filter(hora => lista.includes(hora)));
+    };
+
+    const getServicioManual = (servicioNombre = nuevaReservaData.servicio) => {
+        const servicios = getServiciosSeleccionadosManual(servicioNombre);
+        if (servicios.length === 0) return null;
+
+        return {
+            nombre: servicios.map(servicio => servicio.nombre).join(' + '),
+            duracion: servicios.reduce((total, servicio) => total + (parseInt(servicio.duracion) || 0), 0),
+            precio: servicios.reduce((total, servicio) => total + (parseFloat(servicio.precio) || 0), 0),
+            horarios_permitidos: getHorariosComunesServicios(servicios),
+            items: servicios
+        };
+    };
+
+    const toggleServicioManual = (servicio) => {
+        const actuales = getServiciosSeleccionadosManual();
+        const existe = actuales.some(item => item.id === servicio.id);
+        const siguientes = existe
+            ? actuales.filter(item => item.id !== servicio.id)
+            : [...actuales, servicio];
+
+        setNuevaReservaData({
+            ...nuevaReservaData,
+            servicio: siguientes.map(item => item.nombre).join(' + '),
+            fecha: '',
+            hora_inicio: ''
+        });
     };
 
     // ============================================
@@ -478,15 +508,22 @@ function AdminApp() {
             }
 
             try {
-                const servicio = getServicioManual();
-                if (!window.getProfesionalesPorServicio || !servicio) {
+                const servicios = getServiciosSeleccionadosManual();
+                if (!window.getProfesionalesPorServicio || servicios.length === 0) {
                     setProfesionalesManualFiltrados(profesionalesList);
                     return;
                 }
 
-                const profesionalesDelServicio = await window.getProfesionalesPorServicio(servicio.id);
-                const idsPermitidos = profesionalesDelServicio.map(prof => prof.id);
-                const filtrados = profesionalesList.filter(prof => idsPermitidos.includes(prof.id));
+                const listasPorServicio = await Promise.all(
+                    servicios.map(servicio => window.getProfesionalesPorServicio(servicio.id))
+                );
+                const idsComunes = listasPorServicio.reduce((ids, lista, index) => {
+                    const idsActuales = lista.map(prof => prof.id);
+                    if (index === 0) return idsActuales;
+                    return ids.filter(id => idsActuales.includes(id));
+                }, []);
+
+                const filtrados = profesionalesList.filter(prof => idsComunes.includes(prof.id));
                 setProfesionalesManualFiltrados(filtrados);
 
                 if (nuevaReservaData.profesional_id && !filtrados.some(prof => prof.id === parseInt(nuevaReservaData.profesional_id))) {
@@ -1108,53 +1145,6 @@ function AdminApp() {
         }
     };
 
-    const loadClientesBloqueados = async () => {
-        setCargandoBloqueados(true);
-        try {
-            const bloqueados = await window.getClientesBloqueados?.();
-            setClientesBloqueados(Array.isArray(bloqueados) ? bloqueados : []);
-        } catch (error) {
-            console.error('Error cargando lista negra:', error);
-            setClientesBloqueados([]);
-        } finally {
-            setCargandoBloqueados(false);
-        }
-    };
-
-    const handleBloquearCliente = async (cliente = null) => {
-        const nombre = cliente?.nombre || nuevoBloqueo.nombre;
-        const whatsapp = cliente?.whatsapp || nuevoBloqueo.whatsapp;
-        const motivo = cliente ? prompt('Motivo del bloqueo (opcional):', '') : nuevoBloqueo.motivo;
-
-        if (!whatsapp) {
-            alert('Escribe el WhatsApp del cliente.');
-            return;
-        }
-
-        if (!confirm(`Bloquear al cliente +${String(whatsapp).replace(/\D/g, '')}?`)) return;
-
-        const ok = await window.bloquearCliente?.({ nombre, whatsapp, motivo });
-        if (ok) {
-            setNuevoBloqueo({ nombre: '', whatsapp: '', motivo: '' });
-            await loadClientesRegistrados();
-            await loadClientesBloqueados();
-            alert('Cliente bloqueado. Ya no podra registrarse ni reservar.');
-        } else {
-            alert('No se pudo bloquear el cliente. Revisa que la tabla clientes_bloqueados exista en Supabase.');
-        }
-    };
-
-    const handleDesbloquearCliente = async (whatsapp) => {
-        if (!confirm(`Desbloquear al cliente +${String(whatsapp).replace(/\D/g, '')}?`)) return;
-        const ok = await window.desbloquearCliente?.(whatsapp);
-        if (ok) {
-            await loadClientesBloqueados();
-            alert('Cliente desbloqueado.');
-        } else {
-            alert('No se pudo desbloquear el cliente.');
-        }
-    };
-
     const handleEliminarCliente = async (whatsapp) => {
         if (!confirm('¿Seguro que querés eliminar este cliente? Perderá el acceso a la app.')) return;
         console.log('🗑️ Eliminando cliente:', whatsapp);
@@ -1240,7 +1230,6 @@ function AdminApp() {
 
         if (userRole === 'admin' || (userRole === 'profesional' && userNivel >= 2)) {
             loadClientesRegistrados();
-            loadClientesBloqueados();
         }
         
         console.log('🔍 Verificando auth:', {
@@ -1711,16 +1700,31 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Servicio *</label>
-                                    <select
-                                        value={nuevaReservaData.servicio}
-                                        onChange={(e) => setNuevaReservaData({...nuevaReservaData, servicio: e.target.value, fecha: '', hora_inicio: ''})}
-                                        className="w-full border rounded-lg px-3 py-2"
-                                    >
-                                        <option value="">Seleccionar servicio</option>
-                                        {serviciosList.map(s => (
-                                            <option key={s.id} value={s.nombre}>{s.nombre} ({s.duracion} min - ${s.precio})</option>
-                                        ))}
-                                    </select>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {serviciosList.map(s => {
+                                            const seleccionado = getServiciosSeleccionadosManual().some(item => item.id === s.id);
+                                            return (
+                                                <button
+                                                    key={s.id}
+                                                    type="button"
+                                                    onClick={() => toggleServicioManual(s)}
+                                                    className={`text-left p-3 rounded-lg border text-sm ${seleccionado ? 'bg-pink-50 border-pink-500 ring-2 ring-pink-200' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+                                                >
+                                                    <div className="font-semibold text-gray-800">{s.nombre}</div>
+                                                    <div className="text-xs text-gray-500">{s.duracion} min - ${s.precio}</div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {nuevaReservaData.servicio && (
+                                        <div className="mt-2 p-3 rounded-lg bg-pink-50 border border-pink-200 text-sm text-pink-700">
+                                            <div className="flex justify-between gap-3">
+                                                <span className="font-semibold">Total seleccionado</span>
+                                                <span className="font-bold">${getServicioManual()?.precio || 0} - {getServicioManual()?.duracion || 0} min</span>
+                                            </div>
+                                            <p className="text-xs mt-1">{nuevaReservaData.servicio}</p>
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Profesional *</label>
@@ -1729,7 +1733,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                         {profesionalesManualFiltrados.map(p => (<option key={p.id} value={p.id}>{p.nombre} - {p.especialidad}</option>))}
                                     </select>
                                     {nuevaReservaData.servicio && profesionalesManualFiltrados.length === 0 && (
-                                        <p className="text-xs text-red-500 mt-1">No hay profesionales asignados a este servicio.</p>
+                                        <p className="text-xs text-red-500 mt-1">No hay profesionales asignados a todos los servicios seleccionados.</p>
                                     )}
                                 </div>
                                 {userRole === 'admin' && (
@@ -1919,36 +1923,12 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-5">
                             <h2 className="text-xl font-bold">👥 Clientes Registrados ({clientesRegistrados.length})</h2>
                             <p className="text-sm text-gray-500">Score calculado con el historial de reservas, completadas y canceladas.</p>
-                            <button onClick={() => { setShowClientesRegistrados(!showClientesRegistrados); if (!showClientesRegistrados) { loadClientesRegistrados(); loadClientesBloqueados(); } }} className="px-4 py-2 rounded-lg bg-pink-50 text-pink-600 text-sm font-medium hover:bg-pink-100">
+                            <button onClick={() => { setShowClientesRegistrados(!showClientesRegistrados); if (!showClientesRegistrados) loadClientesRegistrados(); }} className="px-4 py-2 rounded-lg bg-pink-50 text-pink-600 text-sm font-medium hover:bg-pink-100">
                                 {showClientesRegistrados ? '▲ Ocultar' : '▼ Mostrar'}
                             </button>
                         </div>
                         {showClientesRegistrados && (
-                            <div className="space-y-5 max-h-[42rem] overflow-y-auto pr-1">
-                                {(userRole === 'admin' || userNivel >= 3) && (
-                                    <div className="rounded-xl border border-red-100 bg-red-50 p-4">
-                                        <h3 className="font-bold text-red-700 mb-3">Lista negra</h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                                            <input type="text" value={nuevoBloqueo.nombre} onChange={(e) => setNuevoBloqueo({...nuevoBloqueo, nombre: e.target.value})} className="border rounded-lg px-3 py-2 text-sm" placeholder="Nombre opcional" />
-                                            <input type="tel" value={nuevoBloqueo.whatsapp} onChange={(e) => setNuevoBloqueo({...nuevoBloqueo, whatsapp: e.target.value.replace(/\D/g, '')})} className="border rounded-lg px-3 py-2 text-sm" placeholder="WhatsApp" />
-                                            <input type="text" value={nuevoBloqueo.motivo} onChange={(e) => setNuevoBloqueo({...nuevoBloqueo, motivo: e.target.value})} className="border rounded-lg px-3 py-2 text-sm" placeholder="Motivo opcional" />
-                                            <button onClick={() => handleBloquearCliente()} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700">Bloquear</button>
-                                        </div>
-
-                                        <div className="mt-4 space-y-2">
-                                            {cargandoBloqueados ? <p className="text-sm text-red-600">Cargando lista negra...</p> : clientesBloqueados.length === 0 ? <p className="text-sm text-red-500">No hay clientes bloqueados.</p> :
-                                                clientesBloqueados.map((cliente) => (
-                                                    <div key={cliente.id || cliente.whatsapp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg bg-white border border-red-100 p-3">
-                                                        <div>
-                                                            <p className="font-semibold text-gray-900">{cliente.nombre || 'Sin nombre'} <span className="text-sm text-gray-500">+{cliente.whatsapp}</span></p>
-                                                            {cliente.motivo && <p className="text-xs text-gray-500">Motivo: {cliente.motivo}</p>}
-                                                        </div>
-                                                        <button onClick={() => handleDesbloquearCliente(cliente.whatsapp)} className="px-3 py-2 rounded-lg bg-white border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50">Desbloquear</button>
-                                                    </div>
-                                                ))}
-                                        </div>
-                                    </div>
-                                )}
+                            <div className="space-y-3 max-h-[34rem] overflow-y-auto pr-1">
                                 {cargandoClientes ? <p className="text-center text-pink-500">Cargando clientes...</p> : clientesRegistrados.length === 0 ? <p className="text-center text-gray-500">No hay clientes registrados</p> :
                                     clientesRegistrados.map((cliente, idx) => {
                                         const score = getClienteScore(cliente);
@@ -1970,14 +1950,9 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                                     </div>
 
                                                     {(userRole === 'admin' || userNivel >= 3) && (
-                                                        <div className="flex flex-wrap gap-2">
-                                                            <button onClick={() => handleBloquearCliente(cliente)} className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-black">
-                                                                Bloquear
-                                                            </button>
-                                                            <button onClick={() => handleEliminarCliente(cliente.whatsapp)} className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600">
-                                                                Quitar
-                                                            </button>
-                                                        </div>
+                                                        <button onClick={() => handleEliminarCliente(cliente.whatsapp)} className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600">
+                                                            Quitar
+                                                        </button>
                                                     )}
                                                 </div>
 

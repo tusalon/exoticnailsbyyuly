@@ -1,20 +1,44 @@
 // components/Calendar.js - VERSIÓN CON DÍAS CERRADOS
 
 function Calendar({ onDateSelect, selectedDate, profesional }) {
+    const TODOS_DIAS_CALENDARIO = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const [currentDate, setCurrentDate] = React.useState(new Date());
     const [diasLaborales, setDiasLaborales] = React.useState([]);
     const [diasCerrados, setDiasCerrados] = React.useState([]);
     const [cargandoHorarios, setCargandoHorarios] = React.useState(false);
+    const getProfesionalesCalendario = () => {
+        if (!profesional) return [];
+        if (Array.isArray(profesional.assignments)) {
+            const map = new Map();
+            profesional.assignments.forEach(asignacion => {
+                if (asignacion.profesional) map.set(asignacion.profesional.id, asignacion.profesional);
+            });
+            return Array.from(map.values());
+        }
+        return [profesional];
+    };
+
+    const getProfesionalesLabel = () => {
+        const lista = getProfesionalesCalendario();
+        return lista.map(p => p.nombre).join(' + ');
+    };
 
     React.useEffect(() => {
         if (!profesional) return;
         
         const cargarDisponibilidad = async () => {
             setCargandoHorarios(true);
-            try {
-                const horarios = await window.salonConfig.getHorariosProfesional(profesional.id);
-                console.log(`📅 Días laborales de ${profesional.nombre}:`, horarios.dias);
-                setDiasLaborales(horarios.dias || []);
+            try {                const profesionales = getProfesionalesCalendario();
+                const horariosLista = await Promise.all(
+                    profesionales.map(p => window.salonConfig.getHorariosProfesional(p.id))
+                );
+                const diasPorProfesional = horariosLista.map(h => (h.dias && h.dias.length > 0) ? h.dias : TODOS_DIAS_CALENDARIO);
+                const diasComunes = diasPorProfesional.reduce((comunes, dias, index) => {
+                    if (index === 0) return dias;
+                    return comunes.filter(dia => dias.includes(dia));
+                }, []);
+                console.log('Dias laborales comunes:', diasComunes);
+                setDiasLaborales(diasComunes);
                 
                 const diasCerradosList = await window.getDiasCerrados();
                 setDiasCerrados(diasCerradosList.map(d => d.fecha));
@@ -136,7 +160,7 @@ function Calendar({ onDateSelect, selectedDate, profesional }) {
                     3. Seleccioná una fecha
                     {profesional && (
                         <span className="text-sm bg-pink-100 text-pink-700 px-3 py-1 rounded-full ml-2">
-                            con {profesional.nombre}
+                            con {getProfesionalesLabel()}
                         </span>
                     )}
                 </h2>
@@ -155,7 +179,7 @@ function Calendar({ onDateSelect, selectedDate, profesional }) {
                 3. Seleccioná una fecha
                 {profesional && (
                     <span className="text-sm bg-pink-100 text-pink-700 px-3 py-1 rounded-full ml-2">
-                        con {profesional.nombre}
+                        con {getProfesionalesLabel()}
                     </span>
                 )}
                 {selectedDate && (
@@ -228,7 +252,7 @@ function Calendar({ onDateSelect, selectedDate, profesional }) {
                             } else if (!profesionalTrabaja && profesional) {
                                 const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
                                 const diaSemana = diasSemana[date.getDay()];
-                                title = `${profesional.nombre} no trabaja los ${diaSemana}s`;
+                                title = `${getProfesionalesLabel()} no trabaja los ${diaSemana}s`;
                             } else {
                                 title = "Disponible";
                             }
@@ -260,7 +284,7 @@ function Calendar({ onDateSelect, selectedDate, profesional }) {
                     <div className="flex items-center gap-2">
                         <span className="text-pink-400 text-lg">📅</span>
                         <span>
-                            <strong>Días que trabaja {profesional.nombre}:</strong>{' '}
+                            <strong>Dias que trabajan {getProfesionalesLabel()}:</strong>{' '}
                             {diasLaborales.length > 0 
                                 ? diasLaborales.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')
                                 : 'Todos los días (sin configuración específica)'}

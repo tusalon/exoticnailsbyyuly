@@ -11,6 +11,147 @@ function getNegocioId() {
     return localStorage.getItem('negocioId');
 }
 
+
+
+function normalizarWhatsappCliente(whatsapp) {
+    const digits = String(whatsapp || '').replace(/\D/g, '');
+    if (!digits) return '';
+    return digits.startsWith('53') ? digits : `53${digits}`;
+}
+
+window.getClienteBloqueado = async function(whatsapp) {
+    try {
+        const negocioId = getNegocioId();
+        const numero = normalizarWhatsappCliente(whatsapp);
+        if (!negocioId || !numero) return null;
+
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/clientes_bloqueados?negocio_id=eq.${negocioId}&whatsapp=eq.${numero}&activo=eq.true&select=*`,
+            {
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            console.warn('No se pudo consultar lista negra:', await response.text());
+            return null;
+        }
+
+        const data = await response.json();
+        return Array.isArray(data) && data.length > 0 ? data[0] : null;
+    } catch (error) {
+        console.warn('Error consultando lista negra:', error);
+        return null;
+    }
+};
+
+window.isClienteBloqueado = async function(whatsapp) {
+    return !!(await window.getClienteBloqueado(whatsapp));
+};
+
+window.getClientesBloqueados = async function() {
+    try {
+        const negocioId = getNegocioId();
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/clientes_bloqueados?negocio_id=eq.${negocioId}&activo=eq.true&select=*&order=fecha_bloqueo.desc`,
+            {
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            console.warn('No se pudo cargar lista negra:', await response.text());
+            return [];
+        }
+
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.warn('Error cargando lista negra:', error);
+        return [];
+    }
+};
+
+window.bloquearCliente = async function({ nombre, whatsapp, motivo }) {
+    try {
+        const negocioId = getNegocioId();
+        const numero = normalizarWhatsappCliente(whatsapp);
+        if (!negocioId || !numero) return false;
+
+        const existente = await window.getClienteBloqueado(numero);
+        if (existente) return true;
+
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/clientes_bloqueados`,
+            {
+                method: 'POST',
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify({
+                    negocio_id: negocioId,
+                    nombre: nombre || '',
+                    whatsapp: numero,
+                    motivo: motivo || '',
+                    activo: true,
+                    fecha_bloqueo: new Date().toISOString()
+                })
+            }
+        );
+
+        if (!response.ok) {
+            console.error('Error bloqueando cliente:', await response.text());
+            return false;
+        }
+
+        await window.eliminarCliente?.(numero);
+        return true;
+    } catch (error) {
+        console.error('Error en bloquearCliente:', error);
+        return false;
+    }
+};
+
+window.desbloquearCliente = async function(whatsapp) {
+    try {
+        const negocioId = getNegocioId();
+        const numero = normalizarWhatsappCliente(whatsapp);
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/clientes_bloqueados?negocio_id=eq.${negocioId}&whatsapp=eq.${numero}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ activo: false, fecha_desbloqueo: new Date().toISOString() })
+            }
+        );
+
+        if (!response.ok) {
+            console.error('Error desbloqueando cliente:', await response.text());
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error en desbloquearCliente:', error);
+        return false;
+    }
+};
+
 // ============================================
 // FUNCIÓN PRINCIPAL - VERIFICAR O CREAR CLIENTE
 // ============================================
@@ -23,6 +164,11 @@ function getNegocioId() {
 window.verificarAccesoCliente = async function(whatsapp) {
     try {
         const negocioId = getNegocioId();
+        const bloqueo = await window.getClienteBloqueado?.(whatsapp);
+        if (bloqueo) {
+            console.warn('Cliente bloqueado, acceso denegado:', whatsapp);
+            return null;
+        }
         console.log('🔍 Verificando acceso para:', whatsapp, 'negocio:', negocioId);
         
         // Buscar si ya existe como cliente
@@ -68,6 +214,12 @@ window.verificarAccesoCliente = async function(whatsapp) {
 window.crearCliente = async function(nombre, whatsapp) {
     try {
         const negocioId = getNegocioId();
+        const bloqueo = await window.getClienteBloqueado?.(whatsapp);
+        if (bloqueo) {
+            console.warn('Cliente bloqueado, no se puede crear:', whatsapp);
+            window.ultimoErrorCliente = 'Este numero no tiene permiso para registrarse.';
+            return null;
+        }
         console.log('➕ Creando nuevo cliente:', { nombre, whatsapp, negocio: negocioId });
         
         // PRIMERO: Verificar si ya existe en ESTE negocio

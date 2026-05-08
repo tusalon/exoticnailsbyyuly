@@ -8,6 +8,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     const [whatsapp, setWhatsapp] = React.useState('');
     const [error, setError] = React.useState('');
     const [clienteAutorizado, setClienteAutorizado] = React.useState(null);
+    const [clienteBloqueado, setClienteBloqueado] = React.useState(null);
     const [verificando, setVerificando] = React.useState(false);
     const [esProfesional, setEsProfesional] = React.useState(false);
     const [profesionalInfo, setProfesionalInfo] = React.useState(null);
@@ -96,8 +97,41 @@ const verificarNumero = async (numero) => {
             }
         }
         
-        // Verificar si es CLIENTE AUTORIZADO
-        const existe = await window.verificarAccesoCliente(numeroCompleto);
+        const bloqueo = await window.getClienteBloqueado?.(numeroCompleto);
+
+        
+                if (bloqueo) {
+
+        
+                    setClienteBloqueado(bloqueo);
+
+        
+                    setClienteAutorizado(null);
+
+        
+                    setEsProfesional(false);
+
+        
+                    setEsAdmin(false);
+
+        
+                    setError('Este numero no tiene permiso para registrarse ni reservar. Contacta al negocio.');
+
+        
+                    setVerificando(false);
+
+        
+                    return;
+
+        
+                }
+
+
+        
+                // Verificar si es CLIENTE AUTORIZADO
+
+        
+                const existe = await window.verificarAccesoCliente(numeroCompleto);
         
         if (existe) {
             setClienteAutorizado(existe);
@@ -135,7 +169,28 @@ const handleSubmit = async (e) => {
     const numeroCompleto = `53${numeroLimpio}`;
     
     try {
-        // Verificar si ya existe como cliente autorizado
+
+    
+            const bloqueoRegistro = await window.getClienteBloqueado?.(numeroCompleto);
+
+    
+            if (bloqueoRegistro) {
+
+    
+                setClienteBloqueado(bloqueoRegistro);
+
+    
+                setError('Este numero no tiene permiso para registrarse ni reservar. Contacta al negocio.');
+
+    
+                return;
+
+    
+            }
+
+
+    
+            // Verificar si ya existe como cliente autorizado
         const autorizado = await window.verificarAccesoCliente(numeroCompleto);
         
         if (autorizado) {
@@ -445,7 +500,7 @@ const handleSubmit = async (e) => {
                                 </button>
                             )}
 
-                            {!clienteAutorizado && !esAdmin && !esProfesional && !verificando && (
+                            {!clienteAutorizado && !clienteBloqueado && !esAdmin && !esProfesional && !verificando && (
                                 <button
                                     type="submit"
                                     disabled={verificando}
