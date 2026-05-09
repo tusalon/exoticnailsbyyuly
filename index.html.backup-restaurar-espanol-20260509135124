@@ -25,14 +25,14 @@
                 const basePath = pathSegments.length > 2 ? '/' + pathSegments[1] : '';
                 const swPath = basePath ? `${basePath}/sw.js` : '/sw.js';
                 
-                console.log('🔄 🔄 Registrando Service Worker en:', swPath);
+                console.log('🔄 Registrando Service Worker en:', swPath);
                 
                 navigator.serviceWorker.register(swPath)
                     .then(registration => {
-                        console.log('✅ ✅ Service Worker registrado:', registration.scope);
+                        console.log('✅ Service Worker registrado:', registration.scope);
                     })
                     .catch(error => {
-                        console.log('❌ ❌ Error registrando Service Worker:', error);
+                        console.log('❌ Error registrando Service Worker:', error);
                     });
             });
         }
@@ -110,7 +110,7 @@
         // Forzar prompt de instalación PWA
         window.addEventListener('load', () => {
             if (window.matchMedia('(display-mode: standalone)').matches) {
-                console.log('📱 📱 App ya instalada');
+                console.log('📱 App ya instalada');
                 return;
             }
 
@@ -119,10 +119,10 @@
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
-                console.log('✅ ✅ beforeinstallprompt listo');
+                console.log('✅ beforeinstallprompt listo');
                 
                 const btn = document.createElement('button');
-                btn.innerText = '📲 📱 INSTALAR APP';
+                btn.innerText = '📲 INSTALAR APP';
                 btn.style.position = 'fixed';
                 btn.style.bottom = '20px';
                 btn.style.right = '20px';
@@ -139,7 +139,7 @@
                 btn.onclick = async () => {
                     deferredPrompt.prompt();
                     const { outcome } = await deferredPrompt.userChoice;
-                    console.log(`✅ ✅ Usuario: ${outcome}`);
+                    console.log(`✅ Usuario: ${outcome}`);
                     deferredPrompt = null;
                     btn.remove();
                 };
@@ -150,7 +150,7 @@
             setTimeout(() => {
                 if (!deferredPrompt && !window.matchMedia('(display-mode: standalone)').matches) {
                     const msg = document.createElement('div');
-                    msg.innerHTML = '📱 📱 Para instalar: menú 3 puntos → "Instalar aplicación"';
+                    msg.innerHTML = '📱 Para instalar: menú 3 puntos → "Instalar aplicación"';
                     msg.style.position = 'fixed';
                     msg.style.bottom = '20px';
                     msg.style.left = '20px';

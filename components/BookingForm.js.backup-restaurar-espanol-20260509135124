@@ -1,14 +1,14 @@
-// components/BookingForm.js - VERSIÓN GENÉRICA
-// CON LÓGICA COMPLETA DE NOTIFICACIONES (PUSH SIEMPRE)
+// components/BookingForm.js - VERSION GENERICA
+// CON LOGICA COMPLETA DE NOTIFICACIONES (PUSH SIEMPRE)
 // CORREGIDO: Hora local para archivos ICS
-// MODIFICADO: Solo notifica a la dueña, NO al cliente
+// MODIFICADO: Solo notifica a la duena, NO al cliente
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState(null);
 
     // ============================================
-    // FUNCIÓN PARA PARTIR LÍNEAS LARGAS (RFC 5545)
+    // FUNCION PARA PARTIR LINEAS LARGAS (RFC 5545)
     // ============================================
     function partirLinea(texto, limite = 70) {
         if (texto.length <= limite) return texto;
@@ -86,29 +86,29 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         
         const diaInicio = fechaInicio.getDate();
         const mesInicio = meses[fechaInicio.getMonth()];
-        const añoInicio = fechaInicio.getFullYear();
+        const anoInicio = fechaInicio.getFullYear();
         let horasInicio = fechaInicio.getHours();
         const minutosInicio = fechaInicio.getMinutes().toString().padStart(2, '0');
         const ampmInicio = horasInicio >= 12 ? 'PM' : 'AM';
         horasInicio = horasInicio % 12;
         horasInicio = horasInicio ? horasInicio : 12;
-        const fechaInicioStr = `${diaInicio} ${mesInicio} ${añoInicio} ${horasInicio}:${minutosInicio} ${ampmInicio}`;
+        const fechaInicioStr = `${diaInicio} ${mesInicio} ${anoInicio} ${horasInicio}:${minutosInicio} ${ampmInicio}`;
         
         const diaFin = fechaFin.getDate();
         const mesFin = meses[fechaFin.getMonth()];
-        const añoFin = fechaFin.getFullYear();
+        const anoFin = fechaFin.getFullYear();
         let horasFin = fechaFin.getHours();
         const minutosFin = fechaFin.getMinutes().toString().padStart(2, '0');
         const ampmFin = horasFin >= 12 ? 'PM' : 'AM';
         horasFin = horasFin % 12;
         horasFin = horasFin ? horasFin : 12;
-        const fechaFinStr = `${diaFin} ${mesFin} ${añoFin} ${horasFin}:${minutosFin} ${ampmFin}`;
+        const fechaFinStr = `${diaFin} ${mesFin} ${anoFin} ${horasFin}:${minutosFin} ${ampmFin}`;
         
         const linea1 = `Appointment Details`;
         const linea2 = `When: ${fechaInicioStr} - ${fechaFinStr} (CST)`;
-        const linea3 = `Servicio: ${bookingData.servicio}`;
-        const linea4 = `Profesional: ${bookingData.profesional_nombre}`;
-        const linea5 = `Cliente: ${bookingData.cliente_nombre}`;
+        const linea3 = `Service: ${bookingData.servicio}`;
+        const linea4 = `Provider Name: ${bookingData.profesional_nombre}`;
+        const linea5 = `Client: ${bookingData.cliente_nombre}`;
         const linea6 = `WhatsApp: +53 ${bookingData.cliente_whatsapp}`;
         const linea7 = ``;
         const linea8 = nombreNegocio;
@@ -182,7 +182,7 @@ END:VCALENDAR`;
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
-            console.log(' ✅ Archivo descargado');
+            console.log(' Archivo descargado');
             return true;
         } catch (error) {
             console.error('Error:', error);
@@ -191,7 +191,7 @@ END:VCALENDAR`;
     }
 
     // ============================================
-    // HANDLE SUBMIT (CORREGIDO - SOLO NOTIFICAR A DUEÑA)
+    // HANDLE SUBMIT (CORREGIDO - SOLO NOTIFICAR A DUENA)
     // ============================================
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -204,7 +204,7 @@ END:VCALENDAR`;
             const available = filterAvailableSlots(baseSlots, service.duracion, bookings);
 
             if (available.length === 0) {
-                setError("Ese horario ya no está disponible.");
+                setError("Ese horario ya no esta disponible.");
                 setSubmitting(false);
                 return;
             }
@@ -222,7 +222,7 @@ END:VCALENDAR`;
             const minFechaPermitida = new Date(Date.now() + (minAntelacionHoras * 60 * 60 * 1000));
 
             if (fechaTurno < minFechaPermitida) {
-                setError(`Solo se puede reservar con al menos ${minAntelacionHoras} hora(s) de anticipación.`);
+                setError(`Solo se puede reservar con al menos ${minAntelacionHoras} hora(s) de anticipacion.`);
                 setSubmitting(false);
                 return;
             }
@@ -243,9 +243,9 @@ END:VCALENDAR`;
             const result = await createBooking(bookingData);
             
             if (result.success && result.data) {
-                console.log(` ✅ Reserva creada en estado ${result.data.estado}`);
+                console.log(` Reserva creada en estado ${result.data.estado}`);
                 
-                const nombreNegocio = configNegocio?.nombre || 'Mi Salón';
+                const nombreNegocio = configNegocio?.nombre || 'Mi Salon';
                 
                 //  ELIMINADO: No enviar WhatsApp al cliente
                 // if (requiereAnticipo && window.enviarMensajePago) {
@@ -254,17 +254,17 @@ END:VCALENDAR`;
                 //     await window.enviarConfirmacionReserva(result.data, configNegocio);
                 // }
                 
-                //  SOLO notificar a la dueña
+                //  SOLO notificar a la duena
                 if (requiereAnticipo) {
                     if (window.notificarReservaPendiente) {
                         await window.notificarReservaPendiente(result.data);
                     }
-                    console.log(' 📱 Dueña notificada: RESERVA PENDIENTE DE PAGO (con datos + push)');
+                    console.log(' Duena notificada: RESERVA PENDIENTE DE PAGO (con datos + push)');
                 } else {
                     if (window.notificarNuevaReserva) {
                         await window.notificarNuevaReserva(result.data);
                     }
-                    console.log(' 📱 Dueña notificada: NUEVO TURNO AGENDADO (con push)');
+                    console.log(' Duena notificada: NUEVO TURNO AGENDADO (con push)');
                 }
                 
                 // Generar y descargar archivo ICS
@@ -285,7 +285,7 @@ END:VCALENDAR`;
             }
         } catch (err) {
             console.error('Error:', err);
-            setError("Ocurrió un error al guardar la reserva.");
+            setError("Ocurrio un error al guardar la reserva.");
         } finally {
             setSubmitting(false);
         }

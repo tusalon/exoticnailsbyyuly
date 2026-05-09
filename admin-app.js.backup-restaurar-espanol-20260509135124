@@ -1,13 +1,13 @@
-// admin-app.js - Panel de administración (VERSIÓN CORREGIDA CON HORARIOS POR DÍA)
-// CON BOTÓN DE NUEVA RESERVA MANUAL, CALENDARIO DE DISPONIBILIDAD
+// admin-app.js - Panel de administracion (VERSION CORREGIDA CON HORARIOS POR DIA)
+// CON BOTON DE NUEVA RESERVA MANUAL, CALENDARIO DE DISPONIBILIDAD
 
-console.log('🚀 ADMIN-APP.JS - Panel de administración con Nueva Reserva y Calendario Disponibilidad');
+console.log('ADMIN-APP.JS - Panel de administracion con Nueva Reserva y Calendario Disponibilidad');
 
 window.addEventListener('error', function(e) {
-    console.error('❌ Error detectado, posible versión antigua:', e.message);
+    console.error('Error detectado, posible version antigua:', e.message);
     
     if (e.message.includes('Failed to load') || e.message.includes('Unexpected token')) {
-        console.log('🔄 Forzando recarga por posible versión antigua...');
+        console.log('Forzando recarga por posible version antigua...');
         
         if (window.swRegistration) {
             window.swRegistration.unregister().then(() => {
@@ -70,16 +70,16 @@ async function getAllBookings() {
             }
         });
         
-        console.log('📊 Status de respuesta:', res.status);
+        console.log('Status de respuesta:', res.status);
         
         if (!res.ok) {
             const errorText = await res.text();
-            console.error('❌ Error en respuesta:', errorText);
+            console.error('Error en respuesta:', errorText);
             return [];
         }
         
         const data = await res.json();
-        console.log('✅ Reservas obtenidas:', data.length);
+        console.log('Reservas obtenidas:', data.length);
         return Array.isArray(data) ? data : [];
     } catch (error) {
         console.error('Error fetching bookings:', error);
@@ -225,8 +225,8 @@ async function marcarTurnosCompletados() {
             return totalMinutosFin <= totalMinutosActual;
         });
         
-        console.log(`📊 Turnos de días pasados (fecha < ${hoy}): ${turnosPasados.length}`);
-        console.log(`📊 Turnos de hoy terminados: ${turnosHoyTerminados.length}`);
+        console.log(`Turnos de dias pasados (fecha < ${hoy}): ${turnosPasados.length}`);
+        console.log(`Turnos de hoy terminados: ${turnosHoyTerminados.length}`);
         
         const turnosACompletar = [...turnosPasados, ...turnosHoyTerminados];
         
@@ -377,7 +377,7 @@ function AdminApp() {
     };
 
     // ============================================
-    // FUNCIÓN PARA CARGAR DÍAS CERRADOS DIRECTAMENTE DE SUPABASE
+    // FUNCION PARA CARGAR DIAS CERRADOS DIRECTAMENTE DE SUPABASE
     // ============================================
     const cargarDiasCerradosDirecto = async () => {
         try {
@@ -401,13 +401,13 @@ function AdminApp() {
             setDiasCerradosFechas(fechas);
             return fechas;
         } catch (error) {
-            console.error('Error cargando días cerrados:', error);
+            console.error('Error cargando dias cerrados:', error);
             return [];
         }
     };
 
     // ============================================
-    // CARGAR CONFIGURACIÓN Y LOGO
+    // CARGAR CONFIGURACIAN LOGO
     // ============================================
     React.useEffect(() => {
         window.getNombreNegocio().then(nombre => {
@@ -427,7 +427,7 @@ function AdminApp() {
             if (configData?.logo_url) {
                 setLogoNegocio(configData.logo_url);
             }
-            console.log('✅ Configuración recargada:', configData);
+            console.log('Configuracion recargada:', configData);
         } catch (error) {
             console.error('Error cargando config:', error);
         }
@@ -507,7 +507,7 @@ function AdminApp() {
         filtrarProfesionalesManual();
     }, [nuevaReservaData.servicio, profesionalesList, serviciosList]);
 
-    // CARGAR DÍAS CERRADOS AL INICIO
+    // CARGAR DIAS CERRADOS AL INICIO
     React.useEffect(() => {
         cargarDiasCerradosDirecto();
     }, []);
@@ -520,7 +520,7 @@ function AdminApp() {
                     setDiasLaborales(horarios.dias || []);
                     await cargarDisponibilidadMes(currentDate, nuevaReservaData.profesional_id);
                 } catch (error) {
-                    console.error('Error cargando días laborales:', error);
+                    console.error('Error cargando dias laborales:', error);
                     setDiasLaborales([]);
                 }
             }
@@ -528,7 +528,7 @@ function AdminApp() {
         cargarDiasLaborales();
     }, [nuevaReservaData.profesional_id]);
 
-    // CARGAR DÍAS CERRADOS CUANDO SE ABRE EL MODAL
+    // CARGAR DIAS CERRADOS CUANDO SE ABRE EL MODAL
     React.useEffect(() => {
         if (showNuevaReservaModal) {
             cargarDiasCerradosDirecto();
@@ -735,11 +735,7 @@ function AdminApp() {
         if (!profesionalId && profesionalesList.length > 0) {
             profesionalId = profesionalesList[0]?.id;
         }
-        if (!profesionalId) {
-            setDisponibilidadDias({});
-            setDisponibilidadConteos({});
-            return;
-        }
+        if (!profesionalId) return;
         
         setDisponibilidadCargando(true);
         try {
@@ -753,8 +749,8 @@ function AdminApp() {
             const descansosPorDia = horarios.descansosPorDia || {};
             
             console.log('=========================================');
-            console.log(`📊 Profesional ID: ${profesionalId}`);
-            console.log(`📊 Horarios por día:`, horariosPorDia);
+            console.log(`Profesional ID: ${profesionalId}`);
+            console.log(`Horarios por dia:`, horariosPorDia);
             console.log('=========================================');
             
             const profesionalObj = profesionalesList.find(p => p.id === profesionalId);
@@ -805,7 +801,7 @@ function AdminApp() {
                 const fechaActual = new Date(year, month, d);
                 const diaSemana = nombresDias[fechaActual.getDay()];
                 
-                const horariosDelDia = (horariosPorDia[diaSemana] && horariosPorDia[diaSemana].length ? horariosPorDia[diaSemana] : horasTrabajo) || [];
+                const horariosDelDia = horariosPorDia[diaSemana] || [];
                 const descansosDelDia = descansosPorDia[diaSemana] || [];
                 
                 if (horariosDelDia.length === 0) {
@@ -831,9 +827,9 @@ function AdminApp() {
                 
                 const hoy = getCurrentLocalDate();
                 if (fechaStr === hoy) {
-                    console.log(`\n📅 Analizando HOY (${fechaStr}) - ${diaSemana}:`);
-                    console.log(`   Horarios del día:`, horariosDelDia.map(i => indiceToHoraLegible(i)));
-                    console.log(`   Reservas del día: ${reservasDia.length}`);
+                    console.log(`\nAnalizando HO(${fechaStr}) - ${diaSemana}:`);
+                    console.log(`   Horarios del dia:`, horariosDelDia.map(i => indiceToHoraLegible(i)));
+                    console.log(`   Reservas del dia: ${reservasDia.length}`);
                 }
                 
                 for (const horaIndice of horariosDelDia) {
@@ -857,11 +853,11 @@ function AdminApp() {
                     if (tieneConflicto) {
                         horariosOcupados++;
                         if (fechaStr === hoy) {
-                            console.log(`   ❌ Horario ${slotStr} está OCUPADO`);
+                            console.log(`   Horario ${slotStr} esta OCUPADO`);
                         }
                     } else {
                         if (fechaStr === hoy) {
-                            console.log(`   ✅ Horario ${slotStr} está LIBRE`);
+                            console.log(`   Horario ${slotStr} esta LIBRE`);
                         }
                     }
                 }
@@ -869,8 +865,8 @@ function AdminApp() {
                 const tieneDisponibilidad = horariosDisponiblesDia > 0 && horariosOcupados < horariosDisponiblesDia;
                 
                 if (fechaStr === hoy) {
-                    console.log(`   📊 Total horarios del día: ${horariosDelDia.length}, Ocupados: ${horariosOcupados}`);
-                    console.log(`   🟢 Disponible: ${tieneDisponibilidad}\n`);
+                    console.log(`   Total horarios del dia: ${horariosDelDia.length}, Ocupados: ${horariosOcupados}`);
+                    console.log(`   Disponible: ${tieneDisponibilidad}\n`);
                 }
                 
                 disponibilidad[fechaStr] = tieneDisponibilidad;
@@ -1175,7 +1171,7 @@ function AdminApp() {
         console.log('Yi  Eliminando cliente:', whatsapp);
         try {
             if (typeof window.eliminarCliente !== 'function') {
-                alert('Error: Función no disponible');
+                alert('Error: Funcion no disponible');
                 return;
             }
             const resultado = await window.eliminarCliente(whatsapp);
@@ -1266,7 +1262,7 @@ function AdminApp() {
     }, [userRole, userNivel, profesional]);
 
     // ============================================
-    // FUNCIÓN PARA CONFIRMAR PAGO
+    // FUNCION PARA CONFIRMAR PAGO
     // ============================================
     const confirmarPago = async (id, bookingData) => {
         if (!confirm(`Confirmar que se recibio el pago de ${bookingData.cliente_nombre}? El turno pasara a "Reservado".`)) return;
@@ -1318,7 +1314,7 @@ Hola *${bookingData.cliente_nombre}*, tu turno ha sido CONFIRMADO.
 ${lineaCalendario}
 
 Te esperamos.
-Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipación.`;
+Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion.`;
 
             window.enviarWhatsApp(bookingData.cliente_whatsapp, mensajeCliente);
 
@@ -1332,7 +1328,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     };
 
 
-    // FUNCIÓN PARA BORRAR TODAS LAS RESERVAS CANCELADAS
+    // FUNCION PARA BORRAR TODAS LAS RESERVAS CANCELADAS
     // ============================================
     const borrarCanceladas = async () => {
         if (!confirm('Estas segura de querer borrar TODAS las reservas canceladas? Esta accion no se puede deshacer.')) return;
@@ -1376,7 +1372,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
         
         const ok = await cancelBooking(id);
         if (ok) {
-            console.log('📱 Enviando notificaciones de cancelación por admin...');
+            console.log('Enviando notificaciones de cancelacion por admin...');
             
             bookingData.cancelado_por = 'admin';
             
@@ -1392,7 +1388,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     };
 
     const handleLogout = () => {
-        if (confirm('¿Cerrar sesión?')) {
+        if (confirm('Cerrar sesion?')) {
             localStorage.removeItem('adminAuth');
             localStorage.removeItem('adminUser');
             localStorage.removeItem('adminLoginTime');
@@ -1549,18 +1545,18 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
 
     const getTabsDisponibles = () => {
         const tabs = [];
-        tabs.push({ id: 'reservas', icono: '📅', label: userRole === 'profesional' ? 'Mis Reservas' : 'Reservas' });
+        tabs.push({ id: 'reservas', icono: 'R', label: userRole === 'profesional' ? 'Mis Reservas' : 'Reservas' });
         
-        tabs.push({ id: 'agenda', icono: '📋', label: 'Agenda' });
+        tabs.push({ id: 'agenda', icono: 'A', label: 'Agenda' });
 
         if (userRole === 'admin' || (userRole === 'profesional' && userNivel >= 2)) {
-            tabs.push({ id: 'configuracion', icono: '⚙️', label: 'Configuración' });
-            tabs.push({ id: 'clientes', icono: '👥', label: 'Clientes' });
+            tabs.push({ id: 'configuracion', icono: 'C', label: 'Configuracion' });
+            tabs.push({ id: 'clientes', icono: 'C', label: 'Clientes' });
         }
         
         if (userRole === 'admin' || (userRole === 'profesional' && userNivel >= 3)) {
-            tabs.push({ id: 'servicios', icono: '💅', label: 'Servicios' });
-            tabs.push({ id: 'profesionales', icono: '👩‍💼', label: 'Profesionales' });
+            tabs.push({ id: 'servicios', icono: 'C', label: 'Servicios' });
+            tabs.push({ id: 'profesionales', icono: 'C', label: 'Profesionales' });
         }
         
         return tabs;
@@ -1605,14 +1601,9 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     };
 
     const abrirModalDisponibilidad = () => {
-        const fechaActual = new Date();
-        const profesionalId = profesionalSeleccionadoDispo || profesionalesList[0]?.id || null;
-        setDisponibilidadFecha(fechaActual);
-        if (profesionalId) {
-            setProfesionalSeleccionadoDispo(profesionalId);
-        }
+        setDisponibilidadFecha(new Date());
         setShowDisponibilidadModal(true);
-        cargarDisponibilidadDelMes(fechaActual, profesionalId);
+        cargarDisponibilidadDelMes(new Date(), profesionalSeleccionadoDispo);
     };
 
     const tabsDisponibles = getTabsDisponibles();
@@ -1643,32 +1634,32 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                             />
                         ) : (
                             <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl shadow-lg flex items-center justify-center">
-                                <span className="text-2xl text-white">💅</span>
+                                <span className="text-2xl text-white"><i className="icon-calendar"></i></span>
                             </div>
                         )}
                         <div>
                             <h1 className="text-xl font-bold text-pink-800">{nombreNegocio}</h1>
-                            <p className="text-xs text-pink-500">Panel de Administración</p>
+                            <p className="text-xs text-pink-500">Panel de Administracion</p>
                         </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                        {/* BOTÓN NUEVA RESERVA */}
+                        {/* BOTON NUEVA RESERVA */}
                         <button
                             onClick={abrirModalNuevaReserva}
                             className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-green-400 flex-1 sm:flex-none justify-center"
                         >
-                            <span className="text-lg">➕</span>
+                            <span className="text-lg">+</span>
                             <span className="font-medium">Nueva Reserva</span>
                         </button>
 
-                        {/* BOTÓN CALENDARIO DE DISPONIBILIDAD */}
+                        {/* BOTON CALENDARIO DE DISPONIBILIDAD */}
                         <button
                             onClick={abrirModalDisponibilidad}
                             className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-blue-400 flex-1 sm:flex-none justify-center"
                             title="Ver disponibilidad mensual"
                         >
-                            <span className="text-lg">📆</span>
+                            <span className="text-lg"><i className="icon-calendar"></i></span>
                             <span className="font-medium">Ver Disponibilidad</span>
                         </button>
 
@@ -1676,7 +1667,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                             onClick={() => window.location.href = 'editar-negocio.html'}
                             className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-pink-400 flex-1 sm:flex-none justify-center"
                         >
-                            <span className="text-lg">🏢</span>
+                            <span className="text-lg"><i className="icon-calendar"></i></span>
                             <span className="font-medium">Editar Negocio</span>
                         </button>
 
@@ -1702,7 +1693,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                         <button 
                             onClick={handleLogout}
                             className="p-2 bg-pink-50 rounded-full hover:bg-pink-100 transition-all hover:scale-105 border border-pink-200"
-                            title="Cerrar sesión"
+                            title="Cerrar sesion"
                         >
                             <i className="icon-log-out text-pink-600"></i>
                         </button>
@@ -1715,7 +1706,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                         <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xl font-bold">Nueva Reserva Manual</h3>
-                                <button onClick={() => setShowNuevaReservaModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                                <button onClick={() => setShowNuevaReservaModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">x</button>
                             </div>
                             <div className="space-y-4">
                                 <div>
@@ -1763,9 +1754,9 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Fecha *</label>
                                         <div className="bg-white rounded-xl border">
                                             <div className="flex justify-between p-3 bg-gray-50 border-b">
-                                                <button onClick={() => cambiarMes(-1)}>›</button>
+                                                <button onClick={() => cambiarMes(-1)}>a</button>
                                                 <span className="font-bold">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</span>
-                                                <button onClick={() => cambiarMes(1)}>›</button>
+                                                <button onClick={() => cambiarMes(1)}>a</button>
                                             </div>
                                             <div className="p-3">
                                                 <div className="grid grid-cols-7 mb-2 text-center text-xs text-gray-400">
@@ -1786,7 +1777,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                                         else className += " text-gray-700 hover:bg-pink-50 cursor-pointer";
                                                         
                                                         return (
-                                                            <button key={idx} onClick={() => handleDateSelect(date)} disabled={!available || esPasado || esCerrado} className={className} title={esCerrado ? "Día cerrado" : esPasado ? "Fecha pasada" : ""}>
+                                                            <button key={idx} onClick={() => handleDateSelect(date)} disabled={!available || esPasado || esCerrado} className={className} title={esCerrado ? "Dia cerrado" : esPasado ? "Fecha pasada" : ""}>
                                                                 {date.getDate()}
                                                             </button>
                                                         );
@@ -1836,8 +1827,8 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl font-bold">📆 Disponibilidad mensual</h3>
-                                <button onClick={() => setShowDisponibilidadModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                                <h3 className="text-xl font-bold">Disponibilidad Mensual</h3>
+                                <button onClick={() => setShowDisponibilidadModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">x</button>
                             </div>
                             
                             {userRole === 'admin' && profesionalesList.length > 0 && (
@@ -1861,9 +1852,9 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                             )}
                             
                             <div className="flex justify-between items-center mb-4">
-                                <button onClick={() => cambiarMesDisponibilidad(-1)} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">‹</button>
+                                <button onClick={() => cambiarMesDisponibilidad(-1)} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">a</button>
                                 <span className="text-lg font-bold">{monthNames[disponibilidadFecha.getMonth()]} {disponibilidadFecha.getFullYear()}</span>
-                                <button onClick={() => cambiarMesDisponibilidad(1)} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">›</button>
+                                <button onClick={() => cambiarMesDisponibilidad(1)} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">a</button>
                             </div>
                             
                             {disponibilidadCargando ? (
@@ -1896,7 +1887,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                             else className += " bg-gray-100 text-gray-400 border-gray-200";
                                             
                                             return (
-                                                <div key={idx} className={className} title={esCerrado ? "Día cerrado" : esPasado ? "Fecha pasada" : disponible ? `${disponiblesDia} turno(s) disponible(s)` : "Sin horarios disponibles"}>
+                                                <div key={idx} className={className} title={esCerrado ? "Dia cerrado" : esPasado ? "Fecha pasada" : disponible ? `${disponiblesDia} turno(s) disponible(s)` : "Sin horarios disponibles"}>
                                                     <span className="text-base leading-tight">{date.getDate()}</span>
                                                     {!esCerrado && !esPasado && (
                                                         <span className={`mt-0.5 min-w-5 px-1.5 py-0.5 rounded-full border text-[11px] font-bold leading-none ${tonoConteo}`}>
@@ -1923,7 +1914,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                     </div>
                 )}
 
-                {/* PESTAÑAS */}
+                {/* PESTANAS */}
                 <div className="bg-white p-2 rounded-xl shadow-sm flex flex-wrap gap-2">
                     {tabsDisponibles.map(tab => (
                         <button key={tab.id} onClick={() => setTabActivo(tab.id)} className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${tabActivo === tab.id ? 'bg-pink-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
@@ -2039,7 +2030,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                                 <div className="mt-3">
                                                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                                                         <span>Completadas {score.completionRate}%</span>
-                                                        <span>Cancelación {score.cancelRate}%</span>
+                                                        <span>Cancelacion {score.cancelRate}%</span>
                                                     </div>
                                                     <div className="h-2 bg-white rounded-full overflow-hidden border">
                                                         <div className="h-full bg-emerald-400" style={{ width: `${score.completionRate}%` }}></div>
@@ -2070,9 +2061,9 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                         <button onClick={() => setAgendaMode('dia')} className={`px-3 py-1.5 rounded-md text-sm font-medium ${agendaMode === 'dia' ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-600'}`}>Dia</button>
                                         <button onClick={() => setAgendaMode('semana')} className={`px-3 py-1.5 rounded-md text-sm font-medium ${agendaMode === 'semana' ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-600'}`}>Semana</button>
                                     </div>
-                                    <button onClick={() => setAgendaDate(addDays(agendaDate, agendaMode === 'dia' ? -1 : -7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">{agendaMode === 'dia' ? 'Día anterior' : 'Semana anterior'}</button>
+                                    <button onClick={() => setAgendaDate(addDays(agendaDate, agendaMode === 'dia' ? -1 : -7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">{agendaMode === 'dia' ? 'Dia anterior' : 'Semana anterior'}</button>
                                     <button onClick={() => setAgendaDate(new Date())} className="px-3 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 text-sm font-medium">Hoy</button>
-                                    <button onClick={() => setAgendaDate(addDays(agendaDate, agendaMode === 'dia' ? 1 : 7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">{agendaMode === 'dia' ? 'Día siguiente' : 'Semana siguiente'}</button>
+                                    <button onClick={() => setAgendaDate(addDays(agendaDate, agendaMode === 'dia' ? 1 : 7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">{agendaMode === 'dia' ? 'Dia siguiente' : 'Semana siguiente'}</button>
                                 </div>
                             </div>
 
@@ -2133,7 +2124,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
 
                                         {agendaDayBookings.length === 0 && (
                                             <div className="absolute inset-x-4 top-8 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-center text-gray-500">
-                                                No hay citas para este día
+                                                No hay citas para este dia
                                             </div>
                                         )}
 
