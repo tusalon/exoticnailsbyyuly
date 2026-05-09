@@ -1,13 +1,13 @@
-// admin-app.js - Panel de administracion (VERSION CORREGIDA CON HORARIOS POR DIA)
-// CON BOTON DE NUEVA RESERVA MANUAL, CALENDARIO DE DISPONIBILIDAD
+// admin-app.js - Panel de administraciA3n (VERSIAN CORREGIDA CON HORARIOS POR DAA)
+// CON BOTAN DE NUEVA RESERVA MANUAL, CALENDARIO DE DISPONIBILIDAD
 
-console.log('ADMIN-APP.JS - Panel de administracion con Nueva Reserva y Calendario Disponibilidad');
+console.log('Ys ADMIN-APP.JS - Panel de administraciA3n con Nueva Reserva y Calendario Disponibilidad');
 
 window.addEventListener('error', function(e) {
-    console.error('Error detectado, posible version antigua:', e.message);
+    console.error('a Error detectado, posible versiA3n antigua:', e.message);
     
     if (e.message.includes('Failed to load') || e.message.includes('Unexpected token')) {
-        console.log('Forzando recarga por posible version antigua...');
+        console.log('Y Forzando recarga por posible versiA3n antigua...');
         
         if (window.swRegistration) {
             window.swRegistration.unregister().then(() => {
@@ -20,23 +20,23 @@ window.addEventListener('error', function(e) {
 });
 
 // ============================================
-// FUNCION PARA OBTENER NEGOCIO_ID
+// FUNCIAN PARA OBTENER NEGOCIO_ID
 // ============================================
 function getNegocioId() {
     const localId = localStorage.getItem('negocioId');
     if (localId) {
-        console.log('AdminApp usando negocioId de localStorage:', localId);
+        console.log('Y AdminApp usando negocioId de localStorage:', localId);
         return localId;
     }
     
     if (window.NEGOCIO_ID_POR_DEFECTO) {
-        console.log('AdminApp usando NEGOCIO_ID_POR_DEFECTO:', window.NEGOCIO_ID_POR_DEFECTO);
+        console.log('Y AdminApp usando NEGOCIO_ID_POR_DEFECTO:', window.NEGOCIO_ID_POR_DEFECTO);
         return window.NEGOCIO_ID_POR_DEFECTO;
     }
     
     if (typeof window.getNegocioId === 'function') {
         const id = window.getNegocioId();
-        console.log('AdminApp usando window.getNegocioId():', id);
+        console.log('Y AdminApp usando window.getNegocioId():', id);
         return id;
     }
     
@@ -51,17 +51,17 @@ function getNegocioId() {
 async function getAllBookings() {
     try {
         const negocioId = getNegocioId();
-        console.log('getAllBookings - negocioId:', negocioId);
+        console.log('Y getAllBookings - negocioId:', negocioId);
         
         if (!negocioId) {
             console.error('a No hay negocioId disponible');
             return [];
         }
         
-        console.log('Obteniendo reservas para negocio:', negocioId);
+        console.log('Y Obteniendo reservas para negocio:', negocioId);
         
         const url = `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&select=*&order=fecha.desc,hora_inicio.asc`;
-        console.log('URL de consulta:', url);
+        console.log('Y URL de consulta:', url);
         
         const res = await fetch(url, {
             headers: {
@@ -70,19 +70,19 @@ async function getAllBookings() {
             }
         });
         
-        console.log('Status de respuesta:', res.status);
+        console.log('Y Status de respuesta:', res.status);
         
         if (!res.ok) {
             const errorText = await res.text();
-            console.error('Error en respuesta:', errorText);
+            console.error('a Error en respuesta:', errorText);
             return [];
         }
         
         const data = await res.json();
-        console.log('Reservas obtenidas:', data.length);
+        console.log('a... Reservas obtenidas:', data.length);
         return Array.isArray(data) ? data : [];
     } catch (error) {
-        console.error('Error fetching bookings:', error);
+        console.error('a Error fetching bookings:', error);
         return [];
     }
 }
@@ -135,7 +135,7 @@ async function createBooking(bookingData) {
             negocio_id: negocioId
         };
         
-        console.log('Creando reserva para negocio:', negocioId, dataWithNegocio);
+        console.log('Y Creando reserva para negocio:', negocioId, dataWithNegocio);
         
         const res = await fetch(
             `${window.SUPABASE_URL}/rest/v1/reservas`,
@@ -166,7 +166,7 @@ async function createBooking(bookingData) {
 }
 
 // ============================================
-// FUNCION PARA MARCAR TURNOS COMO COMPLETADOS
+// FUNCIAN PARA MARCAR TURNOS COMO COMPLETADOS
 // ============================================
 async function marcarTurnosCompletados() {
     try {
@@ -187,8 +187,8 @@ async function marcarTurnosCompletados() {
         const totalMinutosActual = horaActual * 60 + minutosActuales;
         
         console.log('a Verificando turnos para marcar como completados...');
-        console.log('Fecha LOCAL actual:', hoy);
-        console.log('Hora LOCAL actual:', `${horaActual}:${minutosActuales}`);
+        console.log('Y... Fecha LOCAL actual:', hoy);
+        console.log('Y Hora LOCAL actual:', `${horaActual}:${minutosActuales}`);
         
         const responsePasados = await fetch(
             `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&estado=eq.Reservado&fecha=lt.${hoy}&select=id,fecha,hora_inicio,hora_fin,cliente_nombre,servicio,profesional_nombre`,
@@ -225,16 +225,16 @@ async function marcarTurnosCompletados() {
             return totalMinutosFin <= totalMinutosActual;
         });
         
-        console.log(`Turnos de dias pasados (fecha < ${hoy}): ${turnosPasados.length}`);
-        console.log(`Turnos de hoy terminados: ${turnosHoyTerminados.length}`);
+        console.log(`YS Turnos de dAas pasados (fecha < ${hoy}): ${turnosPasados.length}`);
+        console.log(`YS Turnos de hoy terminados: ${turnosHoyTerminados.length}`);
         
         const turnosACompletar = [...turnosPasados, ...turnosHoyTerminados];
         
         if (turnosACompletar.length > 0) {
-            console.log(`${turnosACompletar.length} turnos a marcar como completados`);
+            console.log(`a... ${turnosACompletar.length} turnos a marcar como completados`);
             
             for (const turno of turnosACompletar) {
-                console.log(`Completando turno de ${turno.cliente_nombre} - ${turno.fecha} ${turno.hora_inicio} a ${turno.hora_fin}`);
+                console.log(`Y Completando turno de ${turno.cliente_nombre} - ${turno.fecha} ${turno.hora_inicio} a ${turno.hora_fin}`);
                 
                 await fetch(
                     `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&id=eq.${turno.id}`,
@@ -250,7 +250,7 @@ async function marcarTurnosCompletados() {
                 );
             }
             
-            console.log(`${turnosACompletar.length} turnos marcados como completados`);
+            console.log(`a... ${turnosACompletar.length} turnos marcados como completados`);
         } else {
             console.log('a No hay turnos para completar');
         }
@@ -349,7 +349,7 @@ function AdminApp() {
         requiereAnticipo: false
     });
     
-    // Estado para el modal de disponibilidad
+    // Y Estado para el modal de disponibilidad
     const [showDisponibilidadModal, setShowDisponibilidadModal] = React.useState(false);
     const [disponibilidadFecha, setDisponibilidadFecha] = React.useState(new Date());
     const [disponibilidadHoras, setDisponibilidadHoras] = React.useState([]);
@@ -377,7 +377,7 @@ function AdminApp() {
     };
 
     // ============================================
-    // FUNCION PARA CARGAR DIAS CERRADOS DIRECTAMENTE DE SUPABASE
+    // FUNCIAN PARA CARGAR DAAS CERRADOS DIRECTAMENTE DE SUPABASE
     // ============================================
     const cargarDiasCerradosDirecto = async () => {
         try {
@@ -401,13 +401,13 @@ function AdminApp() {
             setDiasCerradosFechas(fechas);
             return fechas;
         } catch (error) {
-            console.error('Error cargando dias cerrados:', error);
+            console.error('Error cargando dAas cerrados:', error);
             return [];
         }
     };
 
     // ============================================
-    // CARGAR CONFIGURACIAN LOGO
+    // CARGAR CONFIGURACIAN Y LOGO
     // ============================================
     React.useEffect(() => {
         window.getNombreNegocio().then(nombre => {
@@ -427,7 +427,7 @@ function AdminApp() {
             if (configData?.logo_url) {
                 setLogoNegocio(configData.logo_url);
             }
-            console.log('Configuracion recargada:', configData);
+            console.log('a... ConfiguraciA3n recargada:', configData);
         } catch (error) {
             console.error('Error cargando config:', error);
         }
@@ -439,7 +439,7 @@ function AdminApp() {
     React.useEffect(() => {
         const profesionalAuth = window.getProfesionalAutenticado?.();
         if (profesionalAuth) {
-            console.log('Usuario detectado como profesional:', profesionalAuth);
+            console.log('Y Usuario detectado como profesional:', profesionalAuth);
             setUserRole('profesional');
             setProfesional(profesionalAuth);
             setUserNivel(profesionalAuth.nivel || 1);
@@ -450,7 +450,7 @@ function AdminApp() {
                 profesional_id: profesionalAuth.id
             }));
         } else {
-            console.log('Usuario detectado como admin');
+            console.log('Y Usuario detectado como admin');
             setUserRole('admin');
             setUserNivel(3);
         }
@@ -507,7 +507,7 @@ function AdminApp() {
         filtrarProfesionalesManual();
     }, [nuevaReservaData.servicio, profesionalesList, serviciosList]);
 
-    // CARGAR DIAS CERRADOS AL INICIO
+    // Y CARGAR DAAS CERRADOS AL INICIO
     React.useEffect(() => {
         cargarDiasCerradosDirecto();
     }, []);
@@ -520,7 +520,7 @@ function AdminApp() {
                     setDiasLaborales(horarios.dias || []);
                     await cargarDisponibilidadMes(currentDate, nuevaReservaData.profesional_id);
                 } catch (error) {
-                    console.error('Error cargando dias laborales:', error);
+                    console.error('Error cargando dAas laborales:', error);
                     setDiasLaborales([]);
                 }
             }
@@ -528,7 +528,7 @@ function AdminApp() {
         cargarDiasLaborales();
     }, [nuevaReservaData.profesional_id]);
 
-    // CARGAR DIAS CERRADOS CUANDO SE ABRE EL MODAL
+    // Y CARGAR DAAS CERRADOS CUANDO SE ABRE EL MODAL
     React.useEffect(() => {
         if (showNuevaReservaModal) {
             cargarDiasCerradosDirecto();
@@ -749,8 +749,8 @@ function AdminApp() {
             const descansosPorDia = horarios.descansosPorDia || {};
             
             console.log('=========================================');
-            console.log(`Profesional ID: ${profesionalId}`);
-            console.log(`Horarios por dia:`, horariosPorDia);
+            console.log(`YS Profesional ID: ${profesionalId}`);
+            console.log(`YS Horarios por dAa:`, horariosPorDia);
             console.log('=========================================');
             
             const profesionalObj = profesionalesList.find(p => p.id === profesionalId);
@@ -827,9 +827,9 @@ function AdminApp() {
                 
                 const hoy = getCurrentLocalDate();
                 if (fechaStr === hoy) {
-                    console.log(`\nAnalizando HO(${fechaStr}) - ${diaSemana}:`);
-                    console.log(`   Horarios del dia:`, horariosDelDia.map(i => indiceToHoraLegible(i)));
-                    console.log(`   Reservas del dia: ${reservasDia.length}`);
+                    console.log(`\nY... Analizando HOY (${fechaStr}) - ${diaSemana}:`);
+                    console.log(`   Horarios del dAa:`, horariosDelDia.map(i => indiceToHoraLegible(i)));
+                    console.log(`   Reservas del dAa: ${reservasDia.length}`);
                 }
                 
                 for (const horaIndice of horariosDelDia) {
@@ -853,11 +853,11 @@ function AdminApp() {
                     if (tieneConflicto) {
                         horariosOcupados++;
                         if (fechaStr === hoy) {
-                            console.log(`   Horario ${slotStr} esta OCUPADO`);
+                            console.log(`   a Horario ${slotStr} estA OCUPADO`);
                         }
                     } else {
                         if (fechaStr === hoy) {
-                            console.log(`   Horario ${slotStr} esta LIBRE`);
+                            console.log(`   a... Horario ${slotStr} estA LIBRE`);
                         }
                     }
                 }
@@ -865,8 +865,8 @@ function AdminApp() {
                 const tieneDisponibilidad = horariosDisponiblesDia > 0 && horariosOcupados < horariosDisponiblesDia;
                 
                 if (fechaStr === hoy) {
-                    console.log(`   Total horarios del dia: ${horariosDelDia.length}, Ocupados: ${horariosOcupados}`);
-                    console.log(`   Disponible: ${tieneDisponibilidad}\n`);
+                    console.log(`   YS Total horarios del dAa: ${horariosDelDia.length}, Ocupados: ${horariosOcupados}`);
+                    console.log(`   YY Disponible: ${tieneDisponibilidad}\n`);
                 }
                 
                 disponibilidad[fechaStr] = tieneDisponibilidad;
@@ -1005,7 +1005,7 @@ function AdminApp() {
                 estado: requiereAnticipo ? "Pendiente" : "Reservado"
             };
 
-            console.log('Creando reserva manual. Requiere anticipo:', requiereAnticipo);
+            console.log('Y Creando reserva manual. Requiere anticipo:', requiereAnticipo);
             
             let result;
             if (reservaEditando) {
@@ -1043,7 +1043,7 @@ function AdminApp() {
             }
             
             if (result.success && result.data) {
-                alert(`Reserva creada exitosamente como "${result.data.estado}"`);
+                alert(`a... Reserva creada exitosamente como "${result.data.estado}"`);
                 
                 try {
                     if (reservaEditando) {
@@ -1062,7 +1062,7 @@ function AdminApp() {
                         }
                     }
                 } catch (whatsappError) {
-                    console.error('Error enviando WhatsApp:', whatsappError);
+                    console.error('a Error enviando WhatsApp:', whatsappError);
                     alert('as i  Reserva creada, pero hubo un error al enviar el mensaje al cliente.');
                 }
                 
@@ -1080,11 +1080,11 @@ function AdminApp() {
                 
                 fetchBookings();
             } else {
-                alert('Error al crear la reserva: ' + (result.error || 'Error desconocido'));
+                alert('a Error al crear la reserva: ' + (result.error || 'Error desconocido'));
             }
         } catch (error) {
             console.error('Error creando reserva:', error);
-            alert('Error al crear la reserva: ' + error.message);
+            alert('a Error al crear la reserva: ' + error.message);
         }
     };
 
@@ -1093,17 +1093,17 @@ function AdminApp() {
     // ============================================
     
     const loadClientesRegistrados = async () => {
-        console.log('Cargando clientes registrados...');
+        console.log('Y Cargando clientes registrados...');
         setCargandoClientes(true);
         try {
             if (typeof window.getClientesRegistrados !== 'function') {
-                console.error('getClientesRegistrados no esta definida');
+                console.error('a getClientesRegistrados no estA definida');
                 setClientesRegistrados([]);
                 return;
             }
             
             const registrados = await window.getClientesRegistrados();
-            console.log('Registrados obtenidos:', registrados.length);
+            console.log('Y Registrados obtenidos:', registrados.length);
             
             if (Array.isArray(registrados)) {
                 setClientesRegistrados(registrados);
@@ -1171,13 +1171,13 @@ function AdminApp() {
         console.log('Yi  Eliminando cliente:', whatsapp);
         try {
             if (typeof window.eliminarCliente !== 'function') {
-                alert('Error: Funcion no disponible');
+                alert('Error: FunciA3n no disponible');
                 return;
             }
             const resultado = await window.eliminarCliente(whatsapp);
             if (resultado) {
                 await loadClientesRegistrados();
-                alert(`Cliente eliminado`);
+                alert(`a... Cliente eliminado`);
             }
         } catch (error) {
             console.error('Error eliminando cliente:', error);
@@ -1189,20 +1189,20 @@ function AdminApp() {
     // FUNCIONES DE RESERVAS
     // ============================================
     const fetchBookings = async () => {
-        console.log('fetchBookings - INICIANDO CARGA');
+        console.log('Y fetchBookings - INICIANDO CARGA');
         setLoading(true);
         try {
             let data;
             
             if (userRole === 'profesional' && profesional) {
-                console.log(`Cargando reservas de profesional ${profesional.id}...`);
+                console.log(`Y Cargando reservas de profesional ${profesional.id}...`);
                 data = await window.getReservasPorProfesional?.(profesional.id, false) || [];
             } else {
-                console.log('Llamando getAllBookings...');
+                console.log('Y Llamando a getAllBookings...');
                 data = await getAllBookings();
             }
             
-            console.log('Datos recibidos en fetchBookings:', data?.length || 0);
+            console.log('YS Datos recibidos en fetchBookings:', data?.length || 0);
             
             if (Array.isArray(data)) {
                 data.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.hora_inicio.localeCompare(b.hora_inicio));
@@ -1215,8 +1215,8 @@ function AdminApp() {
                     data = await getAllBookings();
                 }
                 
-                console.log('RESERVAS CARGADAS:', data.length);
-                console.log('Rango de fechas:', {
+                console.log('a... RESERVAS CARGADAS:', data.length);
+                console.log('Y... Rango de fechas:', {
                     primera: data.length > 0 ? data[data.length-1]?.fecha : 'sin datos',
                     ultima: data.length > 0 ? data[0]?.fecha : 'sin datos'
                 });
@@ -1254,7 +1254,7 @@ function AdminApp() {
             loadClientesBloqueados();
         }
         
-        console.log('Verificando auth:', {
+        console.log('Y Verificando auth:', {
             userRole,
             userNivel,
             profesional
@@ -1262,7 +1262,7 @@ function AdminApp() {
     }, [userRole, userNivel, profesional]);
 
     // ============================================
-    // FUNCION PARA CONFIRMAR PAGO
+    // FUNCIAN PARA CONFIRMAR PAGO
     // ============================================
     const confirmarPago = async (id, bookingData) => {
         if (!confirm(`Confirmar que se recibio el pago de ${bookingData.cliente_nombre}? El turno pasara a "Reservado".`)) return;
@@ -1328,10 +1328,10 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
     };
 
 
-    // FUNCION PARA BORRAR TODAS LAS RESERVAS CANCELADAS
+    // FUNCIAN PARA BORRAR TODAS LAS RESERVAS CANCELADAS
     // ============================================
     const borrarCanceladas = async () => {
-        if (!confirm('Estas segura de querer borrar TODAS las reservas canceladas? Esta accion no se puede deshacer.')) return;
+        if (!confirm('AEstAs segura de querer borrar TODAS las reservas canceladas? Esta acciA3n no se puede deshacer.')) return;
         
         try {
             const negocioId = getNegocioId();
@@ -1351,16 +1351,16 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
             if (!response.ok) {
                 const error = await response.text();
                 console.error('Error al borrar:', error);
-                alert('Error al borrar las reservas canceladas');
+                alert('a Error al borrar las reservas canceladas');
                 return;
             }
             
-            alert(`Se borraron todas las reservas canceladas correctamente`);
+            alert(`a... Se borraron todas las reservas canceladas correctamente`);
             fetchBookings();
             
         } catch (error) {
             console.error('Error:', error);
-            alert('Error al conectar con el servidor');
+            alert('a Error al conectar con el servidor');
         }
     };
 
@@ -1372,7 +1372,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
         
         const ok = await cancelBooking(id);
         if (ok) {
-            console.log('Enviando notificaciones de cancelacion por admin...');
+            console.log('Y Enviando notificaciones de cancelaciA3n por admin...');
             
             bookingData.cancelado_por = 'admin';
             
@@ -1380,15 +1380,15 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                 await window.notificarCancelacion(bookingData);
             }
             
-            alert('Reserva cancelada');
+            alert('a... Reserva cancelada');
             fetchBookings();
         } else {
-            alert('Error al cancelar');
+            alert('a Error al cancelar');
         }
     };
 
     const handleLogout = () => {
-        if (confirm('Cerrar sesion?')) {
+        if (confirm('ACerrar sesiA3n?')) {
             localStorage.removeItem('adminAuth');
             localStorage.removeItem('adminUser');
             localStorage.removeItem('adminLoginTime');
@@ -1397,7 +1397,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
             localStorage.removeItem('clienteAuth');
             localStorage.removeItem('negocioId');
             
-            console.log('Sesion cerrada, redirigiendo a index.html');
+            console.log('Ysa SesiA3n cerrada, redirigiendo a index.html');
             window.location.href = 'index.html';
         }
     };
@@ -1406,13 +1406,13 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
     // FILTROS
     // ============================================
     const getFilteredBookings = () => {
-        console.log('Aplicando filtros a', bookings.length, 'reservas');
+        console.log('Y Aplicando filtros a', bookings.length, 'reservas');
         
         let filtradas = filterDate
             ? bookings.filter(b => b.fecha === filterDate)
             : [...bookings];
         
-        console.log('Despues filtro fecha:', filtradas.length);
+        console.log('YS DespuAs filtro fecha:', filtradas.length);
         
         let resultado;
         if (statusFilter === 'activas') {
@@ -1427,7 +1427,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
             resultado = filtradas;
         }
         
-        console.log('Resultado final:', resultado.length);
+        console.log('YS Resultado final:', resultado.length);
         
         return resultado;
     };
@@ -1545,18 +1545,18 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
 
     const getTabsDisponibles = () => {
         const tabs = [];
-        tabs.push({ id: 'reservas', icono: 'R', label: userRole === 'profesional' ? 'Mis Reservas' : 'Reservas' });
+        tabs.push({ id: 'reservas', icono: 'Y...', label: userRole === 'profesional' ? 'Mis Reservas' : 'Reservas' });
         
-        tabs.push({ id: 'agenda', icono: 'A', label: 'Agenda' });
+        tabs.push({ id: 'agenda', icono: 'a', label: 'Agenda' });
 
         if (userRole === 'admin' || (userRole === 'profesional' && userNivel >= 2)) {
-            tabs.push({ id: 'configuracion', icono: 'C', label: 'Configuracion' });
-            tabs.push({ id: 'clientes', icono: 'C', label: 'Clientes' });
+            tabs.push({ id: 'configuracion', icono: 'asTMi ', label: 'ConfiguraciA3n' });
+            tabs.push({ id: 'clientes', icono: 'Y', label: 'Clientes' });
         }
         
         if (userRole === 'admin' || (userRole === 'profesional' && userNivel >= 3)) {
-            tabs.push({ id: 'servicios', icono: 'C', label: 'Servicios' });
-            tabs.push({ id: 'profesionales', icono: 'C', label: 'Profesionales' });
+            tabs.push({ id: 'servicios', icono: 'Y', label: 'Servicios' });
+            tabs.push({ id: 'profesionales', icono: 'Y', label: 'Profesionales' });
         }
         
         return tabs;
@@ -1628,38 +1628,38 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                     e.target.style.display = 'none';
                                     const parent = e.target.parentElement;
                                     if (parent) {
-                                        parent.innerHTML = '<div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl shadow-lg flex items-center justify-center"><span class="text-2xl text-white"><i class="icon-calendar"></i></span></div>';
+                                        parent.innerHTML = '<div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl shadow-lg flex items-center justify-center"><span class="text-2xl text-white">Y</span></div>';
                                     }
                                 }}
                             />
                         ) : (
                             <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl shadow-lg flex items-center justify-center">
-                                <span className="text-2xl text-white"><i className="icon-calendar"></i></span>
+                                <span className="text-2xl text-white">Y</span>
                             </div>
                         )}
                         <div>
                             <h1 className="text-xl font-bold text-pink-800">{nombreNegocio}</h1>
-                            <p className="text-xs text-pink-500">Panel de Administracion</p>
+                            <p className="text-xs text-pink-500">Panel de AdministraciA3n</p>
                         </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                        {/* BOTON NUEVA RESERVA */}
+                        {/* Y BOTAN NUEVA RESERVA */}
                         <button
                             onClick={abrirModalNuevaReserva}
                             className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-green-400 flex-1 sm:flex-none justify-center"
                         >
-                            <span className="text-lg">+</span>
+                            <span className="text-lg">Y...</span>
                             <span className="font-medium">Nueva Reserva</span>
                         </button>
 
-                        {/* BOTON CALENDARIO DE DISPONIBILIDAD */}
+                        {/* Y BOTAN CALENDARIO DE DISPONIBILIDAD */}
                         <button
                             onClick={abrirModalDisponibilidad}
                             className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-blue-400 flex-1 sm:flex-none justify-center"
                             title="Ver disponibilidad mensual"
                         >
-                            <span className="text-lg"><i className="icon-calendar"></i></span>
+                            <span className="text-lg">Y</span>
                             <span className="font-medium">Ver Disponibilidad</span>
                         </button>
 
@@ -1667,7 +1667,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                             onClick={() => window.location.href = 'editar-negocio.html'}
                             className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-pink-400 flex-1 sm:flex-none justify-center"
                         >
-                            <span className="text-lg"><i className="icon-calendar"></i></span>
+                            <span className="text-lg">Y</span>
                             <span className="font-medium">Editar Negocio</span>
                         </button>
 
@@ -1693,7 +1693,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                         <button 
                             onClick={handleLogout}
                             className="p-2 bg-pink-50 rounded-full hover:bg-pink-100 transition-all hover:scale-105 border border-pink-200"
-                            title="Cerrar sesion"
+                            title="Cerrar sesiA3n"
                         >
                             <i className="icon-log-out text-pink-600"></i>
                         </button>
@@ -1705,13 +1705,13 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl font-bold">Nueva Reserva Manual</h3>
+                                <h3 className="text-xl font-bold">Y... Nueva Reserva Manual</h3>
                                 <button onClick={() => setShowNuevaReservaModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">x</button>
                             </div>
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Cliente *</label>
-                                    <input type="text" value={nuevaReservaData.cliente_nombre} onChange={(e) => setNuevaReservaData({...nuevaReservaData, cliente_nombre: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="Ej: Juan Perez" />
+                                    <input type="text" value={nuevaReservaData.cliente_nombre} onChange={(e) => setNuevaReservaData({...nuevaReservaData, cliente_nombre: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="Ej: Juan PArez" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp del Cliente *</label>
@@ -1746,7 +1746,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                 {userRole === 'admin' && (
                                     <div className="flex items-center gap-3 bg-yellow-50 p-3 rounded-lg">
                                         <input type="checkbox" id="requiereAnticipo" checked={nuevaReservaData.requiereAnticipo} onChange={(e) => setNuevaReservaData({...nuevaReservaData, requiereAnticipo: e.target.checked})} />
-                                        <label htmlFor="requiereAnticipo" className="text-sm font-medium text-yellow-800">Requerir anticipo al cliente</label>
+                                        <label htmlFor="requiereAnticipo" className="text-sm font-medium text-yellow-800">Y Requerir anticipo al cliente</label>
                                     </div>
                                 )}
                                 {nuevaReservaData.servicio && nuevaReservaData.profesional_id && (
@@ -1777,7 +1777,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                                         else className += " text-gray-700 hover:bg-pink-50 cursor-pointer";
                                                         
                                                         return (
-                                                            <button key={idx} onClick={() => handleDateSelect(date)} disabled={!available || esPasado || esCerrado} className={className} title={esCerrado ? "Dia cerrado" : esPasado ? "Fecha pasada" : ""}>
+                                                            <button key={idx} onClick={() => handleDateSelect(date)} disabled={!available || esPasado || esCerrado} className={className} title={esCerrado ? "DAa cerrado" : esPasado ? "Fecha pasada" : ""}>
                                                                 {date.getDate()}
                                                             </button>
                                                         );
@@ -1827,7 +1827,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl font-bold">Disponibilidad Mensual</h3>
+                                <h3 className="text-xl font-bold">Y Disponibilidad Mensual</h3>
                                 <button onClick={() => setShowDisponibilidadModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">x</button>
                             </div>
                             
@@ -1914,7 +1914,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                     </div>
                 )}
 
-                {/* PESTANAS */}
+                {/* PESTAAAS */}
                 <div className="bg-white p-2 rounded-xl shadow-sm flex flex-wrap gap-2">
                     {tabsDisponibles.map(tab => (
                         <button key={tab.id} onClick={() => setTabActivo(tab.id)} className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${tabActivo === tab.id ? 'bg-pink-500 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
@@ -1940,7 +1940,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                 {tabActivo === 'clientes' && (userRole === 'admin' || userNivel >= 2) && (
                     <div className="bg-white rounded-xl shadow-sm p-6">
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-5">
-                            <h2 className="text-xl font-bold">Clientes Registrados ({clientesRegistrados.length})</h2>
+                            <h2 className="text-xl font-bold">Y Clientes Registrados ({clientesRegistrados.length})</h2>
                             <p className="text-sm text-gray-500">Score calculado con el historial de reservas, completadas y canceladas.</p>
                             <button onClick={() => { setShowClientesRegistrados(!showClientesRegistrados); if (!showClientesRegistrados) { loadClientesRegistrados(); loadClientesBloqueados(); } }} className="px-4 py-2 rounded-lg bg-pink-50 text-pink-600 text-sm font-medium hover:bg-pink-100">
                                 {showClientesRegistrados ? 'a2 Ocultar' : 'a14 Mostrar'}
@@ -2058,12 +2058,12 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
 
                                 <div className="flex flex-wrap items-center gap-2">
                                     <div className="inline-flex bg-gray-100 rounded-lg p-1">
-                                        <button onClick={() => setAgendaMode('dia')} className={`px-3 py-1.5 rounded-md text-sm font-medium ${agendaMode === 'dia' ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-600'}`}>Dia</button>
+                                        <button onClick={() => setAgendaMode('dia')} className={`px-3 py-1.5 rounded-md text-sm font-medium ${agendaMode === 'dia' ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-600'}`}>DAa</button>
                                         <button onClick={() => setAgendaMode('semana')} className={`px-3 py-1.5 rounded-md text-sm font-medium ${agendaMode === 'semana' ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-600'}`}>Semana</button>
                                     </div>
-                                    <button onClick={() => setAgendaDate(addDays(agendaDate, agendaMode === 'dia' ? -1 : -7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">{agendaMode === 'dia' ? 'Dia anterior' : 'Semana anterior'}</button>
+                                    <button onClick={() => setAgendaDate(addDays(agendaDate, agendaMode === 'dia' ? -1 : -7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">{agendaMode === 'dia' ? 'DAa anterior' : 'Semana anterior'}</button>
                                     <button onClick={() => setAgendaDate(new Date())} className="px-3 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 text-sm font-medium">Hoy</button>
-                                    <button onClick={() => setAgendaDate(addDays(agendaDate, agendaMode === 'dia' ? 1 : 7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">{agendaMode === 'dia' ? 'Dia siguiente' : 'Semana siguiente'}</button>
+                                    <button onClick={() => setAgendaDate(addDays(agendaDate, agendaMode === 'dia' ? 1 : 7))} className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-medium">{agendaMode === 'dia' ? 'DAa siguiente' : 'Semana siguiente'}</button>
                                 </div>
                             </div>
 
@@ -2124,7 +2124,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
 
                                         {agendaDayBookings.length === 0 && (
                                             <div className="absolute inset-x-4 top-8 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-center text-gray-500">
-                                                No hay citas para este dia
+                                                No hay citas para este dAa
                                             </div>
                                         )}
 
@@ -2247,7 +2247,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                     <>
                         {userRole === 'profesional' && profesional && (
                             <div className="bg-pink-50 border border-pink-200 rounded-lg p-4">
-                                <p className="text-pink-800 font-medium">Hola {profesional.nombre} - Mostrando tus reservas ({filteredBookings.length})</p>
+                                <p className="text-pink-800 font-medium">Hola {profesional.nombre} Y - Mostrando tus reservas ({filteredBookings.length})</p>
                             </div>
                         )}
 
@@ -2288,9 +2288,9 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                                 <span className="text-sm bg-pink-100 text-pink-700 px-2 py-1 rounded-full">{formatTo12Hour(b.hora_inicio)}</span>
                                             </div>
                                             <div className="text-sm space-y-1">
-                                                <p><span className="font-medium">Cliente:</span> {b.cliente_nombre}</p>
-                                                <p><span className="font-medium">WhatsApp:</span> {b.cliente_whatsapp}</p>
-                                                <p><span className="font-medium">Servicio:</span> {b.servicio}</p>
+                                                <p><span className="font-medium">Y Cliente:</span> {b.cliente_nombre}</p>
+                                                <p><span className="font-medium">Y WhatsApp:</span> {b.cliente_whatsapp}</p>
+                                                <p><span className="font-medium">Y Servicio:</span> {b.servicio}</p>
                                                 <p><span className="font-medium">YaYZ  Profesional:</span> {b.profesional_nombre || b.trabajador_nombre}</p>
                                             </div>
                                             <div className="flex justify-between items-center mt-3 pt-2 border-t">
@@ -2302,7 +2302,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                                         <button onClick={() => abrirModalReprogramar(b)} className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600">Reprogramar</button>
                                                     )}
                                                     {b.estado === 'Pendiente' && (
-                                                        <button onClick={() => confirmarPago(b.id, b)} className="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">Confirmar pago</button>
+                                                        <button onClick={() => confirmarPago(b.id, b)} className="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">a... Confirmar pago</button>
                                                     )}
                                                     {b.estado === 'Reservado' && (
                                                         <button onClick={() => handleCancel(b.id, b)} className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">a Cancelar</button>

@@ -1,5 +1,5 @@
-// admin-app.js - Panel de administracion (VERSION CORREGIDA CON HORARIOS POR DIA)
-// CON BOTON DE NUEVA RESERVA MANUAL, CALENDARIO DE DISPONIBILIDAD
+// admin-app.js - Panel de administracion (VERSIAN CORREGIDA CON HORARIOS POR DAA)
+// CON BOTAN DE NUEVA RESERVA MANUAL, CALENDARIO DE DISPONIBILIDAD
 
 console.log('ADMIN-APP.JS - Panel de administracion con Nueva Reserva y Calendario Disponibilidad');
 
@@ -1171,7 +1171,7 @@ function AdminApp() {
         console.log('Yi  Eliminando cliente:', whatsapp);
         try {
             if (typeof window.eliminarCliente !== 'function') {
-                alert('Error: Funcion no disponible');
+                alert('Error: FunciA3n no disponible');
                 return;
             }
             const resultado = await window.eliminarCliente(whatsapp);
@@ -1372,7 +1372,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
         
         const ok = await cancelBooking(id);
         if (ok) {
-            console.log('Enviando notificaciones de cancelacion por admin...');
+            console.log('Enviando notificaciones de cancelaciA3n por admin...');
             
             bookingData.cancelado_por = 'admin';
             
@@ -1388,7 +1388,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
     };
 
     const handleLogout = () => {
-        if (confirm('Cerrar sesion?')) {
+        if (confirm('ACerrar sesiA3n?')) {
             localStorage.removeItem('adminAuth');
             localStorage.removeItem('adminUser');
             localStorage.removeItem('adminLoginTime');
@@ -1545,18 +1545,18 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
 
     const getTabsDisponibles = () => {
         const tabs = [];
-        tabs.push({ id: 'reservas', icono: 'R', label: userRole === 'profesional' ? 'Mis Reservas' : 'Reservas' });
+        tabs.push({ id: 'reservas', icono: 'Y...', label: userRole === 'profesional' ? 'Mis Reservas' : 'Reservas' });
         
-        tabs.push({ id: 'agenda', icono: 'A', label: 'Agenda' });
+        tabs.push({ id: 'agenda', icono: 'a', label: 'Agenda' });
 
         if (userRole === 'admin' || (userRole === 'profesional' && userNivel >= 2)) {
-            tabs.push({ id: 'configuracion', icono: 'C', label: 'Configuracion' });
-            tabs.push({ id: 'clientes', icono: 'C', label: 'Clientes' });
+            tabs.push({ id: 'configuracion', icono: 'asTMi ', label: 'Configuracion' });
+            tabs.push({ id: 'clientes', icono: 'Y', label: 'Clientes' });
         }
         
         if (userRole === 'admin' || (userRole === 'profesional' && userNivel >= 3)) {
-            tabs.push({ id: 'servicios', icono: 'C', label: 'Servicios' });
-            tabs.push({ id: 'profesionales', icono: 'C', label: 'Profesionales' });
+            tabs.push({ id: 'servicios', icono: 'Y', label: 'Servicios' });
+            tabs.push({ id: 'profesionales', icono: 'Y', label: 'Profesionales' });
         }
         
         return tabs;
@@ -1628,13 +1628,13 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                                     e.target.style.display = 'none';
                                     const parent = e.target.parentElement;
                                     if (parent) {
-                                        parent.innerHTML = '<div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl shadow-lg flex items-center justify-center"><span class="text-2xl text-white"><i class="icon-calendar"></i></span></div>';
+                                        parent.innerHTML = '<div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl shadow-lg flex items-center justify-center"><span class="text-2xl text-white">Y</span></div>';
                                     }
                                 }}
                             />
                         ) : (
                             <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl shadow-lg flex items-center justify-center">
-                                <span className="text-2xl text-white"><i className="icon-calendar"></i></span>
+                                <span className="text-2xl text-white">Y</span>
                             </div>
                         )}
                         <div>
@@ -1644,22 +1644,22 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                        {/* BOTON NUEVA RESERVA */}
+                        {/* BOTAN NUEVA RESERVA */}
                         <button
                             onClick={abrirModalNuevaReserva}
                             className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-green-400 flex-1 sm:flex-none justify-center"
                         >
-                            <span className="text-lg">+</span>
+                            <span className="text-lg">Y...</span>
                             <span className="font-medium">Nueva Reserva</span>
                         </button>
 
-                        {/* BOTON CALENDARIO DE DISPONIBILIDAD */}
+                        {/* BOTAN CALENDARIO DE DISPONIBILIDAD */}
                         <button
                             onClick={abrirModalDisponibilidad}
                             className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-blue-400 flex-1 sm:flex-none justify-center"
                             title="Ver disponibilidad mensual"
                         >
-                            <span className="text-lg"><i className="icon-calendar"></i></span>
+                            <span className="text-lg">Y</span>
                             <span className="font-medium">Ver Disponibilidad</span>
                         </button>
 
@@ -1667,7 +1667,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                             onClick={() => window.location.href = 'editar-negocio.html'}
                             className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-pink-400 flex-1 sm:flex-none justify-center"
                         >
-                            <span className="text-lg"><i className="icon-calendar"></i></span>
+                            <span className="text-lg">Y</span>
                             <span className="font-medium">Editar Negocio</span>
                         </button>
 
@@ -1693,7 +1693,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                         <button 
                             onClick={handleLogout}
                             className="p-2 bg-pink-50 rounded-full hover:bg-pink-100 transition-all hover:scale-105 border border-pink-200"
-                            title="Cerrar sesion"
+                            title="Cerrar sesiA3n"
                         >
                             <i className="icon-log-out text-pink-600"></i>
                         </button>
@@ -1711,7 +1711,7 @@ Cualquier cambio, podes cancelarlo desde la app con hasta 1 hora de anticipacion
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Cliente *</label>
-                                    <input type="text" value={nuevaReservaData.cliente_nombre} onChange={(e) => setNuevaReservaData({...nuevaReservaData, cliente_nombre: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="Ej: Juan Perez" />
+                                    <input type="text" value={nuevaReservaData.cliente_nombre} onChange={(e) => setNuevaReservaData({...nuevaReservaData, cliente_nombre: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="Ej: Juan PArez" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp del Cliente *</label>

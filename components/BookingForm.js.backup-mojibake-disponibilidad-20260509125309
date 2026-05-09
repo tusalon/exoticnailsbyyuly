@@ -1,14 +1,14 @@
-// components/BookingForm.js - VERSION GENERICA
-// CON LOGICA COMPLETA DE NOTIFICACIONES (PUSH SIEMPRE)
+// components/BookingForm.js - VERSIÓN GENÉRICA
+// CON LÓGICA COMPLETA DE NOTIFICACIONES (PUSH SIEMPRE)
 // CORREGIDO: Hora local para archivos ICS
-// MODIFICADO: Solo notifica a la duena, NO al cliente
+// MODIFICADO: Solo notifica a la dueña, NO al cliente
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState(null);
 
     // ============================================
-    // FUNCION PARA PARTIR LINEAS LARGAS (RFC 5545)
+    // FUNCIÓN PARA PARTIR LÍNEAS LARGAS (RFC 5545)
     // ============================================
     function partirLinea(texto, limite = 70) {
         if (texto.length <= limite) return texto;
@@ -86,23 +86,23 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         
         const diaInicio = fechaInicio.getDate();
         const mesInicio = meses[fechaInicio.getMonth()];
-        const anoInicio = fechaInicio.getFullYear();
+        const añoInicio = fechaInicio.getFullYear();
         let horasInicio = fechaInicio.getHours();
         const minutosInicio = fechaInicio.getMinutes().toString().padStart(2, '0');
         const ampmInicio = horasInicio >= 12 ? 'PM' : 'AM';
         horasInicio = horasInicio % 12;
         horasInicio = horasInicio ? horasInicio : 12;
-        const fechaInicioStr = `${diaInicio} ${mesInicio} ${anoInicio} ${horasInicio}:${minutosInicio} ${ampmInicio}`;
+        const fechaInicioStr = `${diaInicio} ${mesInicio} ${añoInicio} ${horasInicio}:${minutosInicio} ${ampmInicio}`;
         
         const diaFin = fechaFin.getDate();
         const mesFin = meses[fechaFin.getMonth()];
-        const anoFin = fechaFin.getFullYear();
+        const añoFin = fechaFin.getFullYear();
         let horasFin = fechaFin.getHours();
         const minutosFin = fechaFin.getMinutes().toString().padStart(2, '0');
         const ampmFin = horasFin >= 12 ? 'PM' : 'AM';
         horasFin = horasFin % 12;
         horasFin = horasFin ? horasFin : 12;
-        const fechaFinStr = `${diaFin} ${mesFin} ${anoFin} ${horasFin}:${minutosFin} ${ampmFin}`;
+        const fechaFinStr = `${diaFin} ${mesFin} ${añoFin} ${horasFin}:${minutosFin} ${ampmFin}`;
         
         const linea1 = `Appointment Details`;
         const linea2 = `When: ${fechaInicioStr} - ${fechaFinStr} (CST)`;
@@ -182,7 +182,7 @@ END:VCALENDAR`;
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
-            console.log(' Archivo descargado');
+            console.log('✅ Archivo descargado');
             return true;
         } catch (error) {
             console.error('Error:', error);
@@ -191,7 +191,7 @@ END:VCALENDAR`;
     }
 
     // ============================================
-    // HANDLE SUBMIT (CORREGIDO - SOLO NOTIFICAR A DUENA)
+    // HANDLE SUBMIT (CORREGIDO - SOLO NOTIFICAR A DUEÑA)
     // ============================================
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -204,7 +204,7 @@ END:VCALENDAR`;
             const available = filterAvailableSlots(baseSlots, service.duracion, bookings);
 
             if (available.length === 0) {
-                setError("Ese horario ya no esta disponible.");
+                setError("Ese horario ya no está disponible.");
                 setSubmitting(false);
                 return;
             }
@@ -222,7 +222,7 @@ END:VCALENDAR`;
             const minFechaPermitida = new Date(Date.now() + (minAntelacionHoras * 60 * 60 * 1000));
 
             if (fechaTurno < minFechaPermitida) {
-                setError(`Solo se puede reservar con al menos ${minAntelacionHoras} hora(s) de anticipacion.`);
+                setError(`Solo se puede reservar con al menos ${minAntelacionHoras} hora(s) de anticipaciÃ³n.`);
                 setSubmitting(false);
                 return;
             }
@@ -243,28 +243,28 @@ END:VCALENDAR`;
             const result = await createBooking(bookingData);
             
             if (result.success && result.data) {
-                console.log(` Reserva creada en estado ${result.data.estado}`);
+                console.log(`✅ Reserva creada en estado ${result.data.estado}`);
                 
-                const nombreNegocio = configNegocio?.nombre || 'Mi Salon';
+                const nombreNegocio = configNegocio?.nombre || 'Mi Salón';
                 
-                //  ELIMINADO: No enviar WhatsApp al cliente
+                // ❌ ELIMINADO: No enviar WhatsApp al cliente
                 // if (requiereAnticipo && window.enviarMensajePago) {
                 //     await window.enviarMensajePago(result.data, configNegocio);
                 // } else if (!requiereAnticipo && window.enviarConfirmacionReserva) {
                 //     await window.enviarConfirmacionReserva(result.data, configNegocio);
                 // }
                 
-                //  SOLO notificar a la duena
+                // ✅ SOLO notificar a la dueña
                 if (requiereAnticipo) {
                     if (window.notificarReservaPendiente) {
                         await window.notificarReservaPendiente(result.data);
                     }
-                    console.log(' Duena notificada: RESERVA PENDIENTE DE PAGO (con datos + push)');
+                    console.log('📱 Dueña notificada: RESERVA PENDIENTE DE PAGO (con datos + push)');
                 } else {
                     if (window.notificarNuevaReserva) {
                         await window.notificarNuevaReserva(result.data);
                     }
-                    console.log(' Duena notificada: NUEVO TURNO AGENDADO (con push)');
+                    console.log('📱 Dueña notificada: NUEVO TURNO AGENDADO (con push)');
                 }
                 
                 // Generar y descargar archivo ICS
@@ -285,7 +285,7 @@ END:VCALENDAR`;
             }
         } catch (err) {
             console.error('Error:', err);
-            setError("Ocurrio un error al guardar la reserva.");
+            setError("Ocurrió un error al guardar la reserva.");
         } finally {
             setSubmitting(false);
         }
@@ -299,7 +299,7 @@ END:VCALENDAR`;
             <div className="bg-white/95 backdrop-blur-md w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl space-y-6 border-2 border-pink-300">
                 <div className="flex justify-between items-center border-b border-pink-200 pb-4">
                     <h3 className="text-xl font-bold text-pink-800 flex items-center gap-2">
-                        <span></span>
+                        <span>💖</span>
                         Confirmar Reserva
                     </h3>
                     <button onClick={onCancel} className="text-pink-400 hover:text-pink-600">
@@ -311,25 +311,25 @@ END:VCALENDAR`;
                     <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-4 rounded-xl border border-pink-200 space-y-2">
                         <div className="flex items-center gap-3 text-pink-700">
                             <span className="text-2xl">
-                                {service.nombre.toLowerCase().includes('corte') ? '' : 
-                                 service.nombre.toLowerCase().includes('una') ? '' :
-                                 service.nombre.toLowerCase().includes('peinado') ? '' :
-                                 service.nombre.toLowerCase().includes('maquillaje') ? '' : ''}
+                                {service.nombre.toLowerCase().includes('corte') ? '✂️' : 
+                                 service.nombre.toLowerCase().includes('uña') ? '💅' :
+                                 service.nombre.toLowerCase().includes('peinado') ? '💇‍♀️' :
+                                 service.nombre.toLowerCase().includes('maquillaje') ? '💄' : '✨'}
                             </span>
                             <span className="font-medium">{service.nombre}</span>
                         </div>
                         
                         <div className="flex items-center gap-3 text-pink-700">
-                            <span className="text-2xl"></span>
+                            <span className="text-2xl">👩‍🎨</span>
                             <span>Con: <strong>{profesional.nombre}</strong></span>
                         </div>
                         
                         <div className="flex items-center gap-3 text-pink-700">
-                            <span className="text-2xl"></span>
+                            <span className="text-2xl">📅</span>
                             <span>{window.formatFechaCompleta ? window.formatFechaCompleta(date) : date}</span>
                         </div>
                         <div className="flex items-center gap-3 text-pink-700">
-                            <span className="text-2xl"></span>
+                            <span className="text-2xl">⏰</span>
                             <span>{window.formatTo12Hour ? window.formatTo12Hour(time) : time} ({service.duracion} min)</span>
                         </div>
                     </div>
@@ -343,7 +343,7 @@ END:VCALENDAR`;
 
                         {error && (
                             <div className="text-pink-600 text-sm bg-pink-100 p-3 rounded-lg flex items-start gap-2 border border-pink-300">
-                                <span className="text-pink-500"></span>
+                                <span className="text-pink-500">⚠️</span>
                                 {error}
                             </div>
                         )}
@@ -360,9 +360,9 @@ END:VCALENDAR`;
                                 </>
                             ) : (
                                 <>
-                                    <span></span>
+                                    <span>💖</span>
                                     Confirmar Reserva
-                                    <span></span>
+                                    <span>✨</span>
                                 </>
                             )}
                         </button>
