@@ -1952,7 +1952,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                             <h2 className="text-xl font-bold">Clientes Registrados ({clientesRegistrados.length})</h2>
                             <p className="text-sm text-gray-500">Score calculado con el historial de reservas, completadas y canceladas.</p>
                             <button onClick={() => { setShowClientesRegistrados(!showClientesRegistrados); if (!showClientesRegistrados) { loadClientesRegistrados(); loadClientesBloqueados(); } }} className="px-4 py-2 rounded-lg bg-pink-50 text-pink-600 text-sm font-medium hover:bg-pink-100">
-                                {showClientesRegistrados ? 'a2 Ocultar' : 'a14 Mostrar'}
+                                {showClientesRegistrados ? '🙈 Ocultar' : '👁️ Mostrar'}
                             </button>
                         </div>
                         {showClientesRegistrados && (

@@ -1,6 +1,6 @@
 // sw.js - Service Worker para Exotic Nails by Yuly
 
-const CACHE_NAME = 'exoticnailsbyyuly-v6';
+const CACHE_NAME = 'exoticnailsbyyuly-v7';
 const urlsToCache = [
   '/exoticnailsbyyuly/',
   '/exoticnailsbyyuly/index.html',
