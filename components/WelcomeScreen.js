@@ -130,18 +130,18 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
 
             {/* Contenido scrolleable */}
             <div className="relative z-10 min-h-screen flex items-start justify-center py-16 px-4">
-                <div className="w-full max-w-2xl bg-white/10 hover:bg-white/15 backdrop-blur-sm p-6 sm:p-10 rounded-3xl shadow-xl border border-white/25 hover:border-pink-200/45 transition-all duration-300 my-auto">
+                <div className="w-full max-w-2xl bg-black/15 backdrop-blur-[1px] p-6 sm:p-10 rounded-3xl shadow-2xl border border-pink-300/25 my-auto">
                     <div className="text-center space-y-6">
                         {/* Logo o sticker */}
                         {config?.logo_url ? (
                             <img 
                                 src={config.logo_url} 
                                 alt={config.nombre} 
-                                className="w-20 h-20 sm:w-24 sm:h-24 object-contain mx-auto rounded-2xl shadow-xl ring-2 ring-white/35"
+                                className="w-20 h-20 sm:w-24 sm:h-24 object-contain mx-auto rounded-2xl shadow-2xl ring-4 ring-pink-300/35"
                             />
                         ) : (
                             <div 
-                                className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl mx-auto flex items-center justify-center shadow-xl ring-2 ring-white/35"
+                                className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl mx-auto flex items-center justify-center shadow-2xl ring-4 ring-pink-300/35"
                                 style={{ backgroundColor: colorPrimario }}
                             >
                                 <span className="text-4xl sm:text-5xl">{sticker}</span>
@@ -159,7 +159,7 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
                         </div>
                         
                         {cliente && (
-                            <p className="text-white/90 text-base sm:text-lg bg-black/15 backdrop-blur-sm inline-block px-4 py-1 rounded-full border border-white/10">
+                            <p className="text-white/90 text-base sm:text-lg bg-black/20 inline-block px-4 py-1 rounded-full">
                                 ✨ {cliente.nombre} ✨
                             </p>
                         )}
@@ -226,7 +226,7 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
 
                         {/* Horario de atención si está configurado */}
                         {config?.horario_atencion && (
-                            <div className="text-xs sm:text-sm text-white/85 bg-black/15 backdrop-blur-sm p-3 rounded-lg mt-4 border border-white/10">
+                            <div className="text-xs sm:text-sm text-white/80 bg-black/20 p-3 rounded-lg mt-4">
                                 <span className="font-semibold">🕐 Horario:</span> {config.horario_atencion}
                             </div>
                         )}
