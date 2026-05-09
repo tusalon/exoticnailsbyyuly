@@ -204,16 +204,16 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
             )}
 
             <div className="relative z-10 max-w-md w-full mx-auto">
-                <div className="bg-white/20 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-pink-300/50">
+                <div className="bg-white/10 hover:bg-white/15 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-white/25 hover:border-pink-200/45 transition-all duration-300">
                     <div className="text-center mb-6">
                         {logoUrl ? (
                             <img
                                 src={logoUrl}
                                 alt={nombreNegocio}
-                                className="w-20 h-20 object-contain mx-auto rounded-xl ring-4 ring-pink-300/50 bg-white/70"
+                                className="w-20 h-20 object-contain mx-auto rounded-xl ring-2 ring-white/35 bg-white/65"
                             />
                         ) : (
-                            <div className="w-20 h-20 rounded-xl mx-auto flex items-center justify-center bg-pink-500 ring-4 ring-pink-300/50">
+                            <div className="w-20 h-20 rounded-xl mx-auto flex items-center justify-center bg-pink-500 ring-2 ring-white/35">
                                 <span className="text-3xl">{sticker}</span>
                             </div>
                         )}
@@ -305,7 +305,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                                         }));
                                         window.location.href = 'admin.html';
                                     }}
-                                    className="w-full bg-white text-pink-600 py-4 rounded-xl font-bold hover:bg-pink-50 transition transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg text-lg border-2 border-pink-300"
+                                    className="w-full bg-white text-pink-600 py-4 rounded-xl font-bold hover:bg-pink-50 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 shadow-lg text-lg border border-pink-200/70"
                                 >
                                     <span className="text-xl">✂️</span>
                                     Ingresar como Profesional
@@ -316,7 +316,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                                 <button
                                     type="submit"
                                     disabled={verificando}
-                                    className="w-full bg-pink-500 text-white py-4 rounded-xl font-bold hover:bg-pink-600 transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg text-lg border-2 border-pink-300"
+                                    className="w-full bg-pink-500 text-white py-4 rounded-xl font-bold hover:bg-pink-600 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg text-lg border border-pink-200/70"
                                 >
                                     <span className="text-xl">{necesitaNombre ? '💅' : '📱'}</span>
                                     {verificando ? 'Verificando...' : necesitaNombre ? 'Registrarme y reservar' : 'Continuar'}
