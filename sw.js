@@ -1,6 +1,6 @@
 // sw.js - Service Worker para Exotic Nails by Yuly
 
-const CACHE_NAME = 'exoticnailsbyyuly-v7';
+const CACHE_NAME = 'exoticnailsbyyuly-v8';
 const urlsToCache = [
   '/exoticnailsbyyuly/',
   '/exoticnailsbyyuly/index.html',
@@ -141,4 +141,4 @@ self.addEventListener('message', event => {
 
 console.log('✅ Service Worker configurado para Exotic Nails by Yuly');
 console.log('📦 Cache:', CACHE_NAME);
-console.log('📄 📄 Archivos a cachear:', urlsToCache.length);
+console.log('📄 Archivos a cachear:', urlsToCache.length);
