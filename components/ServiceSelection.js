@@ -33,18 +33,18 @@ function ServiceSelection({ onSelect, selectedService }) {
 
     const getIconoServicio = (service) => {
         const nombre = service.nombre.toLowerCase();
-        if (nombre.includes('corte')) return '*';
-        if (nombre.includes('uña') || nombre.includes('una')) return '*';
-        if (nombre.includes('peinado')) return '*';
-        if (nombre.includes('maquillaje')) return '*';
-        return '*';
+        if (nombre.includes('corte')) return '✨';
+        if (nombre.includes('uña') || nombre.includes('una')) return '✨';
+        if (nombre.includes('peinado')) return '✨';
+        if (nombre.includes('maquillaje')) return '✨';
+        return '✨';
     };
 
     if (cargando) {
         return (
             <div className="space-y-4 animate-fade-in">
                 <h2 className="text-lg font-semibold text-pink-700 flex items-center gap-2">
-                    <span className="text-2xl">*</span>
+                    <span className="text-2xl">✨</span>
                     1. Elige tu servicio
                 </h2>
                 <div className="text-center py-8">
@@ -58,7 +58,7 @@ function ServiceSelection({ onSelect, selectedService }) {
     return (
         <div className="space-y-4 animate-fade-in">
             <h2 className="text-lg font-semibold text-pink-700 flex items-center gap-2">
-                <span className="text-2xl">*</span>
+                <span className="text-2xl">✨</span>
                 1. Elige tu servicio
                 {selectedService && (
                     <span className="text-xs bg-pink-100 text-pink-700 px-2 py-1 rounded-full ml-2">
