@@ -96,7 +96,19 @@ window.salonServicios = {
             const negocioId = getNegocioId();
             console.log('➕ Creando servicio para negocio:', negocioId);
             
-            const response = await fetch(
+            const payloadCrearServicio = {
+                negocio_id: negocioId,
+                nombre: servicio.nombre,
+                categoria: servicio.categoria || null,
+                duracion: servicio.duracion,
+                precio: servicio.precio,
+                descripcion: servicio.descripcion || '',
+                activo: true,
+                imagen: servicio.imagen || null,
+                horarios_permitidos: servicio.horarios_permitidos || []
+            };
+
+            let response = await fetch(
                 `${window.SUPABASE_URL}/rest/v1/servicios`,
                 {
                     method: 'POST',
@@ -106,21 +118,35 @@ window.salonServicios = {
                         'Content-Type': 'application/json',
                         'Prefer': 'return=representation'
                     },
-                    body: JSON.stringify({
-                        negocio_id: negocioId,
-                        nombre: servicio.nombre,
-                        duracion: servicio.duracion,
-                        precio: servicio.precio,
-                        descripcion: servicio.descripcion || '',
-                        activo: true,
-                        imagen: servicio.imagen || null,
-                        horarios_permitidos: servicio.horarios_permitidos || []
-                    })
+                    body: JSON.stringify(payloadCrearServicio)
                 }
             );
             
             if (!response.ok) {
                 const error = await response.text();
+                if (payloadCrearServicio.categoria && error.toLowerCase().includes('categoria')) {
+                    console.warn('La columna categoria no existe en servicios. Reintentando sin categoria. Ejecuta sql-servicios-categorias.sql para guardarla.');
+                    delete payloadCrearServicio.categoria;
+                    response = await fetch(
+                        `${window.SUPABASE_URL}/rest/v1/servicios`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'apikey': window.SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=representation'
+                            },
+                            body: JSON.stringify(payloadCrearServicio)
+                        }
+                    );
+                    if (response.ok) {
+                        const nuevoSinCategoria = await response.json();
+                        serviciosCache = await cargarServiciosDesdeDB() || serviciosCache;
+                        if (window.dispatchEvent) window.dispatchEvent(new Event('serviciosActualizados'));
+                        return nuevoSinCategoria[0];
+                    }
+                }
                 console.error('Error al crear servicio:', error);
                 return null;
             }
@@ -148,6 +174,7 @@ window.salonServicios = {
             
             const datosActualizar = {};
             if (cambios.nombre !== undefined) datosActualizar.nombre = cambios.nombre;
+            if (cambios.categoria !== undefined) datosActualizar.categoria = cambios.categoria;
             if (cambios.duracion !== undefined) datosActualizar.duracion = cambios.duracion;
             if (cambios.precio !== undefined) datosActualizar.precio = cambios.precio;
             if (cambios.descripcion !== undefined) datosActualizar.descripcion = cambios.descripcion;
@@ -155,7 +182,7 @@ window.salonServicios = {
             if (cambios.imagen !== undefined) datosActualizar.imagen = cambios.imagen;
             if (cambios.horarios_permitidos !== undefined) datosActualizar.horarios_permitidos = cambios.horarios_permitidos;
             
-            const response = await fetch(
+            let response = await fetch(
                 `${window.SUPABASE_URL}/rest/v1/servicios?negocio_id=eq.${negocioId}&id=eq.${id}`,
                 {
                     method: 'PATCH',
@@ -171,6 +198,29 @@ window.salonServicios = {
             
             if (!response.ok) {
                 const error = await response.text();
+                if (datosActualizar.categoria && error.toLowerCase().includes('categoria')) {
+                    console.warn('La columna categoria no existe en servicios. Reintentando sin categoria. Ejecuta sql-servicios-categorias.sql para guardarla.');
+                    delete datosActualizar.categoria;
+                    response = await fetch(
+                        `${window.SUPABASE_URL}/rest/v1/servicios?negocio_id=eq.${negocioId}&id=eq.${id}`,
+                        {
+                            method: 'PATCH',
+                            headers: {
+                                'apikey': window.SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=representation'
+                            },
+                            body: JSON.stringify(datosActualizar)
+                        }
+                    );
+                    if (response.ok) {
+                        const actualizadoSinCategoria = await response.json();
+                        serviciosCache = await cargarServiciosDesdeDB() || serviciosCache;
+                        if (window.dispatchEvent) window.dispatchEvent(new Event('serviciosActualizados'));
+                        return actualizadoSinCategoria[0];
+                    }
+                }
                 console.error('Error al actualizar servicio:', error);
                 return null;
             }
