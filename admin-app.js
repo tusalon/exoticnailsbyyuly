@@ -381,7 +381,9 @@ function AdminApp() {
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^\w\s]/g, '');
+        .replace(/[^\w\s]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 
     const limpiarTelefonoCliente = (valor) => String(valor || '')
         .replace(/\D/g, '')
@@ -390,15 +392,21 @@ function AdminApp() {
     const clientesManualFiltrados = React.useMemo(() => {
         const queryTexto = normalizarBusquedaCliente(busquedaClienteManual);
         const queryNumero = String(busquedaClienteManual || '').replace(/\D/g, '');
-        if (!queryTexto && !queryNumero) return [];
+        if (!queryTexto && !queryNumero) return clientesRegistrados.slice(0, 8);
 
         return clientesRegistrados
             .filter(cliente => {
-                const nombre = normalizarBusquedaCliente(cliente.nombre);
+                const textoCliente = normalizarBusquedaCliente([
+                    cliente.nombre,
+                    cliente.whatsapp,
+                    cliente.email,
+                    cliente.nota,
+                    cliente.observaciones
+                ].filter(Boolean).join(' '));
                 const whatsapp = String(cliente.whatsapp || '').replace(/\D/g, '');
-                return nombre.includes(queryTexto) || whatsapp.includes(queryNumero);
+                return textoCliente.includes(queryTexto) || whatsapp.includes(queryNumero);
             })
-            .slice(0, 6);
+            .slice(0, 8);
     }, [busquedaClienteManual, clientesRegistrados]);
 
     const seleccionarClienteManual = (cliente) => {
@@ -1769,7 +1777,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                 {!reservaEditando && (
                                     <div className="bg-pink-50/70 border border-pink-100 rounded-xl p-3">
                                         <label className="block text-sm font-semibold text-pink-800 mb-2">
-                                            Buscar cliente registrado
+                                            Elegir cliente registrado
                                         </label>
                                         <div className="relative">
                                             <input
@@ -1787,7 +1795,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                             <span className="absolute right-3 top-2.5 text-pink-400">🔎</span>
                                         </div>
                                         <p className="text-xs text-pink-600/70 mt-1">
-                                            Selecciona una clienta existente para completar los datos automáticamente.
+                                            Puedes elegir de la lista o buscar por nombre/WhatsApp. Si no existe, escribe los datos manualmente.
                                         </p>
                                         {cargandoClientes && (
                                             <p className="text-xs text-pink-500 mt-2">Cargando clientes...</p>
@@ -1796,6 +1804,9 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                             <p className="text-xs text-gray-500 mt-2">
                                                 No encontramos ese cliente. Puedes escribir los datos manualmente y se guardará al crear la reserva.
                                             </p>
+                                        )}
+                                        {!cargandoClientes && clientesRegistrados.length === 0 && (
+                                            <p className="text-xs text-gray-500 mt-2">Aún no hay clientes registrados.</p>
                                         )}
                                         {clientesManualFiltrados.length > 0 && (
                                             <div className="mt-2 max-h-52 overflow-y-auto rounded-lg border border-pink-100 bg-white divide-y divide-pink-50">
