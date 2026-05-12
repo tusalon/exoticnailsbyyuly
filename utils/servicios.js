@@ -280,6 +280,180 @@ window.salonServicios = {
     }
 };
 
+const CATEGORIAS_SERVICIOS_DEFAULT = [
+    { id: 'manicura', nombre: 'Manicura', icono: '💅', orden: 1, activo: true },
+    { id: 'pedicura', nombre: 'Pedicura', icono: '🦶', orden: 2, activo: true },
+    { id: 'faciales', nombre: 'Faciales', icono: '✨', orden: 3, activo: true },
+    { id: 'barberia', nombre: 'Barbería', icono: '💈', orden: 4, activo: true },
+    { id: 'cejas', nombre: 'Cejas', icono: '👁️', orden: 5, activo: true },
+    { id: 'combos', nombre: 'Combos', icono: '🎁', orden: 6, activo: true },
+    { id: 'otros', nombre: 'Otros', icono: '⭐', orden: 99, activo: true }
+];
+
+function slugCategoriaServicio(nombre) {
+    return String(nombre || 'categoria')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'categoria';
+}
+
+let categoriasServiciosCache = [];
+let ultimaActualizacionCategorias = 0;
+const CACHE_DURATION_CATEGORIAS = 5 * 60 * 1000;
+
+async function cargarCategoriasServiciosDesdeDB() {
+    try {
+        const negocioId = getNegocioId();
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/categorias_servicios?negocio_id=eq.${negocioId}&select=*&order=orden.asc,nombre.asc`,
+            {
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            console.warn('No se pudieron cargar categorias_servicios. Usando categorias por defecto:', await response.text());
+            categoriasServiciosCache = CATEGORIAS_SERVICIOS_DEFAULT;
+            ultimaActualizacionCategorias = Date.now();
+            return categoriasServiciosCache;
+        }
+
+        const data = await response.json();
+        categoriasServiciosCache = Array.isArray(data) && data.length > 0 ? data : CATEGORIAS_SERVICIOS_DEFAULT;
+        ultimaActualizacionCategorias = Date.now();
+        return categoriasServiciosCache;
+    } catch (error) {
+        console.warn('Error cargando categorias de servicios. Usando categorias por defecto:', error);
+        categoriasServiciosCache = CATEGORIAS_SERVICIOS_DEFAULT;
+        ultimaActualizacionCategorias = Date.now();
+        return categoriasServiciosCache;
+    }
+}
+
+window.salonCategoriasServicios = {
+    defaults: CATEGORIAS_SERVICIOS_DEFAULT,
+
+    getAll: async function(activos = true) {
+        if (Date.now() - ultimaActualizacionCategorias < CACHE_DURATION_CATEGORIAS && categoriasServiciosCache.length > 0) {
+            return activos ? categoriasServiciosCache.filter(c => c.activo !== false) : [...categoriasServiciosCache];
+        }
+
+        const categorias = await cargarCategoriasServiciosDesdeDB();
+        return activos ? categorias.filter(c => c.activo !== false) : categorias;
+    },
+
+    crear: async function(categoria) {
+        try {
+            const negocioId = getNegocioId();
+            const payload = {
+                negocio_id: negocioId,
+                nombre: categoria.nombre,
+                slug: categoria.slug || slugCategoriaServicio(categoria.nombre),
+                icono: categoria.icono || '⭐',
+                orden: categoria.orden || 99,
+                activo: categoria.activo !== false
+            };
+
+            const response = await fetch(`${window.SUPABASE_URL}/rest/v1/categorias_servicios`, {
+                method: 'POST',
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                console.error('Error creando categoria:', await response.text());
+                return null;
+            }
+
+            const creada = await response.json();
+            categoriasServiciosCache = await cargarCategoriasServiciosDesdeDB();
+            window.dispatchEvent?.(new Event('categoriasServiciosActualizadas'));
+            return creada[0];
+        } catch (error) {
+            console.error('Error en crear categoria:', error);
+            return null;
+        }
+    },
+
+    actualizar: async function(id, cambios) {
+        try {
+            const negocioId = getNegocioId();
+            const datos = {};
+            if (cambios.nombre !== undefined) datos.nombre = cambios.nombre;
+            if (cambios.slug !== undefined) datos.slug = cambios.slug || slugCategoriaServicio(cambios.nombre);
+            if (cambios.icono !== undefined) datos.icono = cambios.icono;
+            if (cambios.orden !== undefined) datos.orden = cambios.orden;
+            if (cambios.activo !== undefined) datos.activo = cambios.activo;
+
+            const response = await fetch(
+                `${window.SUPABASE_URL}/rest/v1/categorias_servicios?negocio_id=eq.${negocioId}&id=eq.${id}`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': window.SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(datos)
+                }
+            );
+
+            if (!response.ok) {
+                console.error('Error actualizando categoria:', await response.text());
+                return null;
+            }
+
+            const actualizada = await response.json();
+            categoriasServiciosCache = await cargarCategoriasServiciosDesdeDB();
+            window.dispatchEvent?.(new Event('categoriasServiciosActualizadas'));
+            return actualizada[0];
+        } catch (error) {
+            console.error('Error en actualizar categoria:', error);
+            return null;
+        }
+    },
+
+    eliminar: async function(id) {
+        try {
+            const negocioId = getNegocioId();
+            const response = await fetch(
+                `${window.SUPABASE_URL}/rest/v1/categorias_servicios?negocio_id=eq.${negocioId}&id=eq.${id}`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': window.SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                console.error('Error eliminando categoria:', await response.text());
+                return false;
+            }
+
+            categoriasServiciosCache = await cargarCategoriasServiciosDesdeDB();
+            window.dispatchEvent?.(new Event('categoriasServiciosActualizadas'));
+            return true;
+        } catch (error) {
+            console.error('Error en eliminar categoria:', error);
+            return false;
+        }
+    }
+};
+
 // ============================================
 // FUNCIONES PARA ASIGNAR PROFESIONALES A SERVICIOS
 // ============================================

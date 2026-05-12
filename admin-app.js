@@ -392,21 +392,21 @@ function AdminApp() {
     const clientesManualFiltrados = React.useMemo(() => {
         const queryTexto = normalizarBusquedaCliente(busquedaClienteManual);
         const queryNumero = String(busquedaClienteManual || '').replace(/\D/g, '');
-        if (!queryTexto && !queryNumero) return clientesRegistrados.slice(0, 8);
+        if (!queryTexto && !queryNumero) return clientesRegistrados;
 
         return clientesRegistrados
             .filter(cliente => {
-                const textoCliente = normalizarBusquedaCliente([
-                    cliente.nombre,
-                    cliente.whatsapp,
-                    cliente.email,
-                    cliente.nota,
-                    cliente.observaciones
-                ].filter(Boolean).join(' '));
+                const nombreOriginal = String(cliente.nombre || '').toLowerCase().trim();
+                const nombreNormalizado = normalizarBusquedaCliente(cliente.nombre);
                 const whatsapp = String(cliente.whatsapp || '').replace(/\D/g, '');
-                return textoCliente.includes(queryTexto) || whatsapp.includes(queryNumero);
-            })
-            .slice(0, 8);
+                const textoCliente = normalizarBusquedaCliente(Object.values(cliente || {}).join(' '));
+                const coincideNombre =
+                    nombreNormalizado.includes(queryTexto) ||
+                    nombreOriginal.includes(String(busquedaClienteManual || '').toLowerCase().trim());
+                const coincideTelefono = queryNumero && whatsapp.includes(queryNumero);
+                const coincideTexto = queryTexto && textoCliente.includes(queryTexto);
+                return coincideNombre || coincideTelefono || coincideTexto;
+            });
     }, [busquedaClienteManual, clientesRegistrados]);
 
     const seleccionarClienteManual = (cliente) => {
