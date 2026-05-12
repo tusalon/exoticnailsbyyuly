@@ -336,6 +336,7 @@ function AdminApp() {
     const [clientesBloqueados, setClientesBloqueados] = React.useState([]);
     const [cargandoBloqueados, setCargandoBloqueados] = React.useState(false);
     const [nuevoBloqueo, setNuevoBloqueo] = React.useState({ nombre: '', whatsapp: '', motivo: '' });
+    const [busquedaClienteManual, setBusquedaClienteManual] = React.useState('');
 
     const [showNuevaReservaModal, setShowNuevaReservaModal] = React.useState(false);
     const [reservaEditando, setReservaEditando] = React.useState(null);
@@ -374,6 +375,39 @@ function AdminApp() {
 
         const primerNombre = String(servicioNombre).split(' + ')[0]?.trim();
         return serviciosList.find(s => s.nombre === primerNombre) || null;
+    };
+
+    const normalizarBusquedaCliente = (valor) => String(valor || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\w\s]/g, '');
+
+    const limpiarTelefonoCliente = (valor) => String(valor || '')
+        .replace(/\D/g, '')
+        .replace(/^53(?=\d{8,}$)/, '');
+
+    const clientesManualFiltrados = React.useMemo(() => {
+        const queryTexto = normalizarBusquedaCliente(busquedaClienteManual);
+        const queryNumero = String(busquedaClienteManual || '').replace(/\D/g, '');
+        if (!queryTexto && !queryNumero) return [];
+
+        return clientesRegistrados
+            .filter(cliente => {
+                const nombre = normalizarBusquedaCliente(cliente.nombre);
+                const whatsapp = String(cliente.whatsapp || '').replace(/\D/g, '');
+                return nombre.includes(queryTexto) || whatsapp.includes(queryNumero);
+            })
+            .slice(0, 6);
+    }, [busquedaClienteManual, clientesRegistrados]);
+
+    const seleccionarClienteManual = (cliente) => {
+        setNuevaReservaData(prev => ({
+            ...prev,
+            cliente_nombre: cliente.nombre || '',
+            cliente_whatsapp: limpiarTelefonoCliente(cliente.whatsapp)
+        }));
+        setBusquedaClienteManual('');
     };
 
     // ============================================
@@ -1090,6 +1124,7 @@ function AdminApp() {
                     hora_inicio: '',
                     requiereAnticipo: false
                 });
+                setBusquedaClienteManual('');
                 
                 fetchBookings();
             } else {
@@ -1589,6 +1624,8 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
         setCurrentDate(new Date());
         setDiasLaborales([]);
         setFechasConHorarios({});
+        setBusquedaClienteManual('');
+        loadClientesRegistrados();
         setShowNuevaReservaModal(true);
     };
 
@@ -1610,6 +1647,8 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
         if (booking.fecha && booking.hora_inicio) {
             setHorariosDisponibles(prev => Array.from(new Set([...(prev || []), booking.hora_inicio])).sort());
         }
+        setBusquedaClienteManual('');
+        loadClientesRegistrados();
         setShowNuevaReservaModal(true);
     };
 
@@ -1727,6 +1766,57 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                 <button onClick={() => setShowNuevaReservaModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
                             </div>
                             <div className="space-y-4">
+                                {!reservaEditando && (
+                                    <div className="bg-pink-50/70 border border-pink-100 rounded-xl p-3">
+                                        <label className="block text-sm font-semibold text-pink-800 mb-2">
+                                            Buscar cliente registrado
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="search"
+                                                value={busquedaClienteManual}
+                                                onChange={(e) => setBusquedaClienteManual(e.target.value)}
+                                                onFocus={() => {
+                                                    if (clientesRegistrados.length === 0 && !cargandoClientes) {
+                                                        loadClientesRegistrados();
+                                                    }
+                                                }}
+                                                className="w-full border border-pink-200 rounded-lg px-3 py-2 pr-10 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none"
+                                                placeholder="Buscar por nombre o WhatsApp"
+                                            />
+                                            <span className="absolute right-3 top-2.5 text-pink-400">🔎</span>
+                                        </div>
+                                        <p className="text-xs text-pink-600/70 mt-1">
+                                            Selecciona una clienta existente para completar los datos automáticamente.
+                                        </p>
+                                        {cargandoClientes && (
+                                            <p className="text-xs text-pink-500 mt-2">Cargando clientes...</p>
+                                        )}
+                                        {busquedaClienteManual && !cargandoClientes && clientesManualFiltrados.length === 0 && (
+                                            <p className="text-xs text-gray-500 mt-2">
+                                                No encontramos ese cliente. Puedes escribir los datos manualmente y se guardará al crear la reserva.
+                                            </p>
+                                        )}
+                                        {clientesManualFiltrados.length > 0 && (
+                                            <div className="mt-2 max-h-52 overflow-y-auto rounded-lg border border-pink-100 bg-white divide-y divide-pink-50">
+                                                {clientesManualFiltrados.map(cliente => (
+                                                    <button
+                                                        key={`${cliente.whatsapp}-${cliente.id || cliente.fecha_registro || cliente.nombre}`}
+                                                        type="button"
+                                                        onClick={() => seleccionarClienteManual(cliente)}
+                                                        className="w-full px-3 py-2 text-left hover:bg-pink-50 flex items-center justify-between gap-3"
+                                                    >
+                                                        <span className="min-w-0">
+                                                            <span className="block font-medium text-gray-800 truncate">{cliente.nombre || 'Cliente sin nombre'}</span>
+                                                            <span className="block text-xs text-gray-500">+{String(cliente.whatsapp || '').replace(/\D/g, '')}</span>
+                                                        </span>
+                                                        <span className="text-xs text-pink-600 font-semibold shrink-0">Usar</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Cliente *</label>
                                     <input type="text" value={nuevaReservaData.cliente_nombre} onChange={(e) => setNuevaReservaData({...nuevaReservaData, cliente_nombre: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="Ej: Juan Pérez" />
