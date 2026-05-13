@@ -38,6 +38,7 @@ function ServiceSelection({ onSelect, selectedService }) {
     const [services, setServices] = React.useState([]);
     const [categorias, setCategorias] = React.useState(window.salonCategoriasServicios?.defaults || []);
     const [cargando, setCargando] = React.useState(true);
+    const datosCargadosRef = React.useRef(false);
     const [categoriaActiva, setCategoriaActiva] = React.useState('todos');
     const [serviciosSeleccionados, setServiciosSeleccionados] = React.useState([]);
 
@@ -55,7 +56,8 @@ function ServiceSelection({ onSelect, selectedService }) {
     }, []);
 
     const cargarDatos = async () => {
-        setCargando(true);
+        const mostrarIndicador = !datosCargadosRef.current;
+        if (mostrarIndicador) setCargando(true);
         try {
             const [serviciosActivos, categoriasActivas] = await Promise.all([
                 window.salonServicios?.getAll(true) || [],
@@ -67,7 +69,8 @@ function ServiceSelection({ onSelect, selectedService }) {
             console.error('Error cargando servicios/categorias:', error);
             setServices([]);
         } finally {
-            setCargando(false);
+            datosCargadosRef.current = true;
+            if (mostrarIndicador) setCargando(false);
         }
     };
 
@@ -77,6 +80,12 @@ function ServiceSelection({ onSelect, selectedService }) {
         );
         return services.length > 0 ? [{ id: 'todos', slug: 'todos', nombre: 'Todos', icono: '📋' }, ...visibles] : [];
     }, [services, categorias]);
+
+    React.useEffect(() => {
+        if (categoriaActiva !== 'todos' && !categoriasVisibles.some(categoria => catId(categoria) === categoriaActiva)) {
+            setCategoriaActiva('todos');
+        }
+    }, [categoriasVisibles, categoriaActiva]);
 
     const serviciosFiltrados = React.useMemo(() => {
         if (categoriaActiva === 'todos') return services;
