@@ -39,6 +39,32 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
         });
     };
 
+    const estaDentroHorarioTrabajo = (inicio, fin, indicesDelDia = []) => {
+        if (!indicesDelDia.length) return false;
+
+        const minutosTrabajo = indicesDelDia
+            .map(indice => timeToMinutes(indiceToHoraLegible(indice)))
+            .sort((a, b) => a - b);
+
+        const bloques = [];
+        let bloqueInicio = minutosTrabajo[0];
+        let bloqueFin = minutosTrabajo[0] + 30;
+
+        for (let i = 1; i < minutosTrabajo.length; i++) {
+            const minuto = minutosTrabajo[i];
+            if (minuto <= bloqueFin) {
+                bloqueFin = Math.max(bloqueFin, minuto + 30);
+            } else {
+                bloques.push({ inicio: bloqueInicio, fin: bloqueFin });
+                bloqueInicio = minuto;
+                bloqueFin = minuto + 30;
+            }
+        }
+
+        bloques.push({ inicio: bloqueInicio, fin: bloqueFin });
+        return bloques.some(bloque => inicio >= bloque.inicio && fin <= bloque.fin);
+    };
+
     React.useEffect(() => {
         const cargar = async () => {
             if (!service?.esMultiple || !date || !profesional?.esMultiple) return;
@@ -82,18 +108,18 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
                     let cursor = timeToMinutes(slot);
                     if (esHoy && cursor < minAllowed) return false;
 
-                    for (const item of datos) {
+                    for (let index = 0; index < datos.length; index++) {
+                        const item = datos[index];
                         const duracion = parseInt(item.servicio.duracion, 10) || 60;
                         const inicio = cursor;
                         const fin = inicio + duracion;
-                        const horaInicio = minutesToTime(inicio);
+                        const indicesDelDia = item.horarios[diaSemana] || [];
 
-                        const horariosDelDia = (item.horarios[diaSemana] || []).map(indiceToHoraLegible);
-                        if (!horariosDelDia.includes(horaInicio)) return false;
+                        if (!estaDentroHorarioTrabajo(inicio, fin, indicesDelDia)) return false;
 
-                        if (item.servicio.horarios_permitidos?.length && !item.servicio.horarios_permitidos.includes(horaInicio)) {
-                            return false;
-                        }
+                        // En una reserva multiple, solo la primera hora la elige la clienta.
+                        // Los servicios siguientes empiezan automaticamente al terminar el anterior.
+                        if (index === 0 && item.servicio.horarios_permitidos?.length && !item.servicio.horarios_permitidos.includes(minutesToTime(inicio))) return false;
 
                         if (slotTieneDescanso(inicio, fin, item.descansos[diaSemana] || [])) return false;
 
