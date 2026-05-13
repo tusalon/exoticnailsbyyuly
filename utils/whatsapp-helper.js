@@ -341,6 +341,7 @@ window.notificarNuevaReserva = async function(booking) {
         const { fechaConDia, horaFormateada } = getFechaHora(booking);
         const profesional = getProfesional(booking);
         const lineaCalendario = generarLineaCalendarioCliente(booking);
+        const lineaDireccion = generarLineaDireccion(config);
 
         const mensajeWhatsApp =
 `🎉 *NUEVA RESERVA - ${config.nombre}*
@@ -351,6 +352,7 @@ window.notificarNuevaReserva = async function(booking) {
 📅 *Fecha:* ${fechaConDia}
 ⏰ *Hora:* ${horaFormateada}
 👩‍🎨 *Profesional:* ${profesional}
+${lineaDireccion}
 ${lineaCalendario}
 
 ✅ Reserva confirmada automáticamente.`;
