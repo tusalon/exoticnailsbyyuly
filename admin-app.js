@@ -54,7 +54,7 @@ async function getAllBookings() {
         console.log('getAllBookings - negocioId:', negocioId);
         
         if (!negocioId) {
-            console.error('a No hay negocioId disponible');
+            console.error('❌ No hay negocioId disponible');
             return [];
         }
         
@@ -95,7 +95,7 @@ async function cancelBooking(id) {
             return false;
         }
         
-        console.log(`Yi  Cancelando reserva ${id} para negocio:`, negocioId);
+        console.log(`🗑️ Cancelando reserva ${id} para negocio:`, negocioId);
         
         const res = await fetch(
             `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&id=eq.${id}`,
@@ -186,7 +186,7 @@ async function marcarTurnosCompletados() {
         const minutosActuales = ahora.getMinutes();
         const totalMinutosActual = horaActual * 60 + minutosActuales;
         
-        console.log('a Verificando turnos para marcar como completados...');
+        console.log('🔎 Verificando turnos para marcar como completados...');
         console.log('Fecha LOCAL actual:', hoy);
         console.log('Hora LOCAL actual:', `${horaActual}:${minutosActuales}`);
         
@@ -1224,7 +1224,7 @@ function AdminApp() {
 
     const handleEliminarCliente = async (whatsapp) => {
         if (!confirm('¿Seguro que querés eliminar este cliente? Perderá el acceso a la app.')) return;
-        console.log('Yi  Eliminando cliente:', whatsapp);
+        console.log('🗑️ Eliminando cliente:', whatsapp);
         try {
             if (typeof window.eliminarCliente !== 'function') {
                 alert('Error: Función no disponible');
@@ -1291,7 +1291,7 @@ function AdminApp() {
 
     React.useEffect(() => {
         const intervalo = setInterval(() => {
-            console.log('a Verificando turnos para completar...');
+            console.log('🔎 Verificando turnos para completar...');
             
             marcarTurnosCompletados().then(() => {
                 fetchBookings();
@@ -1321,6 +1321,69 @@ function AdminApp() {
     // FUNCIÓN PARA CONFIRMAR PAGO
     // ============================================
     const confirmarPago = async (id, bookingData) => {
+        const reservasGrupo = bookingData?._reservasGrupo || [];
+        if (bookingData?._grupoVisual && reservasGrupo.length > 1) {
+            if (!confirm(`Confirmar que se recibió el pago de ${bookingData.cliente_nombre}? Los ${reservasGrupo.length} servicios pasarán a "Reservado".`)) return;
+
+            try {
+                for (const reserva of reservasGrupo) {
+                    const response = await fetch(
+                        `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${getNegocioId()}&id=eq.${reserva.id}`,
+                        {
+                            method: 'PATCH',
+                            headers: {
+                                'apikey': window.SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ estado: 'Reservado' })
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error('Error al confirmar pago del grupo');
+                    }
+                }
+
+                const configNegocio = await window.cargarConfiguracionNegocio();
+                const fechaConDia = window.formatFechaCompleta ?
+                    window.formatFechaCompleta(bookingData.fecha) :
+                    bookingData.fecha;
+                const horaFormateada = window.formatTo12Hour ?
+                    window.formatTo12Hour(bookingData.hora_inicio) :
+                    bookingData.hora_inicio;
+                const nombreNegocio = configNegocio?.nombre || (window.getNombreNegocio ? await window.getNombreNegocio() : 'Mi Negocio');
+                const lineaCalendario = typeof generarLineaCalendarioCliente === 'function' ? generarLineaCalendarioCliente(bookingData) : '';
+
+                const mensajeCliente =
+`*${nombreNegocio} - Turno Confirmado*
+
+Hola *${bookingData.cliente_nombre}*, tu turno ha sido CONFIRMADO.
+
+*Fecha:* ${fechaConDia}
+*Hora:* ${horaFormateada}
+*Servicios:* ${bookingData.servicio}
+*Profesionales:* ${bookingData.profesional_nombre || bookingData.trabajador_nombre}
+
+*Pago recibido correctamente*
+
+${lineaCalendario}
+
+Te esperamos.
+Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipación.`;
+
+                window.enviarWhatsApp(bookingData.cliente_whatsapp, mensajeCliente);
+
+                alert('Pago confirmado. Grupo de servicios reservado y cliente notificada.');
+                fetchBookings();
+                return;
+            } catch (error) {
+                console.error('Error confirmando pago del grupo:', error);
+                alert('Error al confirmar pago del grupo');
+                return;
+            }
+        }
+
         if (!confirm(`Confirmar que se recibió el pago de ${bookingData.cliente_nombre}? El turno pasará a "Reservado".`)) return;
 
         try {
@@ -1424,6 +1487,33 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     // HANDLE CANCEL
     // ============================================
     const handleCancel = async (id, bookingData) => {
+        const reservasGrupo = bookingData?._reservasGrupo || [];
+        if (bookingData?._grupoVisual && reservasGrupo.length > 1) {
+            if (!confirm(`¿Cancelar la cita completa de ${bookingData.cliente_nombre}? Se cancelarán ${reservasGrupo.length} servicios.`)) return;
+
+            let todoOk = true;
+            for (const reserva of reservasGrupo) {
+                const ok = await cancelBooking(reserva.id);
+                if (!ok) todoOk = false;
+            }
+
+            if (todoOk) {
+                console.log('📱 Enviando notificación de cancelación del grupo por admin...');
+                bookingData.cancelado_por = 'admin';
+
+                if (window.notificarCancelacion) {
+                    await window.notificarCancelacion(bookingData);
+                }
+
+                alert('Cita completa cancelada');
+                fetchBookings();
+            } else {
+                alert('Error al cancelar uno o más servicios del grupo');
+                fetchBookings();
+            }
+            return;
+        }
+
         if (!confirm(`¿Cancelar reserva de ${bookingData.cliente_nombre}?`)) return;
         
         const ok = await cancelBooking(id);
@@ -1494,6 +1584,70 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     const canceladasCount = bookings.filter(b => b.estado === 'Cancelado').length;
     const filteredBookings = getFilteredBookings();
 
+    const construirResumenGrupoVisual = (grupo) => {
+        if (grupo.length <= 1) return grupo[0];
+
+        const ordenadas = [...grupo].sort((a, b) => String(a.hora_inicio || '').localeCompare(String(b.hora_inicio || '')));
+        const primera = ordenadas[0];
+        const ultima = ordenadas[ordenadas.length - 1];
+        const servicios = ordenadas.map(b => b.servicio).filter(Boolean);
+        const profesionales = ordenadas.map(b => {
+            const profesional = b.profesional_nombre || b.trabajador_nombre || 'Sin profesional';
+            return `${b.servicio}: ${profesional}`;
+        });
+        const duracionTotal = ordenadas.reduce((total, b) => total + Number(b.duracion || Math.max(0, timeToMinutes(b.hora_fin || b.hora_inicio) - timeToMinutes(b.hora_inicio)) || 0), 0);
+
+        return {
+            ...primera,
+            id: primera.id,
+            _grupoVisual: true,
+            _reservasGrupo: ordenadas,
+            _grupoVisualId: `grupo-${ordenadas.map(b => b.id).join('-')}`,
+            servicio: servicios.join(' + '),
+            profesional_nombre: profesionales.join(' | '),
+            trabajador_nombre: profesionales.join(' | '),
+            hora_inicio: primera.hora_inicio,
+            hora_fin: ultima.hora_fin || calculateEndTime(ultima.hora_inicio, ultima.duracion || 60),
+            duracion: duracionTotal,
+            estado: primera.estado
+        };
+    };
+
+    const agruparReservasVisuales = (reservas) => {
+        const normalizarTelefonoLocal = (phone) => String(phone || '').replace(/\D/g, '').replace(/^53/, '');
+        const ordenadas = [...reservas].sort((a, b) =>
+            String(a.fecha || '').localeCompare(String(b.fecha || '')) ||
+            String(a.cliente_whatsapp || '').localeCompare(String(b.cliente_whatsapp || '')) ||
+            String(a.hora_inicio || '').localeCompare(String(b.hora_inicio || ''))
+        );
+        const grupos = [];
+
+        ordenadas.forEach((reserva) => {
+            const ultimoGrupo = grupos[grupos.length - 1];
+            const ultimaReserva = ultimoGrupo ? ultimoGrupo[ultimoGrupo.length - 1] : null;
+            const mismoCliente = ultimaReserva &&
+                normalizarTelefonoLocal(ultimaReserva.cliente_whatsapp) === normalizarTelefonoLocal(reserva.cliente_whatsapp) &&
+                String(ultimaReserva.cliente_nombre || '').trim().toLowerCase() === String(reserva.cliente_nombre || '').trim().toLowerCase();
+            const esConsecutiva = ultimaReserva &&
+                ultimaReserva.fecha === reserva.fecha &&
+                ultimaReserva.estado === reserva.estado &&
+                (ultimaReserva.hora_fin || calculateEndTime(ultimaReserva.hora_inicio, ultimaReserva.duracion || 60)) === reserva.hora_inicio;
+
+            if (mismoCliente && esConsecutiva) {
+                ultimoGrupo.push(reserva);
+            } else {
+                grupos.push([reserva]);
+            }
+        });
+
+        return grupos
+            .map(construirResumenGrupoVisual)
+            .sort((a, b) => String(a.fecha || '').localeCompare(String(b.fecha || '')) || String(a.hora_inicio || '').localeCompare(String(b.hora_inicio || '')));
+    };
+
+    const filteredVisualBookings = agruparReservasVisuales(filteredBookings)
+        .sort((a, b) => `${b.fecha || ''} ${b.hora_inicio || ''}`.localeCompare(`${a.fecha || ''} ${a.hora_inicio || ''}`));
+
     const startOfWeek = (date) => {
         const base = new Date(date);
         const day = base.getDay();
@@ -1513,9 +1667,9 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     const agendaDays = Array.from({ length: 7 }, (_, index) => addDays(agendaWeekStart, index));
     const agendaStartStr = formatDate(agendaDays[0]);
     const agendaEndStr = formatDate(agendaDays[6]);
-    const agendaBookings = bookings
+    const agendaBookings = agruparReservasVisuales(bookings
         .filter(b => b.fecha >= agendaStartStr && b.fecha <= agendaEndStr && b.estado !== 'Cancelado')
-        .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.hora_inicio.localeCompare(b.hora_inicio));
+        .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.hora_inicio.localeCompare(b.hora_inicio)));
     const agendaDateStr = formatDate(agendaDate);
     const agendaDayBookings = agendaBookings.filter(b => b.fecha === agendaDateStr);
     const agendaVisibleBookings = agendaMode === 'dia' ? agendaDayBookings : agendaBookings;
@@ -2251,7 +2405,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                             const statusClass = agendaStatusStyle[booking.estado] || 'bg-gray-500 border-gray-600 text-white';
                                             return (
                                                 <div
-                                                    key={booking.id}
+                                                    key={booking._grupoVisualId || booking.id}
                                                     className={`absolute left-2 right-2 rounded-lg border shadow-sm p-3 overflow-hidden ${statusClass}`}
                                                     style={{ top: `${getBookingTop(booking)}px`, height: `${getBookingHeight(booking)}px` }}
                                                 >
@@ -2259,7 +2413,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                                         <div className="min-w-0">
                                                             <p className="text-xs font-bold opacity-90">{formatTo12Hour(booking.hora_inicio)} - {formatTo12Hour(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60))}</p>
                                                             <p className="text-base font-bold truncate">{booking.cliente_nombre}</p>
-                                                            <p className="text-sm truncate opacity-90">{booking.servicio}</p>
+                                                            <p className="text-sm truncate opacity-90">{booking._grupoVisual ? `${booking._reservasGrupo.length} servicios · ${booking.servicio}` : booking.servicio}</p>
                                                             <p className="text-xs truncate opacity-80">{booking.profesional_nombre || booking.trabajador_nombre || 'Sin profesional'}</p>
                                                         </div>
                                                         {(booking.estado === 'Reservado' || booking.estado === 'Pendiente') && (
@@ -2324,16 +2478,16 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                                     const statusClass = agendaStatusStyle[booking.estado] || 'bg-gray-500 border-gray-600 text-white';
                                                     return (
                                                         <div
-                                                            key={booking.id}
+                                                            key={booking._grupoVisualId || booking.id}
                                                             className={`absolute left-2 right-2 rounded-lg border shadow-sm p-2 overflow-hidden ${statusClass}`}
                                                             style={{ top: `${getBookingTop(booking)}px`, height: `${getBookingHeight(booking)}px` }}
-                                                            title={`${booking.cliente_nombre} - ${booking.servicio}`}
+                                                            title={`${booking.cliente_nombre} - ${booking._grupoVisual ? `${booking._reservasGrupo.length} servicios: ` : ''}${booking.servicio}`}
                                                         >
                                                             <div className="flex items-start justify-between gap-2">
                                                                 <div className="min-w-0">
                                                                     <p className="text-xs font-bold leading-tight">{formatTo12Hour(booking.hora_inicio)} - {formatTo12Hour(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60))}</p>
                                                                     <p className="font-bold text-sm truncate">{booking.cliente_nombre}</p>
-                                                                    <p className="text-xs truncate opacity-90">{booking.servicio}</p>
+                                                                    <p className="text-xs truncate opacity-90">{booking._grupoVisual ? `${booking._reservasGrupo.length} servicios · ${booking.servicio}` : booking.servicio}</p>
                                                                     <p className="text-xs truncate opacity-80">{booking.profesional_nombre || booking.trabajador_nombre || 'Sin profesional'}</p>
                                                                 </div>
                                                                 {(booking.estado === 'Reservado' || booking.estado === 'Pendiente') && (
@@ -2366,7 +2520,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                     <>
                         {userRole === 'profesional' && profesional && (
                             <div className="bg-pink-50 border border-pink-200 rounded-lg p-4">
-                                <p className="text-pink-800 font-medium">Hola {profesional.nombre} - Mostrando tus reservas ({filteredBookings.length})</p>
+                                <p className="text-pink-800 font-medium">Hola {profesional.nombre} - Mostrando tus reservas ({filteredVisualBookings.length})</p>
                             </div>
                         )}
 
@@ -2383,7 +2537,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                 <button onClick={() => setStatusFilter('canceladas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'canceladas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Canceladas ({canceladasCount})</button>
                                 <button onClick={() => setStatusFilter('todas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'todas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Todas ({bookings.length})</button>
                                 {statusFilter === 'canceladas' && (
-                                    <button onClick={borrarCanceladas} className="px-4 py-2 bg-red-700 text-white rounded-lg text-sm">Yi  Borrar todas</button>
+                                    <button onClick={borrarCanceladas} className="px-4 py-2 bg-red-700 text-white rounded-lg text-sm">🗑️ Borrar todas</button>
                                 )}
                             </div>
                         </div>
@@ -2392,11 +2546,11 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                             <div className="text-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div><p className="text-pink-500 mt-4">Cargando reservas...</p></div>
                         ) : (
                             <div className="space-y-3">
-                                {filteredBookings.length === 0 ? (
+                                {filteredVisualBookings.length === 0 ? (
                                     <div className="text-center py-12 bg-white rounded-xl"><p className="text-gray-500">No hay reservas para mostrar</p></div>
                                 ) : (
-                                    filteredBookings.map(b => (
-                                        <div key={b.id} className={`bg-white p-4 rounded-xl shadow-sm border-l-4 ${
+                                    filteredVisualBookings.map(b => (
+                                        <div key={b._grupoVisualId || b.id} className={`bg-white p-4 rounded-xl shadow-sm border-l-4 ${
                                             b.estado === 'Reservado' ? 'border-l-pink-500' :
                                             b.estado === 'Pendiente' ? 'border-l-yellow-500' :
                                             b.estado === 'Completado' ? 'border-l-green-500' :
@@ -2404,13 +2558,23 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                         }`}>
                                             <div className="flex justify-between mb-2">
                                                 <span className="font-semibold">{window.formatFechaCompleta ? window.formatFechaCompleta(b.fecha) : b.fecha}</span>
-                                                <span className="text-sm bg-pink-100 text-pink-700 px-2 py-1 rounded-full">{formatTo12Hour(b.hora_inicio)}</span>
+                                                <span className="text-sm bg-pink-100 text-pink-700 px-2 py-1 rounded-full">{formatTo12Hour(b.hora_inicio)}{b._grupoVisual ? ` - ${formatTo12Hour(b.hora_fin)}` : ''}</span>
                                             </div>
                                             <div className="text-sm space-y-1">
                                                 <p><span className="font-medium">Cliente:</span> {b.cliente_nombre}</p>
                                                 <p><span className="font-medium">WhatsApp:</span> {b.cliente_whatsapp}</p>
                                                 <p><span className="font-medium">Servicio:</span> {b.servicio}</p>
                                                 <p><span className="font-medium">👩‍🎨 Profesional:</span> {b.profesional_nombre || b.trabajador_nombre}</p>
+                                                {b._grupoVisual && (
+                                                    <div className="mt-2 rounded-lg bg-pink-50 border border-pink-100 p-2 space-y-1">
+                                                        <p className="text-xs font-bold text-pink-700">Cita agrupada: {b._reservasGrupo.length} servicios consecutivos</p>
+                                                        {b._reservasGrupo.map(item => (
+                                                            <p key={item.id} className="text-xs text-gray-700">
+                                                                {formatTo12Hour(item.hora_inicio)} - {formatTo12Hour(item.hora_fin || calculateEndTime(item.hora_inicio, item.duracion || 60))} · {item.servicio} · {item.profesional_nombre || item.trabajador_nombre || 'Sin profesional'}
+                                                            </p>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="flex justify-between items-center mt-3 pt-2 border-t">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${b.estado === 'Reservado' ? 'bg-pink-100 text-pink-700' : b.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-700' : b.estado === 'Completado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

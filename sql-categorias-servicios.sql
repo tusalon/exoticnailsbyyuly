@@ -23,6 +23,29 @@ ON public.categorias_servicios (negocio_id, activo, orden);
 CREATE INDEX IF NOT EXISTS idx_servicios_negocio_categoria
 ON public.servicios (negocio_id, categoria);
 
+ALTER TABLE public.categorias_servicios ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "categorias_servicios_read" ON public.categorias_servicios;
+CREATE POLICY "categorias_servicios_read"
+ON public.categorias_servicios FOR SELECT
+USING (true);
+
+DROP POLICY IF EXISTS "categorias_servicios_insert" ON public.categorias_servicios;
+CREATE POLICY "categorias_servicios_insert"
+ON public.categorias_servicios FOR INSERT
+WITH CHECK (true);
+
+DROP POLICY IF EXISTS "categorias_servicios_update" ON public.categorias_servicios;
+CREATE POLICY "categorias_servicios_update"
+ON public.categorias_servicios FOR UPDATE
+USING (true)
+WITH CHECK (true);
+
+DROP POLICY IF EXISTS "categorias_servicios_delete" ON public.categorias_servicios;
+CREATE POLICY "categorias_servicios_delete"
+ON public.categorias_servicios FOR DELETE
+USING (true);
+
 INSERT INTO public.categorias_servicios (negocio_id, nombre, slug, icono, orden, activo)
 SELECT n.id, c.nombre, c.slug, c.icono, c.orden, true
 FROM public.negocios n

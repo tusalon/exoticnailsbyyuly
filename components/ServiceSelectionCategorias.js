@@ -39,6 +39,7 @@ function ServiceSelection({ onSelect, selectedService }) {
     const [categorias, setCategorias] = React.useState(window.salonCategoriasServicios?.defaults || []);
     const [cargando, setCargando] = React.useState(true);
     const [categoriaActiva, setCategoriaActiva] = React.useState('todos');
+    const [serviciosSeleccionados, setServiciosSeleccionados] = React.useState([]);
 
     React.useEffect(() => {
         cargarDatos();
@@ -82,6 +83,48 @@ function ServiceSelection({ onSelect, selectedService }) {
         return services.filter(servicio => inferirCategoriaCliente(servicio, categorias) === categoriaActiva);
     }, [services, categorias, categoriaActiva]);
 
+    const totalSeleccion = React.useMemo(() => {
+        return serviciosSeleccionados.reduce((total, servicio) => ({
+            duracion: total.duracion + (parseInt(servicio.duracion, 10) || 0),
+            precio: total.precio + (parseFloat(servicio.precio) || 0)
+        }), { duracion: 0, precio: 0 });
+    }, [serviciosSeleccionados]);
+
+    const toggleServicio = (servicio) => {
+        setServiciosSeleccionados(prev => {
+            const existe = prev.some(item => item.id === servicio.id);
+            return existe ? prev.filter(item => item.id !== servicio.id) : [...prev, servicio];
+        });
+    };
+
+    const combinarHorariosPermitidos = (seleccionados) => {
+        const listas = seleccionados
+            .map(servicio => Array.isArray(servicio.horarios_permitidos) ? servicio.horarios_permitidos : [])
+            .filter(lista => lista.length > 0);
+        if (listas.length === 0) return [];
+        return listas.reduce((base, lista) => base.filter(hora => lista.includes(hora)));
+    };
+
+    const continuar = () => {
+        if (serviciosSeleccionados.length === 0) return;
+
+        if (serviciosSeleccionados.length === 1) {
+            onSelect(serviciosSeleccionados[0]);
+            return;
+        }
+
+        onSelect({
+            id: `multi-${serviciosSeleccionados.map(s => s.id).join('-')}`,
+            esMultiple: true,
+            servicios: serviciosSeleccionados,
+            nombre: serviciosSeleccionados.map(s => s.nombre).join(' + '),
+            duracion: totalSeleccion.duracion,
+            precio: totalSeleccion.precio,
+            categoria: 'combos',
+            horarios_permitidos: combinarHorariosPermitidos(serviciosSeleccionados)
+        });
+    };
+
     if (cargando) {
         return (
             <div className="space-y-4 animate-fade-in">
@@ -102,7 +145,7 @@ function ServiceSelection({ onSelect, selectedService }) {
             <h2 className="text-lg font-semibold text-pink-700 flex items-center gap-2">
                 <span className="text-2xl">✨</span>
                 1. Elige tu servicio
-                {selectedService && <span className="text-xs bg-pink-100 text-pink-700 px-2 py-1 rounded-full ml-1">Seleccionado</span>}
+                {serviciosSeleccionados.length > 0 && <span className="text-xs bg-pink-100 text-pink-700 px-2 py-1 rounded-full ml-1">{serviciosSeleccionados.length} seleccionados</span>}
             </h2>
 
             {services.length === 0 ? (
@@ -133,12 +176,13 @@ function ServiceSelection({ onSelect, selectedService }) {
                     <div className="grid grid-cols-1 gap-3">
                         {serviciosFiltrados.map(service => {
                             const categoria = getCategoriaCliente(service, categorias);
+                            const estaSeleccionado = serviciosSeleccionados.some(item => item.id === service.id);
                             return (
                                 <button
                                     key={service.id}
-                                    onClick={() => onSelect(service)}
+                                    onClick={() => toggleServicio(service)}
                                     className={`p-4 rounded-xl border-2 text-left transition-all duration-200 transform hover:scale-[1.02] ${
-                                        selectedService?.id === service.id ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-300 shadow-md' : 'border-pink-200 bg-white/80 backdrop-blur-sm hover:border-pink-400 hover:bg-pink-50/50 hover:shadow-sm'
+                                        estaSeleccionado ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-300 shadow-md' : 'border-pink-200 bg-white/80 backdrop-blur-sm hover:border-pink-400 hover:bg-pink-50/50 hover:shadow-sm'
                                     }`}
                                 >
                                     <div className="flex justify-between items-start">
@@ -153,6 +197,9 @@ function ServiceSelection({ onSelect, selectedService }) {
                                             {service.descripcion && <p className="text-sm text-pink-600/70 mt-1 ml-8">{service.descripcion}</p>}
                                         </div>
                                         <div className="flex flex-col items-end gap-1 ml-4 shrink-0">
+                                            <span className={`text-xs px-2 py-1 rounded-full border ${estaSeleccionado ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-pink-600 border-pink-200'}`}>
+                                                {estaSeleccionado ? '✓ Elegido' : 'Agregar'}
+                                            </span>
                                             <span className="text-pink-600 font-bold text-lg">${service.precio}</span>
                                             <span className="flex items-center text-pink-500 text-xs bg-pink-50 px-2 py-1 rounded-full border border-pink-200">{service.duracion} min</span>
                                         </div>
@@ -162,6 +209,28 @@ function ServiceSelection({ onSelect, selectedService }) {
                         })}
                     </div>
                 </>
+            )}
+
+            {serviciosSeleccionados.length > 0 && (
+                <div className="sticky bottom-3 z-20 bg-white border border-pink-200 shadow-xl rounded-2xl p-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <p className="font-bold text-pink-800">
+                                {serviciosSeleccionados.length} servicio{serviciosSeleccionados.length === 1 ? '' : 's'} · {totalSeleccion.duracion} min · ${totalSeleccion.precio}
+                            </p>
+                            <p className="text-xs text-pink-500 truncate">
+                                {serviciosSeleccionados.map(s => s.nombre).join(' + ')}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={continuar}
+                            className="bg-pink-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-pink-700 transition"
+                        >
+                            Continuar
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );

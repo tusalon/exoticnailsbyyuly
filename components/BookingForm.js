@@ -199,6 +199,85 @@ END:VCALENDAR`;
         setError(null);
 
         try {
+            if (service.esMultiple && profesional.esMultiple) {
+                const configNegocio = await window.cargarConfiguracionNegocio();
+                const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
+                const minAntelacionHoras = configGlobal?.min_antelacion_horas ?? 2;
+                const requiereAnticipo = configNegocio?.requiere_anticipo === true;
+
+                const [year, month, day] = date.split('-').map(Number);
+                const [hours, minutes] = time.split(':').map(Number);
+                const fechaTurno = new Date(year, month - 1, day, hours, minutes, 0);
+                const minFechaPermitida = new Date(Date.now() + (minAntelacionHoras * 60 * 60 * 1000));
+
+                if (fechaTurno < minFechaPermitida) {
+                    setError(`Solo se puede reservar con al menos ${minAntelacionHoras} hora(s) de anticipación.`);
+                    setSubmitting(false);
+                    return;
+                }
+
+                let cursor = time;
+                const creadas = [];
+
+                for (const item of profesional.asignaciones) {
+                    const servicioItem = item.servicio;
+                    const profesionalItem = item.profesional;
+                    const bookings = await getBookingsByDateAndProfesional(date, profesionalItem.id);
+                    const available = filterAvailableSlots([cursor], servicioItem.duracion, bookings);
+
+                    if (available.length === 0) {
+                        setError(`El horario de ${servicioItem.nombre} con ${profesionalItem.nombre} ya no está disponible.`);
+                        setSubmitting(false);
+                        return;
+                    }
+
+                    const endTime = calculateEndTime(cursor, servicioItem.duracion);
+                    const bookingData = {
+                        cliente_nombre: cliente.nombre,
+                        cliente_whatsapp: cliente.whatsapp,
+                        servicio: servicioItem.nombre,
+                        duracion: servicioItem.duracion,
+                        profesional_id: profesionalItem.id,
+                        profesional_nombre: profesionalItem.nombre,
+                        fecha: date,
+                        hora_inicio: cursor,
+                        hora_fin: endTime,
+                        estado: requiereAnticipo ? "Pendiente" : "Reservado"
+                    };
+
+                    const result = await createBooking(bookingData);
+                    if (!result.success || !result.data) throw new Error('No se pudo crear una de las reservas');
+                    creadas.push(result.data);
+                    cursor = endTime;
+                }
+
+                const bookingResumen = {
+                    ...creadas[0],
+                    servicio: service.nombre,
+                    duracion: service.duracion,
+                    profesional_nombre: profesional.asignaciones.map(item => `${item.servicio.nombre}: ${item.profesional.nombre}`).join(' | '),
+                    hora_inicio: time,
+                    hora_fin: cursor,
+                    reservas_relacionadas: creadas
+                };
+
+                const nombreNegocio = configNegocio?.nombre || 'Mi Salón';
+                if (requiereAnticipo) {
+                    if (window.notificarReservaPendiente) await window.notificarReservaPendiente(bookingResumen);
+                } else {
+                    if (window.notificarNuevaReserva) await window.notificarNuevaReserva(bookingResumen);
+                }
+
+                const icsContent = generarArchivoCalendario(bookingResumen, nombreNegocio);
+                const fechaSegura = bookingResumen.fecha.replace(/-/g, '');
+                const horaSegura = bookingResumen.hora_inicio.replace(':', '');
+                const nombreSeguro = bookingResumen.cliente_nombre.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                descargarArchivoICS(icsContent, `turno-${fechaSegura}-${horaSegura}-${nombreSeguro}.ics`);
+
+                onSubmit(bookingResumen);
+                return;
+            }
+
             const bookings = await getBookingsByDateAndProfesional(date, profesional.id);
             const baseSlots = [time];
             const available = filterAvailableSlots(baseSlots, service.duracion, bookings);

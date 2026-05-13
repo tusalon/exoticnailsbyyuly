@@ -38,8 +38,17 @@ function ProfesionalSelector({ onSelect, selectedProfesional, selectedService })
 
         try {
             if (window.getProfesionalesPorServicio) {
-                const profesionalesDelServicio = await window.getProfesionalesPorServicio(selectedService.id);
-                const idsDelServicio = profesionalesDelServicio.map(p => p.id);
+                let idsDelServicio = [];
+                if (selectedService.esMultiple && Array.isArray(selectedService.servicios)) {
+                    const listas = await Promise.all(
+                        selectedService.servicios.map(servicio => window.getProfesionalesPorServicio(servicio.id))
+                    );
+                    const listasIds = listas.map(lista => lista.map(p => p.id));
+                    idsDelServicio = listasIds.reduce((comunes, ids) => comunes.filter(id => ids.includes(id)));
+                } else {
+                    const profesionalesDelServicio = await window.getProfesionalesPorServicio(selectedService.id);
+                    idsDelServicio = profesionalesDelServicio.map(p => p.id);
+                }
                 const filtrados = profesionalesList.filter(p => idsDelServicio.includes(p.id));
                 setProfesionales(filtrados);
 
@@ -85,7 +94,7 @@ function ProfesionalSelector({ onSelect, selectedProfesional, selectedService })
             {selectedService && profesionales.length === 0 ? (
                 <div className="text-center p-8 bg-pink-50 rounded-xl border border-pink-200">
                     <p className="text-pink-700 font-medium">No hay profesionales disponibles para "{selectedService.nombre}"</p>
-                    <p className="text-sm text-pink-600 mt-1">El administrador debe asignar profesionales a este servicio</p>
+                    <p className="text-sm text-pink-600 mt-1">El administrador debe asignar profesionales que puedan realizar esta selección</p>
                 </div>
             ) : profesionales.length === 0 ? (
                 <div className="text-center p-8 bg-white/80 backdrop-blur-sm rounded-xl border border-pink-200">
