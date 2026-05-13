@@ -27,15 +27,20 @@ async function getConfigNegocio() {
     try {
         const config = await window.cargarConfiguracionNegocio();
         return {
+            ...(config || {}),
             nombre: config?.nombre || 'Mi Negocio',
             telefono: config?.telefono || '00000000',
-            ntfyTopic: config?.ntfy_topic || 'notificaciones'
+            direccion: config?.direccion || config?.ubicacion || config?.direccion_negocio || config?.address || '',
+            ubicacion: config?.ubicacion || config?.direccion || config?.direccion_negocio || config?.address || '',
+            ntfyTopic: config?.ntfy_topic || config?.ntfyTopic || 'notificaciones'
         };
     } catch (error) {
         console.error('Error obteniendo configuración:', error);
         return {
             nombre: 'Mi Negocio',
             telefono: '00000000',
+            direccion: '',
+            ubicacion: '',
             ntfyTopic: 'notificaciones'
         };
     }
@@ -76,7 +81,13 @@ function getProfesional(booking) {
 }
 
 function generarLineaDireccion(configNegocio) {
-    const direccion = String(configNegocio?.direccion || configNegocio?.ubicacion || '').trim();
+    const direccion = String(
+        configNegocio?.direccion ||
+        configNegocio?.ubicacion ||
+        configNegocio?.direccion_negocio ||
+        configNegocio?.address ||
+        ''
+    ).trim();
     return direccion ? `\n📍 *Dirección:* ${direccion}\n` : '';
 }
 
@@ -96,7 +107,7 @@ function aplicarPlantillaPago(configNegocio, booking, datos) {
         fecha: datos.fechaConDia || '',
         hora: datos.horaFormateada || '',
         profesional: datos.profesional || '',
-        direccion: String(configNegocio?.direccion || configNegocio?.ubicacion || '').trim()
+        direccion: String(configNegocio?.direccion || configNegocio?.ubicacion || configNegocio?.direccion_negocio || configNegocio?.address || '').trim()
     };
 
     return plantilla.replace(/\$\{?monto_anticipo\}?|\{([^}]+)\}/g, (match, key) => {
