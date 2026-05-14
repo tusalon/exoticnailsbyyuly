@@ -349,6 +349,7 @@ function AdminApp() {
         hora_inicio: '',
         requiereAnticipo: false
     });
+    const [serviciosManualSeleccionados, setServiciosManualSeleccionados] = React.useState([]);
     
     // Estado para el modal de disponibilidad
     const [showDisponibilidadModal, setShowDisponibilidadModal] = React.useState(false);
@@ -375,6 +376,34 @@ function AdminApp() {
 
         const primerNombre = String(servicioNombre).split(' + ')[0]?.trim();
         return serviciosList.find(s => s.nombre === primerNombre) || null;
+    };
+
+    const getServiciosManualSeleccionados = () => {
+        const nombres = serviciosManualSeleccionados.length > 0
+            ? serviciosManualSeleccionados
+            : String(nuevaReservaData.servicio || '').split(' + ').map(nombre => nombre.trim()).filter(Boolean);
+
+        const servicios = nombres
+            .map(nombre => serviciosList.find(s => s.nombre === nombre))
+            .filter(Boolean);
+
+        const servicioUnico = getServicioManual();
+        return servicios.length > 0 ? servicios : (servicioUnico ? [servicioUnico] : []);
+    };
+
+    const toggleServicioManual = (nombreServicio) => {
+        const existe = serviciosManualSeleccionados.includes(nombreServicio);
+        const actualizados = existe
+            ? serviciosManualSeleccionados.filter(nombre => nombre !== nombreServicio)
+            : [...serviciosManualSeleccionados, nombreServicio];
+
+        setServiciosManualSeleccionados(actualizados);
+        setNuevaReservaData(data => ({
+            ...data,
+            servicio: actualizados.join(' + '),
+            fecha: '',
+            hora_inicio: ''
+        }));
     };
 
     const normalizarBusquedaCliente = (valor) => String(valor || '')
@@ -521,15 +550,22 @@ function AdminApp() {
             }
 
             try {
-                const servicio = getServicioManual();
-                if (!window.getProfesionalesPorServicio || !servicio) {
+                const serviciosSeleccionados = getServiciosManualSeleccionados();
+                if (!window.getProfesionalesPorServicio || serviciosSeleccionados.length === 0) {
                     setProfesionalesManualFiltrados(profesionalesList);
                     return;
                 }
 
-                const profesionalesDelServicio = await window.getProfesionalesPorServicio(servicio.id);
-                const idsPermitidos = profesionalesDelServicio.map(prof => Number(prof.id)).filter(Boolean);
-                const filtrados = idsPermitidos.length > 0
+                const idsPorServicio = await Promise.all(serviciosSeleccionados.map(async servicio => {
+                    const profesionalesDelServicio = await window.getProfesionalesPorServicio(servicio.id);
+                    return profesionalesDelServicio.map(prof => Number(prof.id)).filter(Boolean);
+                }));
+
+                const idsConRestriccion = idsPorServicio.filter(ids => ids.length > 0);
+                const idsPermitidos = idsConRestriccion.length > 0
+                    ? idsConRestriccion.reduce((permitidos, ids) => permitidos.filter(id => ids.includes(id)))
+                    : [];
+                const filtrados = idsConRestriccion.length > 0
                     ? profesionalesList.filter(prof => idsPermitidos.includes(Number(prof.id)))
                     : profesionalesList;
                 setProfesionalesManualFiltrados(filtrados);
@@ -549,7 +585,7 @@ function AdminApp() {
         };
 
         filtrarProfesionalesManual();
-    }, [nuevaReservaData.servicio, profesionalesList, serviciosList]);
+    }, [nuevaReservaData.servicio, serviciosManualSeleccionados, profesionalesList, serviciosList]);
 
     // CARGAR DÍAS CERRADOS AL INICIO
     React.useEffect(() => {
@@ -593,8 +629,9 @@ function AdminApp() {
             }
 
             try {
-                const servicio = getServicioManual();
-                if (!servicio) return;
+                const serviciosSeleccionados = getServiciosManualSeleccionados();
+                if (serviciosSeleccionados.length === 0) return;
+                const duracionTotal = serviciosSeleccionados.reduce((total, servicio) => total + Number(servicio.duracion || 60), 0);
 
                 const horarios = await window.salonConfig.getHorariosProfesional(nuevaReservaData.profesional_id);
                 const [year, month, day] = nuevaReservaData.fecha.split('-').map(Number);
@@ -630,7 +667,7 @@ function AdminApp() {
                 const disponibles = slotsTrabajo.filter(slot => {
                     const [horas, minutos] = slot.split(':').map(Number);
                     const slotStart = horas * 60 + minutos;
-                    const slotEnd = slotStart + servicio.duracion;
+                    const slotEnd = slotStart + duracionTotal;
 
                     if (!reservaEditando && esHoy && slotEnd <= totalMinutosActual) {
                         return false;
@@ -672,7 +709,7 @@ function AdminApp() {
         };
 
         cargarHorarios();
-    }, [nuevaReservaData.profesional_id, nuevaReservaData.fecha, nuevaReservaData.servicio, serviciosList, reservaEditando]);
+    }, [nuevaReservaData.profesional_id, nuevaReservaData.fecha, nuevaReservaData.servicio, serviciosManualSeleccionados, serviciosList, reservaEditando]);
 
     // ============================================
     // FUNCIONES DE DISPONIBILIDAD
@@ -684,12 +721,14 @@ function AdminApp() {
         try {
             const year = fecha.getFullYear();
             const month = fecha.getMonth();
-            const servicio = getServicioManual();
-            if (!servicio && !reservaEditando) {
+            const serviciosSeleccionados = getServiciosManualSeleccionados();
+            if (serviciosSeleccionados.length === 0 && !reservaEditando) {
                 setFechasConHorarios({});
                 return;
             }
-            const duracion = servicio?.duracion || reservaEditando?.duracion || 60;
+            const duracion = serviciosSeleccionados.length > 0
+                ? serviciosSeleccionados.reduce((total, servicio) => total + Number(servicio.duracion || 60), 0)
+                : (reservaEditando?.duracion || 60);
             
             const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
             const horasTrabajo = horarios.horas || [];
@@ -748,8 +787,11 @@ function AdminApp() {
                 }
 
                 let horariosDelDia = horariosPorDia[diaSemana] || horasTrabajo;
-                if (servicio?.horarios_permitidos?.length) {
-                    horariosDelDia = horariosDelDia.filter(indice => servicio.horarios_permitidos.includes(indiceToHoraLegible(indice)));
+                const horariosPermitidos = serviciosSeleccionados
+                    .map(servicio => servicio.horarios_permitidos || [])
+                    .filter(horarios => horarios.length > 0);
+                if (horariosPermitidos.length > 0) {
+                    horariosDelDia = horariosDelDia.filter(indice => horariosPermitidos.every(horarios => horarios.includes(indiceToHoraLegible(indice))));
                 }
 
                 if (horariosDelDia.length === 0) {
@@ -1034,8 +1076,8 @@ function AdminApp() {
         }
 
         try {
-            const servicio = getServicioManual();
-            if (!servicio) {
+            const serviciosSeleccionados = getServiciosManualSeleccionados();
+            if (serviciosSeleccionados.length === 0) {
                 alert('Servicio no encontrado');
                 return;
             }
@@ -1046,7 +1088,9 @@ function AdminApp() {
                 return;
             }
             
-            const endTime = calculateEndTime(nuevaReservaData.hora_inicio, servicio.duracion);
+            const servicio = reservaEditando ? serviciosSeleccionados[0] : null;
+            const duracionTotal = serviciosSeleccionados.reduce((total, item) => total + Number(item.duracion || 60), 0);
+            const endTime = calculateEndTime(nuevaReservaData.hora_inicio, reservaEditando ? servicio.duracion : duracionTotal);
             const configNegocio = await window.cargarConfiguracionNegocio();
             const requiereAnticipo = nuevaReservaData.requiereAnticipo;
             
@@ -1054,7 +1098,7 @@ function AdminApp() {
                 cliente_nombre: nuevaReservaData.cliente_nombre,
                 cliente_whatsapp: `53${nuevaReservaData.cliente_whatsapp.replace(/\D/g, '').replace(/^53(?=\d{8,}$)/, '')}`,
                 servicio: nuevaReservaData.servicio,
-                duracion: servicio.duracion,
+                duracion: reservaEditando ? servicio.duracion : duracionTotal,
                 profesional_id: nuevaReservaData.profesional_id,
                 profesional_nombre: profesional.nombre,
                 fecha: nuevaReservaData.fecha,
@@ -1097,7 +1141,44 @@ function AdminApp() {
                     result = { success: true, data: Array.isArray(data) ? data[0] : data };
                 }
             } else {
-                result = await createBooking(bookingData);
+                const reservasCreadas = [];
+                let horaActual = nuevaReservaData.hora_inicio;
+
+                for (const servicioSeleccionado of serviciosSeleccionados) {
+                    const horaFin = calculateEndTime(horaActual, servicioSeleccionado.duracion);
+                    const reservaServicio = {
+                        ...bookingData,
+                        servicio: servicioSeleccionado.nombre,
+                        duracion: servicioSeleccionado.duracion,
+                        hora_inicio: horaActual,
+                        hora_fin: horaFin
+                    };
+
+                    const resultadoServicio = await createBooking(reservaServicio);
+                    if (!resultadoServicio.success || !resultadoServicio.data) {
+                        result = resultadoServicio;
+                        break;
+                    }
+
+                    reservasCreadas.push(resultadoServicio.data);
+                    horaActual = horaFin;
+                }
+
+                if (reservasCreadas.length === serviciosSeleccionados.length) {
+                    result = {
+                        success: true,
+                        data: {
+                            ...reservasCreadas[0],
+                            servicio: reservasCreadas.map(reserva => reserva.servicio).join(' + '),
+                            duracion: duracionTotal,
+                            hora_inicio: reservasCreadas[0].hora_inicio,
+                            hora_fin: reservasCreadas[reservasCreadas.length - 1].hora_fin,
+                            _reservasGrupo: reservasCreadas
+                        }
+                    };
+                } else if (reservasCreadas.length > 0) {
+                    result = { success: true, data: reservasCreadas[0], parcial: true };
+                }
             }
             
             if (result.success && result.data) {
@@ -1110,7 +1191,9 @@ function AdminApp() {
                     }
                 }
 
-                alert(`Reserva creada exitosamente como "${result.data.estado}"`);
+                alert(result.parcial
+                    ? 'Se crearon algunos servicios, pero uno falló. Revisa la agenda.'
+                    : `Reserva creada exitosamente como "${result.data.estado}"`);
                 
                 try {
                     if (reservaEditando) {
@@ -1144,6 +1227,7 @@ function AdminApp() {
                     hora_inicio: '',
                     requiereAnticipo: false
                 });
+                setServiciosManualSeleccionados([]);
                 setBusquedaClienteManual('');
                 
                 fetchBookings();
@@ -1798,6 +1882,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
         setCurrentDate(new Date());
         setDiasLaborales([]);
         setFechasConHorarios({});
+        setServiciosManualSeleccionados([]);
         setBusquedaClienteManual('');
         loadClientesRegistrados();
         setShowNuevaReservaModal(true);
@@ -1818,6 +1903,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
         setCurrentDate(booking.fecha ? new Date(`${booking.fecha}T00:00:00`) : new Date());
         setDiasLaborales([]);
         setFechasConHorarios({});
+        setServiciosManualSeleccionados([booking.servicio].filter(Boolean));
         if (booking.fecha && booking.hora_inicio) {
             setHorariosDisponibles(prev => Array.from(new Set([...(prev || []), booking.hora_inicio])).sort());
         }
@@ -2006,17 +2092,51 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Servicio *</label>
-                                    <select
-                                        value={nuevaReservaData.servicio}
-                                        onChange={(e) => setNuevaReservaData({...nuevaReservaData, servicio: e.target.value, fecha: '', hora_inicio: ''})}
-                                        className="w-full border rounded-lg px-3 py-2"
-                                    >
-                                        <option value="">Seleccionar servicio</option>
-                                        {serviciosList.map(s => (
-                                            <option key={s.id} value={s.nombre}>{s.nombre} ({s.duracion} min - ${s.precio})</option>
-                                        ))}
-                                    </select>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Servicio{!reservaEditando ? 's' : ''} *
+                                    </label>
+                                    {reservaEditando ? (
+                                        <select
+                                            value={nuevaReservaData.servicio}
+                                            onChange={(e) => {
+                                                setServiciosManualSeleccionados([e.target.value].filter(Boolean));
+                                                setNuevaReservaData({...nuevaReservaData, servicio: e.target.value, fecha: '', hora_inicio: ''});
+                                            }}
+                                            className="w-full border rounded-lg px-3 py-2"
+                                        >
+                                            <option value="">Seleccionar servicio</option>
+                                            {serviciosList.map(s => (
+                                                <option key={s.id} value={s.nombre}>{s.nombre} ({s.duracion} min - ${s.precio})</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="border rounded-xl p-2 max-h-60 overflow-y-auto bg-white space-y-2">
+                                            {serviciosList.map(s => {
+                                                const seleccionado = serviciosManualSeleccionados.includes(s.nombre);
+                                                return (
+                                                    <button
+                                                        key={s.id}
+                                                        type="button"
+                                                        onClick={() => toggleServicioManual(s.nombre)}
+                                                        className={`w-full text-left p-3 rounded-lg border transition ${seleccionado ? 'bg-pink-50 border-pink-300 text-pink-800' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+                                                    >
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <span className="font-medium">{s.nombre}</span>
+                                                            <span className={`w-5 h-5 rounded border flex items-center justify-center text-xs ${seleccionado ? 'bg-pink-500 border-pink-500 text-white' : 'border-gray-300'}`}>
+                                                                {seleccionado ? '✓' : ''}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-1">{s.duracion} min - ${s.precio}</p>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {!reservaEditando && serviciosManualSeleccionados.length > 0 && (
+                                        <p className="text-xs text-pink-600 mt-2">
+                                            {serviciosManualSeleccionados.length} servicio{serviciosManualSeleccionados.length === 1 ? '' : 's'} · {getServiciosManualSeleccionados().reduce((total, s) => total + Number(s.duracion || 60), 0)} min
+                                        </p>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Profesional *</label>
@@ -2087,7 +2207,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                     </div>
                                 )}
                                 <div className="flex gap-3 pt-4">
-                                    <button onClick={() => { setShowNuevaReservaModal(false); setReservaEditando(null); }} className="flex-1 px-4 py-2 border rounded-lg">Cancelar</button>
+                                    <button onClick={() => { setShowNuevaReservaModal(false); setReservaEditando(null); setServiciosManualSeleccionados([]); }} className="flex-1 px-4 py-2 border rounded-lg">Cancelar</button>
                                     {reservaEditando?.estado === 'Pendiente' && (
                                         <button
                                             onClick={async () => {
