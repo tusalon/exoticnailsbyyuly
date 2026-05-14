@@ -528,8 +528,10 @@ function AdminApp() {
                 }
 
                 const profesionalesDelServicio = await window.getProfesionalesPorServicio(servicio.id);
-                const idsPermitidos = profesionalesDelServicio.map(prof => prof.id);
-                const filtrados = profesionalesList.filter(prof => idsPermitidos.includes(prof.id));
+                const idsPermitidos = profesionalesDelServicio.map(prof => Number(prof.id)).filter(Boolean);
+                const filtrados = idsPermitidos.length > 0
+                    ? profesionalesList.filter(prof => idsPermitidos.includes(Number(prof.id)))
+                    : profesionalesList;
                 setProfesionalesManualFiltrados(filtrados);
 
                 if (nuevaReservaData.profesional_id && !filtrados.some(prof => prof.id === parseInt(nuevaReservaData.profesional_id))) {
@@ -604,8 +606,9 @@ function AdminApp() {
                 
                 const slotsTrabajo = horasTrabajo.map(indice => indiceToHoraLegible(indice));
                 
+                const negocioId = typeof getNegocioId === "function" ? getNegocioId() : (window.getNegocioIdFromConfig ? window.getNegocioIdFromConfig() : localStorage.getItem("negocioId"));
                 const response = await fetch(
-                    `${window.SUPABASE_URL}/rest/v1/reservas?fecha=eq.${nuevaReservaData.fecha}&profesional_id=eq.${nuevaReservaData.profesional_id}&estado=neq.Cancelado&select=id,hora_inicio,hora_fin`,
+                    `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&fecha=eq.${nuevaReservaData.fecha}&profesional_id=eq.${nuevaReservaData.profesional_id}&estado=neq.Cancelado&select=id,hora_inicio,hora_fin`,
                     {
                         headers: {
                             'apikey': window.SUPABASE_ANON_KEY,
@@ -614,14 +617,13 @@ function AdminApp() {
                     }
                 );
                 
+                if (!response.ok) throw new Error(await response.text());
                 const reservas = (await response.json()).filter(reserva => reserva.id !== reservaEditando?.id);
 
                 const ahora = new Date();
                 const horaActual = ahora.getHours();
                 const minutosActuales = ahora.getMinutes();
                 const totalMinutosActual = horaActual * 60 + minutosActuales;
-                const minAllowedMinutes = totalMinutosActual + 120;
-
                 const hoy = getCurrentLocalDate();
                 const esHoy = nuevaReservaData.fecha === hoy;
 
@@ -630,7 +632,7 @@ function AdminApp() {
                     const slotStart = horas * 60 + minutos;
                     const slotEnd = slotStart + servicio.duracion;
 
-                    if (esHoy && slotStart < minAllowedMinutes) {
+                    if (!reservaEditando && esHoy && slotEnd <= totalMinutosActual) {
                         return false;
                     }
 
@@ -653,7 +655,15 @@ function AdminApp() {
                     return (hA * 60 + mA) - (hB * 60 + mB);
                 });
 
-                setHorariosDisponibles(disponibles);
+                if (reservaEditando?.fecha === nuevaReservaData.fecha && reservaEditando?.hora_inicio) {
+                    disponibles.push(reservaEditando.hora_inicio);
+                }
+
+                setHorariosDisponibles(Array.from(new Set(disponibles)).sort((a, b) => {
+                    const [hA, mA] = a.split(':').map(Number);
+                    const [hB, mB] = b.split(':').map(Number);
+                    return (hA * 60 + mA) - (hB * 60 + mB);
+                }));
 
             } catch (error) {
                 console.error('Error cargando horarios:', error);
@@ -693,8 +703,9 @@ function AdminApp() {
             const fechaInicio = primerDia.toISOString().split('T')[0];
             const fechaFin = ultimoDia.toISOString().split('T')[0];
             
+            const negocioId = typeof getNegocioId === "function" ? getNegocioId() : (window.getNegocioIdFromConfig ? window.getNegocioIdFromConfig() : localStorage.getItem("negocioId"));
             const response = await fetch(
-                `${window.SUPABASE_URL}/rest/v1/reservas?fecha=gte.${fechaInicio}&fecha=lte.${fechaFin}&profesional_id=eq.${profesionalId}&estado=neq.Cancelado&select=id,fecha,hora_inicio,hora_fin`,
+                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&fecha=gte.${fechaInicio}&fecha=lte.${fechaFin}&profesional_id=eq.${profesionalId}&estado=neq.Cancelado&select=id,fecha,hora_inicio,hora_fin`,
                 {
                     headers: {
                         'apikey': window.SUPABASE_ANON_KEY,
@@ -703,6 +714,7 @@ function AdminApp() {
                 }
             );
             
+            if (!response.ok) throw new Error(await response.text());
             const reservas = (await response.json()).filter(reserva => reserva.id !== reservaEditando?.id);
             
             const reservasPorFecha = {};
