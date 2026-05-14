@@ -39,30 +39,9 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
         });
     };
 
-    const estaDentroHorarioTrabajo = (inicio, fin, indicesDelDia = []) => {
+    const esInicioConfigurado = (inicio, indicesDelDia = []) => {
         if (!indicesDelDia.length) return false;
-
-        const minutosTrabajo = indicesDelDia
-            .map(indice => timeToMinutes(indiceToHoraLegible(indice)))
-            .sort((a, b) => a - b);
-
-        const bloques = [];
-        let bloqueInicio = minutosTrabajo[0];
-        let bloqueFin = minutosTrabajo[0] + 30;
-
-        for (let i = 1; i < minutosTrabajo.length; i++) {
-            const minuto = minutosTrabajo[i];
-            if (minuto <= bloqueFin) {
-                bloqueFin = Math.max(bloqueFin, minuto + 30);
-            } else {
-                bloques.push({ inicio: bloqueInicio, fin: bloqueFin });
-                bloqueInicio = minuto;
-                bloqueFin = minuto + 30;
-            }
-        }
-
-        bloques.push({ inicio: bloqueInicio, fin: bloqueFin });
-        return bloques.some(bloque => inicio >= bloque.inicio && fin <= bloque.fin);
+        return indicesDelDia.some(indice => timeToMinutes(indiceToHoraLegible(indice)) === inicio);
     };
 
     React.useEffect(() => {
@@ -115,11 +94,11 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
                         const fin = inicio + duracion;
                         const indicesDelDia = item.horarios[diaSemana] || [];
 
-                        if (!estaDentroHorarioTrabajo(inicio, fin, indicesDelDia)) return false;
+                        if (!esInicioConfigurado(inicio, indicesDelDia)) return false;
 
                         // En una reserva multiple, solo la primera hora la elige la clienta.
                         // Los servicios siguientes empiezan automaticamente al terminar el anterior.
-                        if (index === 0 && item.servicio.horarios_permitidos?.length && !item.servicio.horarios_permitidos.includes(minutesToTime(inicio))) return false;
+                        if (item.servicio.horarios_permitidos?.length && !item.servicio.horarios_permitidos.includes(minutesToTime(inicio))) return false;
 
                         if (slotTieneDescanso(inicio, fin, item.descansos[diaSemana] || [])) return false;
 
