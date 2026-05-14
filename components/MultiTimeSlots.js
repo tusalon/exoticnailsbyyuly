@@ -120,7 +120,7 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
 
                         // En una reserva multiple, solo la primera hora la elige la clienta.
                         // Los servicios siguientes empiezan automaticamente al terminar el anterior.
-                        if (item.servicio.horarios_permitidos?.length && !item.servicio.horarios_permitidos.includes(minutesToTime(inicio))) return false;
+                        if (index === 0 && item.servicio.horarios_permitidos?.length && !item.servicio.horarios_permitidos.includes(minutesToTime(inicio))) return false;
 
                         if (slotTieneDescanso(inicio, fin, item.descansos[diaSemana] || [])) return false;
 
