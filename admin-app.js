@@ -277,6 +277,32 @@ const slotTieneDescanso = (slotStart, slotEnd, descansosDelDia = []) => {
     });
 };
 
+const estaDentroBloqueTrabajo = (inicio, fin, indicesDelDia = [], duracionTurno = 60) => {
+    if (!indicesDelDia.length) return false;
+
+    const minutosTrabajo = indicesDelDia
+        .map(indice => timeToMinutes(indiceToHoraLegible(indice)))
+        .sort((a, b) => a - b);
+
+    const bloques = [];
+    let bloqueInicio = minutosTrabajo[0];
+    let bloqueFin = minutosTrabajo[0] + duracionTurno;
+
+    for (let i = 1; i < minutosTrabajo.length; i++) {
+        const minuto = minutosTrabajo[i];
+        if (minuto <= bloqueFin) {
+            bloqueFin = Math.max(bloqueFin, minuto + duracionTurno);
+        } else {
+            bloques.push({ inicio: bloqueInicio, fin: bloqueFin });
+            bloqueInicio = minuto;
+            bloqueFin = minuto + duracionTurno;
+        }
+    }
+
+    bloques.push({ inicio: bloqueInicio, fin: bloqueFin });
+    return bloques.some(bloque => inicio >= bloque.inicio && fin <= bloque.fin);
+};
+
 const formatTo12Hour = (time) => {
     const [hours, minutes] = time.split(':');
     const h = parseInt(hours);
@@ -632,6 +658,8 @@ function AdminApp() {
                 const serviciosSeleccionados = getServiciosManualSeleccionados();
                 if (serviciosSeleccionados.length === 0) return;
                 const duracionTotal = serviciosSeleccionados.reduce((total, servicio) => total + Number(servicio.duracion || 60), 0);
+                const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
+                const duracionTurno = Number(configGlobal?.duracion_turnos || 60);
 
                 const horarios = await window.salonConfig.getHorariosProfesional(nuevaReservaData.profesional_id);
                 const [year, month, day] = nuevaReservaData.fecha.split('-').map(Number);
@@ -670,6 +698,10 @@ function AdminApp() {
                     const slotEnd = slotStart + duracionTotal;
 
                     if (!reservaEditando && esHoy && slotEnd <= totalMinutosActual) {
+                        return false;
+                    }
+
+                    if (!estaDentroBloqueTrabajo(slotStart, slotEnd, horasTrabajo, duracionTurno)) {
                         return false;
                     }
 
@@ -729,6 +761,8 @@ function AdminApp() {
             const duracion = serviciosSeleccionados.length > 0
                 ? serviciosSeleccionados.reduce((total, servicio) => total + Number(servicio.duracion || 60), 0)
                 : (reservaEditando?.duracion || 60);
+            const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
+            const duracionTurno = Number(configGlobal?.duracion_turnos || 60);
             
             const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
             const horasTrabajo = horarios.horas || [];
@@ -806,6 +840,10 @@ function AdminApp() {
                     const slotStr = indiceToHoraLegible(horaIndice);
                     const slotStart = timeToMinutes(slotStr);
                     const slotEnd = slotStart + duracion;
+
+                    if (!estaDentroBloqueTrabajo(slotStart, slotEnd, horariosDelDia, duracionTurno)) {
+                        return false;
+                    }
 
                     if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) {
                         return false;
