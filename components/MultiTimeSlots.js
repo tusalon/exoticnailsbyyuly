@@ -39,9 +39,30 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
         });
     };
 
-    const esInicioConfigurado = (inicio, indicesDelDia = []) => {
+    const estaDentroBloqueTrabajo = (inicio, fin, indicesDelDia = [], duracionTurno = 60) => {
         if (!indicesDelDia.length) return false;
-        return indicesDelDia.some(indice => timeToMinutes(indiceToHoraLegible(indice)) === inicio);
+
+        const minutosTrabajo = indicesDelDia
+            .map(indice => timeToMinutes(indiceToHoraLegible(indice)))
+            .sort((a, b) => a - b);
+
+        const bloques = [];
+        let bloqueInicio = minutosTrabajo[0];
+        let bloqueFin = minutosTrabajo[0] + duracionTurno;
+
+        for (let i = 1; i < minutosTrabajo.length; i++) {
+            const minuto = minutosTrabajo[i];
+            if (minuto <= bloqueFin) {
+                bloqueFin = Math.max(bloqueFin, minuto + duracionTurno);
+            } else {
+                bloques.push({ inicio: bloqueInicio, fin: bloqueFin });
+                bloqueInicio = minuto;
+                bloqueFin = minuto + duracionTurno;
+            }
+        }
+
+        bloques.push({ inicio: bloqueInicio, fin: bloqueFin });
+        return bloques.some(bloque => inicio >= bloque.inicio && fin <= bloque.fin);
     };
 
     React.useEffect(() => {
@@ -52,6 +73,7 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
             try {
                 const config = window.salonConfig ? await window.salonConfig.get() : {};
                 const minHoras = config?.min_antelacion_horas ?? 2;
+                const duracionTurno = Number(config?.duracion_turnos || 60);
                 setMinAntelacionHoras(minHoras);
 
                 const [year, month, day] = date.split('-').map(Number);
@@ -94,7 +116,7 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
                         const fin = inicio + duracion;
                         const indicesDelDia = item.horarios[diaSemana] || [];
 
-                        if (!esInicioConfigurado(inicio, indicesDelDia)) return false;
+                        if (!estaDentroBloqueTrabajo(inicio, fin, indicesDelDia, duracionTurno)) return false;
 
                         // En una reserva multiple, solo la primera hora la elige la clienta.
                         // Los servicios siguientes empiezan automaticamente al terminar el anterior.
