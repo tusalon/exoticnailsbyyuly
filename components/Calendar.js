@@ -48,6 +48,34 @@ function Calendar({ onDateSelect, selectedDate, profesional, service, onHorarios
         });
     };
 
+    const crearBloquesTrabajo = (slotsDelDia = [], duracionTurno = 60, intervaloTurnos = 0) => {
+        const minutosTrabajo = slotsDelDia
+            .map(timeToMinutes)
+            .sort((a, b) => a - b);
+
+        const bloquesBase = minutosTrabajo.map((minuto, index) => {
+            const siguiente = minutosTrabajo[index + 1];
+            const anterior = minutosTrabajo[index - 1];
+            return {
+                inicio: minuto,
+                fin: siguiente ? Math.max(siguiente, minuto + duracionTurno) : minuto + duracionTurno,
+                conectaAnterior: anterior !== undefined && minuto - anterior <= duracionTurno + intervaloTurnos
+            };
+        });
+
+        const bloques = [];
+        bloquesBase.forEach(bloque => {
+            const ultimo = bloques[bloques.length - 1];
+            if (ultimo && bloque.conectaAnterior) {
+                ultimo.fin = Math.max(ultimo.fin, bloque.fin);
+            } else {
+                bloques.push({ inicio: bloque.inicio, fin: bloque.fin });
+            }
+        });
+
+        return bloques;
+    };
+
     React.useEffect(() => {
         if (!profesional) return;
         
@@ -119,6 +147,8 @@ function Calendar({ onDateSelect, selectedDate, profesional, service, onHorarios
             const fechaFin = formatDate(new Date(year, month + 1, 0));
             const minHoras = configOverride?.min_antelacion_horas ?? minAntelacionHoras;
             const maxDias = configOverride?.max_antelacion_dias ?? maxAntelacionDias;
+            const duracionTurno = Number(configOverride?.duracion_turnos || 60);
+            const intervaloTurnos = Number(configOverride?.intervalo_entre_turnos || 0);
             
             const response = await fetch(
                 `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&fecha=gte.${fechaInicio}&fecha=lte.${fechaFin}&profesional_id=eq.${profesional.id}&estado=neq.Cancelado&select=fecha,hora_inicio,hora_fin`,
@@ -160,12 +190,14 @@ function Calendar({ onDateSelect, selectedDate, profesional, service, onHorarios
                 
                 const reservasDia = reservasPorFecha[fechaStr] || [];
                 const descansosDelDia = descansos[diaSemana] || [];
+                const bloquesTrabajo = crearBloquesTrabajo(baseSlots, duracionTurno, intervaloTurnos);
                 const tieneSlotDisponible = baseSlots.some(slotStr => {
                     const slotStart = timeToMinutes(slotStr);
                     const slotEnd = slotStart + (parseInt(service.duracion) || 60);
                     const fechaHoraSlot = new Date(year, month, d, Math.floor(slotStart / 60), slotStart % 60, 0);
                     
                     if (fechaHoraSlot < minFechaPermitida) return false;
+                    if (!bloquesTrabajo.some(bloque => slotStart >= bloque.inicio && slotEnd <= bloque.fin)) return false;
                     if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) return false;
                     
                     return !reservasDia.some(reserva => {
