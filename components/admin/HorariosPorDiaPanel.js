@@ -295,7 +295,7 @@ function HorariosPorDiaPanel({ profesionalId, profesionalNombre, onGuardar, onCa
 
                         <div className="space-y-2">
                             {(descansosPorDia[diaSeleccionado] || []).length === 0 ? (
-                                <p className="text-xs text-amber-700">Sin descansos para este dÃ­a.</p>
+                                <p className="text-xs text-amber-700">Sin descansos para este dia.</p>
                             ) : (
                                 (descansosPorDia[diaSeleccionado] || []).map((descanso, index) => (
                                     <div key={`${descanso.inicio}-${descanso.fin}-${index}`} className="flex justify-between items-center bg-white border border-amber-100 rounded-lg px-3 py-2 text-sm">

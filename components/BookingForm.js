@@ -55,7 +55,7 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         });
     };
 
-    const estaDentroBloqueTrabajo = (inicio, fin, indicesDelDia = [], duracionTurno = 60) => {
+    const estaDentroBloqueTrabajo = (inicio, fin, indicesDelDia = [], duracionTurno = 60, intervaloTurnos = 0) => {
         if (!indicesDelDia.length) return false;
         const minutosTrabajo = indicesDelDia
             .map(indice => timeToMinutes(indiceToHoraLegible(indice)))
@@ -65,7 +65,7 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         let bloqueFin = minutosTrabajo[0] + duracionTurno;
         for (let i = 1; i < minutosTrabajo.length; i++) {
             const minuto = minutosTrabajo[i];
-            if (minuto <= bloqueFin) {
+            if (minuto <= bloqueFin + intervaloTurnos) {
                 bloqueFin = Math.max(bloqueFin, minuto + duracionTurno);
             } else {
                 bloques.push({ inicio: bloqueInicio, fin: bloqueFin });
@@ -241,6 +241,7 @@ END:VCALENDAR`;
                 const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
                 const minAntelacionHoras = configGlobal?.min_antelacion_horas ?? 2;
                 const duracionTurno = Number(configGlobal?.duracion_turnos || 60);
+                const intervaloTurnos = Number(configGlobal?.intervalo_entre_turnos || 0);
                 const requiereAnticipo = configNegocio?.requiere_anticipo === true;
 
                 const [year, month, day] = date.split('-').map(Number);
@@ -271,7 +272,7 @@ END:VCALENDAR`;
                     const inicioMin = timeToMinutes(cursor);
                     const finMin = inicioMin + (parseInt(servicioItem.duracion, 10) || 60);
                     const indicesDelDia = horariosPorDia[diaSemana] || [];
-                    const dentroHorario = estaDentroBloqueTrabajo(inicioMin, finMin, indicesDelDia, duracionTurno);
+                    const dentroHorario = estaDentroBloqueTrabajo(inicioMin, finMin, indicesDelDia, duracionTurno, intervaloTurnos);
                     const tocaDescanso = slotTieneDescanso(inicioMin, finMin, descansosPorDia[diaSemana] || []);
                     const tieneConflicto = bookings.some(booking => {
                         const bookingStart = timeToMinutes(booking.hora_inicio);

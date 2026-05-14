@@ -39,7 +39,7 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
         });
     };
 
-    const estaDentroBloqueTrabajo = (inicio, fin, indicesDelDia = [], duracionTurno = 60) => {
+    const estaDentroBloqueTrabajo = (inicio, fin, indicesDelDia = [], duracionTurno = 60, intervaloTurnos = 0) => {
         if (!indicesDelDia.length) return false;
 
         const minutosTrabajo = indicesDelDia
@@ -52,7 +52,7 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
 
         for (let i = 1; i < minutosTrabajo.length; i++) {
             const minuto = minutosTrabajo[i];
-            if (minuto <= bloqueFin) {
+            if (minuto <= bloqueFin + intervaloTurnos) {
                 bloqueFin = Math.max(bloqueFin, minuto + duracionTurno);
             } else {
                 bloques.push({ inicio: bloqueInicio, fin: bloqueFin });
@@ -74,6 +74,7 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
                 const config = window.salonConfig ? await window.salonConfig.get() : {};
                 const minHoras = config?.min_antelacion_horas ?? 2;
                 const duracionTurno = Number(config?.duracion_turnos || 60);
+                const intervaloTurnos = Number(config?.intervalo_entre_turnos || 0);
                 setMinAntelacionHoras(minHoras);
 
                 const [year, month, day] = date.split('-').map(Number);
@@ -116,7 +117,7 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
                         const fin = inicio + duracion;
                         const indicesDelDia = item.horarios[diaSemana] || [];
 
-                        if (!estaDentroBloqueTrabajo(inicio, fin, indicesDelDia, duracionTurno)) return false;
+                        if (!estaDentroBloqueTrabajo(inicio, fin, indicesDelDia, duracionTurno, intervaloTurnos)) return false;
 
                         // En una reserva multiple, solo la primera hora la elige la clienta.
                         // Los servicios siguientes empiezan automaticamente al terminar el anterior.
