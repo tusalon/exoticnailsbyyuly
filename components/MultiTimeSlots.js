@@ -46,22 +46,26 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
             .map(indice => timeToMinutes(indiceToHoraLegible(indice)))
             .sort((a, b) => a - b);
 
+        const bloquesBase = minutosTrabajo.map((minuto, index) => {
+            const siguiente = minutosTrabajo[index + 1];
+            const anterior = minutosTrabajo[index - 1];
+            return {
+                inicio: minuto,
+                fin: siguiente ? Math.max(siguiente, minuto + duracionTurno) : minuto + duracionTurno,
+                conectaAnterior: anterior !== undefined && minuto - anterior <= duracionTurno + intervaloTurnos
+            };
+        });
+
         const bloques = [];
-        let bloqueInicio = minutosTrabajo[0];
-        let bloqueFin = minutosTrabajo[0] + duracionTurno;
-
-        for (let i = 1; i < minutosTrabajo.length; i++) {
-            const minuto = minutosTrabajo[i];
-            if (minuto <= bloqueFin + intervaloTurnos) {
-                bloqueFin = Math.max(bloqueFin, minuto + duracionTurno);
+        bloquesBase.forEach(bloque => {
+            const ultimo = bloques[bloques.length - 1];
+            if (ultimo && bloque.conectaAnterior) {
+                ultimo.fin = Math.max(ultimo.fin, bloque.fin);
             } else {
-                bloques.push({ inicio: bloqueInicio, fin: bloqueFin });
-                bloqueInicio = minuto;
-                bloqueFin = minuto + duracionTurno;
+                bloques.push({ inicio: bloque.inicio, fin: bloque.fin });
             }
-        }
+        });
 
-        bloques.push({ inicio: bloqueInicio, fin: bloqueFin });
         return bloques.some(bloque => inicio >= bloque.inicio && fin <= bloque.fin);
     };
 
