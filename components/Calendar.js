@@ -1,6 +1,6 @@
 // components/Calendar.js - Disponibilidad real por servicio, profesional y reservas
 
-function Calendar({ onDateSelect, selectedDate, profesional, service, onHorariosCargados }) {
+function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto, service, onHorariosCargados }) {
     const [currentDate, setCurrentDate] = React.useState(new Date());
     const [diasLaborales, setDiasLaborales] = React.useState([]);
     const [diasCerrados, setDiasCerrados] = React.useState([]);
@@ -74,6 +74,41 @@ function Calendar({ onDateSelect, selectedDate, profesional, service, onHorarios
         });
 
         return bloques;
+    };
+
+    const getReservasPorFechaProfesional = async (negocioId, profesionalId, fechaInicio, fechaFin) => {
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&fecha=gte.${fechaInicio}&fecha=lte.${fechaFin}&profesional_id=eq.${profesionalId}&estado=neq.Cancelado&select=fecha,hora_inicio,hora_fin`,
+            {
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+                }
+            }
+        );
+
+        const reservas = response.ok ? await response.json() : [];
+        return (reservas || []).reduce((acc, reserva) => {
+            if (!acc[reserva.fecha]) acc[reserva.fecha] = [];
+            acc[reserva.fecha].push(reserva);
+            return acc;
+        }, {});
+    };
+
+    const slotDisponible = ({ slotStr, duracion, slotsDia, descansosDelDia, reservasDia, fechaHoraSlot, minFechaPermitida, duracionTurno, intervaloTurnos }) => {
+        const slotStart = timeToMinutes(slotStr);
+        const slotEnd = slotStart + (parseInt(duracion, 10) || 60);
+        const bloquesTrabajo = crearBloquesTrabajo(slotsDia, duracionTurno, intervaloTurnos);
+
+        if (fechaHoraSlot < minFechaPermitida) return false;
+        if (!bloquesTrabajo.some(bloque => slotStart >= bloque.inicio && slotEnd <= bloque.fin)) return false;
+        if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) return false;
+
+        return !reservasDia.some(reserva => {
+            const reservaStart = timeToMinutes(reserva.hora_inicio);
+            const reservaEnd = timeToMinutes(reserva.hora_fin);
+            return (slotStart < reservaEnd) && (slotEnd > reservaStart);
+        });
     };
 
     React.useEffect(() => {
@@ -150,22 +185,24 @@ function Calendar({ onDateSelect, selectedDate, profesional, service, onHorarios
             const duracionTurno = Number(configOverride?.duracion_turnos || 60);
             const intervaloTurnos = Number(configOverride?.intervalo_entre_turnos || 0);
             
-            const response = await fetch(
-                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&fecha=gte.${fechaInicio}&fecha=lte.${fechaFin}&profesional_id=eq.${profesional.id}&estado=neq.Cancelado&select=fecha,hora_inicio,hora_fin`,
-                {
-                    headers: {
-                        'apikey': window.SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
-                    }
-                }
-            );
-            
-            const reservas = response.ok ? await response.json() : [];
-            const reservasPorFecha = {};
-            (reservas || []).forEach(r => {
-                if (!reservasPorFecha[r.fecha]) reservasPorFecha[r.fecha] = [];
-                reservasPorFecha[r.fecha].push(r);
-            });
+            const asignacionesMultiples = service?.esMultiple && profesionalCompleto?.esMultiple
+                ? (profesionalCompleto.asignaciones || [])
+                : [];
+
+            const datosMultiples = asignacionesMultiples.length > 0
+                ? await Promise.all(asignacionesMultiples.map(async item => {
+                    const horariosItem = await window.salonConfig.getHorariosPorDia(item.profesional.id);
+                    const descansosItem = window.salonConfig.getDescansosPorDia
+                        ? await window.salonConfig.getDescansosPorDia(item.profesional.id)
+                        : {};
+                    const reservasItem = await getReservasPorFechaProfesional(negocioId, item.profesional.id, fechaInicio, fechaFin);
+                    return { ...item, horarios: horariosItem || {}, descansos: descansosItem || {}, reservasPorFecha: reservasItem || {} };
+                }))
+                : [];
+
+            const reservasPorFecha = asignacionesMultiples.length > 0
+                ? {}
+                : await getReservasPorFechaProfesional(negocioId, profesional.id, fechaInicio, fechaFin);
             
             const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
             const sinDisponibilidad = [];
@@ -178,17 +215,68 @@ function Calendar({ onDateSelect, selectedDate, profesional, service, onHorarios
                 const diaSemana = diasSemana[fecha.getDay()];
                 const diffDias = Math.ceil((new Date(`${fechaStr}T00:00:00`) - new Date(formatDate(ahora) + 'T00:00:00')) / (1000 * 60 * 60 * 24));
                 let baseSlots = (horarios[diaSemana] || []).map(indiceToHoraLegible);
+                if (!service?.esMultiple && service?.horarios_permitidos?.length) {
+                    baseSlots = baseSlots.filter(slot => service.horarios_permitidos.includes(slot));
+                }
                 
                 if (baseSlots.length === 0 || diffDias > maxDias) {
                     sinDisponibilidad.push(fechaStr);
                     continue;
                 }
-                
-                const tieneHorarioFuturo = baseSlots.some(slotStr => {
-                    const slotStart = timeToMinutes(slotStr);
-                    const fechaHoraSlot = new Date(year, month, d, Math.floor(slotStart / 60), slotStart % 60, 0);
-                    return fechaHoraSlot >= minFechaPermitida;
-                });
+
+                let tieneHorarioFuturo = false;
+
+                if (datosMultiples.length > 0) {
+                    const primerItem = datosMultiples[0];
+                    baseSlots = (primerItem.horarios[diaSemana] || []).map(indiceToHoraLegible);
+                    if (primerItem.servicio?.horarios_permitidos?.length) {
+                        baseSlots = baseSlots.filter(slot => primerItem.servicio.horarios_permitidos.includes(slot));
+                    }
+
+                    tieneHorarioFuturo = baseSlots.some(slotStr => {
+                        let cursor = timeToMinutes(slotStr);
+                        const fechaHoraSlot = new Date(year, month, d, Math.floor(cursor / 60), cursor % 60, 0);
+                        if (fechaHoraSlot < minFechaPermitida) return false;
+
+                        for (const item of datosMultiples) {
+                            const duracion = parseInt(item.servicio?.duracion, 10) || 60;
+                            const inicio = cursor;
+                            const fin = inicio + duracion;
+                            const slotsDia = (item.horarios[diaSemana] || []).map(indiceToHoraLegible);
+                            const bloquesTrabajo = crearBloquesTrabajo(slotsDia, duracionTurno, intervaloTurnos);
+
+                            if (!bloquesTrabajo.some(bloque => inicio >= bloque.inicio && fin <= bloque.fin)) return false;
+                            if (slotTieneDescanso(inicio, fin, item.descansos[diaSemana] || [])) return false;
+
+                            const conflicto = (item.reservasPorFecha[fechaStr] || []).some(reserva => {
+                                const reservaStart = timeToMinutes(reserva.hora_inicio);
+                                const reservaEnd = timeToMinutes(reserva.hora_fin);
+                                return (inicio < reservaEnd) && (fin > reservaStart);
+                            });
+                            if (conflicto) return false;
+
+                            cursor = fin;
+                        }
+
+                        return true;
+                    });
+                } else {
+                    tieneHorarioFuturo = baseSlots.some(slotStr => {
+                        const slotStart = timeToMinutes(slotStr);
+                        const fechaHoraSlot = new Date(year, month, d, Math.floor(slotStart / 60), slotStart % 60, 0);
+                        return slotDisponible({
+                            slotStr,
+                            duracion: service.duracion,
+                            slotsDia: baseSlots,
+                            descansosDelDia: descansos[diaSemana] || [],
+                            reservasDia: reservasPorFecha[fechaStr] || [],
+                            fechaHoraSlot,
+                            minFechaPermitida,
+                            duracionTurno,
+                            intervaloTurnos
+                        });
+                    });
+                }
 
                 if (!tieneHorarioFuturo) {
                     sinDisponibilidad.push(fechaStr);

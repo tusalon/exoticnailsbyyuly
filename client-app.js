@@ -272,6 +272,7 @@ function ClientApp() {
                                         onDateSelect={setSelectedDate} 
                                         selectedDate={selectedDate}
                                         profesional={selectedProfesional?.esMultiple ? selectedProfesional.asignaciones[0]?.profesional : selectedProfesional}
+                                        profesionalCompleto={selectedProfesional}
                                         service={selectedService}
                                         onHorariosCargados={setHorariosPorDia}
                                     />
