@@ -51,7 +51,7 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
             const anterior = minutosTrabajo[index - 1];
             return {
                 inicio: minuto,
-                fin: siguiente ? Math.max(siguiente, minuto + duracionTurno) : minuto + duracionTurno,
+                fin: siguiente ? Math.max(siguiente, minuto + duracionTurno) : 24 * 60,
                 conectaAnterior: anterior !== undefined && minuto - anterior <= duracionTurno + intervaloTurnos
             };
         });
