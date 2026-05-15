@@ -188,26 +188,13 @@ function Calendar({ onDateSelect, selectedDate, profesional, service, onHorarios
                     continue;
                 }
                 
-                const reservasDia = reservasPorFecha[fechaStr] || [];
-                const descansosDelDia = descansos[diaSemana] || [];
-                const bloquesTrabajo = crearBloquesTrabajo(baseSlots, duracionTurno, intervaloTurnos);
-                const tieneSlotDisponible = baseSlots.some(slotStr => {
+                const tieneHorarioFuturo = baseSlots.some(slotStr => {
                     const slotStart = timeToMinutes(slotStr);
-                    const slotEnd = slotStart + (parseInt(service.duracion) || 60);
                     const fechaHoraSlot = new Date(year, month, d, Math.floor(slotStart / 60), slotStart % 60, 0);
-                    
-                    if (fechaHoraSlot < minFechaPermitida) return false;
-                    if (!bloquesTrabajo.some(bloque => slotStart >= bloque.inicio && slotEnd <= bloque.fin)) return false;
-                    if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) return false;
-                    
-                    return !reservasDia.some(reserva => {
-                        const reservaStart = timeToMinutes(reserva.hora_inicio);
-                        const reservaEnd = timeToMinutes(reserva.hora_fin);
-                        return (slotStart < reservaEnd) && (slotEnd > reservaStart);
-                    });
+                    return fechaHoraSlot >= minFechaPermitida;
                 });
-                
-                if (!tieneSlotDisponible) {
+
+                if (!tieneHorarioFuturo) {
                     sinDisponibilidad.push(fechaStr);
                 }
             }
