@@ -640,4 +640,4 @@ function DiasCerradosGlobalesPanel() {
             )}
         </div>
     );
-}s
+}
