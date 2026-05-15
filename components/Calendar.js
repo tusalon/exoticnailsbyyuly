@@ -179,10 +179,6 @@ function Calendar({ onDateSelect, selectedDate, profesional, service, onHorarios
                 const diffDias = Math.ceil((new Date(`${fechaStr}T00:00:00`) - new Date(formatDate(ahora) + 'T00:00:00')) / (1000 * 60 * 60 * 24));
                 let baseSlots = (horarios[diaSemana] || []).map(indiceToHoraLegible);
                 
-                if (service.horarios_permitidos && service.horarios_permitidos.length > 0) {
-                    baseSlots = baseSlots.filter(slot => service.horarios_permitidos.includes(slot));
-                }
-                
                 if (baseSlots.length === 0 || diffDias > maxDias) {
                     sinDisponibilidad.push(fechaStr);
                     continue;
@@ -228,9 +224,6 @@ function Calendar({ onDateSelect, selectedDate, profesional, service, onHorarios
         const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
         const diaSemana = diasSemana[date.getDay()];
         let horariosDelDia = (horariosPorDia[diaSemana] || []).map(indiceToHoraLegible);
-        if (service?.horarios_permitidos?.length) {
-            horariosDelDia = horariosDelDia.filter(slot => service.horarios_permitidos.includes(slot));
-        }
         return horariosDelDia.length > 0;
     };
 
