@@ -1170,7 +1170,6 @@ function AdminApp() {
                             duracion: bookingData.duracion,
                             profesional_id: bookingData.profesional_id,
                             profesional_nombre: bookingData.profesional_nombre,
-                            trabajador_nombre: bookingData.profesional_nombre,
                             fecha: bookingData.fecha,
                             hora_inicio: bookingData.hora_inicio,
                             hora_fin: bookingData.hora_fin
