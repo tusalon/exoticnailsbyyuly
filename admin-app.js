@@ -129,6 +129,11 @@ async function createBooking(bookingData) {
             console.error('a No hay negocioId disponible');
             return { success: false, error: 'No hay negocioId' };
         }
+
+        const bloqueo = await window.getClienteBloqueado?.(bookingData.cliente_whatsapp);
+        if (bloqueo) {
+            return { success: false, error: 'Este cliente no tiene permiso para reservar.' };
+        }
         
         const dataWithNegocio = {
             ...bookingData,
@@ -266,6 +271,28 @@ async function marcarTurnosCompletados() {
 const timeToMinutes = (time) => {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
+};
+
+const variantesHorarioPermitido = (timeStr) => {
+    const partes = String(timeStr || '').trim().split(':');
+    if (partes.length < 2) return [];
+    const hours = parseInt(partes[0], 10);
+    const minutes = parseInt(partes[1], 10);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return [];
+
+    const normal = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    const variantes = [normal];
+    if (hours >= 1 && hours <= 7) {
+        variantes.push(`${String(hours + 12).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+    }
+    return variantes;
+};
+
+const servicioPermiteHorario = (servicio, slot) => {
+    const permitidos = servicio?.horarios_permitidos || [];
+    if (!permitidos.length) return true;
+    const normalizados = new Set(permitidos.flatMap(variantesHorarioPermitido));
+    return normalizados.has(slot);
 };
 
 const slotTieneDescanso = (slotStart, slotEnd, descansosDelDia = []) => {
@@ -651,6 +678,98 @@ function AdminApp() {
         }
     }, [showNuevaReservaModal, nuevaReservaData.servicio, nuevaReservaData.profesional_id, reservaEditando]);
 
+    const ordenarHorarios = (horarios = []) => Array.from(new Set(horarios)).sort((a, b) => {
+        const [hA, mA] = a.split(':').map(Number);
+        const [hB, mB] = b.split(':').map(Number);
+        return (hA * 60 + mA) - (hB * 60 + mB);
+    });
+
+    const calcularHorariosDisponiblesManual = async (fecha, profesionalId, serviciosSeleccionados) => {
+        if (!fecha || !profesionalId || serviciosSeleccionados.length === 0) return [];
+
+        const profesionalObj = profesionalesList.find(p => p.id === parseInt(profesionalId));
+        if (diasCerradosFechas.includes(fecha) || profesionalObj?.fechas_libres?.includes(fecha)) {
+            return [];
+        }
+
+        const duracionTotal = reservaEditando
+            ? Number(serviciosSeleccionados[0]?.duracion || reservaEditando?.duracion || 60)
+            : serviciosSeleccionados.reduce((total, servicio) => total + Number(servicio.duracion || 60), 0);
+        const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
+        const duracionTurno = Number(configGlobal?.duracion_turnos || 60);
+        const intervaloTurnos = Number(configGlobal?.intervalo_entre_turnos || 0);
+        const minAntelacionHoras = configGlobal?.min_antelacion_horas ?? 2;
+        const maxAntelacionDias = configGlobal?.max_antelacion_dias ?? 30;
+
+        const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
+        const [year, month, day] = fecha.split('-').map(Number);
+        const fechaLocal = new Date(year, month - 1, day);
+        const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+        const diaSemana = nombresDias[fechaLocal.getDay()];
+        const diasTrabajo = horarios.dias || [];
+        let horasTrabajo = horarios.horariosPorDia?.[diaSemana] || horarios.horas || [];
+        const descansosDelDia = horarios.descansosPorDia?.[diaSemana] || [];
+
+        if (diasTrabajo.length > 0 && !diasTrabajo.includes(diaSemana)) return [];
+        if (horasTrabajo.length === 0) return [];
+
+        const primerServicio = serviciosSeleccionados[0];
+        let horasTrabajoFiltradas = horasTrabajo;
+        if (primerServicio?.horarios_permitidos?.length) {
+            horasTrabajoFiltradas = horasTrabajo.filter(indice => servicioPermiteHorario(primerServicio, indiceToHoraLegible(indice)));
+        }
+        const slotsTrabajo = horasTrabajoFiltradas.map(indice => indiceToHoraLegible(indice));
+
+        const negocioId = typeof getNegocioId === "function" ? getNegocioId() : (window.getNegocioIdFromConfig ? window.getNegocioIdFromConfig() : localStorage.getItem("negocioId"));
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&fecha=eq.${fecha}&profesional_id=eq.${profesionalId}&estado=neq.Cancelado&select=id,hora_inicio,hora_fin`,
+            {
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+                }
+            }
+        );
+
+        if (!response.ok) throw new Error(await response.text());
+        const reservas = (await response.json()).filter(reserva => reserva.id !== reservaEditando?.id);
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const diffDias = Math.ceil((new Date(year, month - 1, day) - hoy) / (1000 * 60 * 60 * 24));
+        const minFechaPermitida = new Date(Date.now() + (minAntelacionHoras * 60 * 60 * 1000));
+
+        if (!reservaEditando && diffDias > maxAntelacionDias) return [];
+
+        const disponibles = slotsTrabajo.filter(slot => {
+            const [horas, minutos] = slot.split(':').map(Number);
+            const slotStart = horas * 60 + minutos;
+            const slotEnd = slotStart + duracionTotal;
+            const fechaHoraSlot = new Date(year, month - 1, day, horas, minutos, 0);
+
+            if (!reservaEditando && fechaHoraSlot < minFechaPermitida) return false;
+
+            if (!estaDentroBloqueTrabajo(slotStart, slotEnd, horasTrabajoFiltradas, duracionTurno, intervaloTurnos)) {
+                return false;
+            }
+
+            if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) {
+                return false;
+            }
+
+            return !reservas.some(reserva => {
+                const reservaStart = timeToMinutes(reserva.hora_inicio);
+                const reservaEnd = timeToMinutes(reserva.hora_fin);
+                return (slotStart < reservaEnd) && (slotEnd > reservaStart);
+            });
+        });
+
+        if (reservaEditando?.fecha === fecha && reservaEditando?.hora_inicio) {
+            disponibles.push(reservaEditando.hora_inicio);
+        }
+
+        return ordenarHorarios(disponibles);
+    };
+
     React.useEffect(() => {
         const cargarHorarios = async () => {
             if (!nuevaReservaData.profesional_id || !nuevaReservaData.fecha || !nuevaReservaData.servicio) {
@@ -661,83 +780,13 @@ function AdminApp() {
             try {
                 const serviciosSeleccionados = getServiciosManualSeleccionados();
                 if (serviciosSeleccionados.length === 0) return;
-                const duracionTotal = serviciosSeleccionados.reduce((total, servicio) => total + Number(servicio.duracion || 60), 0);
-                const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
-                const duracionTurno = Number(configGlobal?.duracion_turnos || 60);
-                const intervaloTurnos = Number(configGlobal?.intervalo_entre_turnos || 0);
-
-                const horarios = await window.salonConfig.getHorariosProfesional(nuevaReservaData.profesional_id);
-                const [year, month, day] = nuevaReservaData.fecha.split('-').map(Number);
-                const fechaLocal = new Date(year, month - 1, day);
-                const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-                const diaSemana = nombresDias[fechaLocal.getDay()];
-                const horasTrabajo = horarios.horariosPorDia?.[diaSemana] || horarios.horas || [];
-                const descansosDelDia = horarios.descansosPorDia?.[diaSemana] || [];
-                
-                const slotsTrabajo = horasTrabajo.map(indice => indiceToHoraLegible(indice));
-                
-                const negocioId = typeof getNegocioId === "function" ? getNegocioId() : (window.getNegocioIdFromConfig ? window.getNegocioIdFromConfig() : localStorage.getItem("negocioId"));
-                const response = await fetch(
-                    `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&fecha=eq.${nuevaReservaData.fecha}&profesional_id=eq.${nuevaReservaData.profesional_id}&estado=neq.Cancelado&select=id,hora_inicio,hora_fin`,
-                    {
-                        headers: {
-                            'apikey': window.SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
-                        }
-                    }
+                const disponibles = await calcularHorariosDisponiblesManual(
+                    nuevaReservaData.fecha,
+                    nuevaReservaData.profesional_id,
+                    serviciosSeleccionados
                 );
-                
-                if (!response.ok) throw new Error(await response.text());
-                const reservas = (await response.json()).filter(reserva => reserva.id !== reservaEditando?.id);
 
-                const ahora = new Date();
-                const horaActual = ahora.getHours();
-                const minutosActuales = ahora.getMinutes();
-                const totalMinutosActual = horaActual * 60 + minutosActuales;
-                const hoy = getCurrentLocalDate();
-                const esHoy = nuevaReservaData.fecha === hoy;
-
-                const disponibles = slotsTrabajo.filter(slot => {
-                    const [horas, minutos] = slot.split(':').map(Number);
-                    const slotStart = horas * 60 + minutos;
-                    const slotEnd = slotStart + duracionTotal;
-
-                    if (!reservaEditando && esHoy && slotEnd <= totalMinutosActual) {
-                        return false;
-                    }
-
-                    if (!estaDentroBloqueTrabajo(slotStart, slotEnd, horasTrabajo, duracionTurno, intervaloTurnos)) {
-                        return false;
-                    }
-
-                    if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) {
-                        return false;
-                    }
-
-                    const tieneConflicto = reservas.some(reserva => {
-                        const reservaStart = timeToMinutes(reserva.hora_inicio);
-                        const reservaEnd = timeToMinutes(reserva.hora_fin);
-                        return (slotStart < reservaEnd) && (slotEnd > reservaStart);
-                    });
-
-                    return !tieneConflicto;
-                });
-
-                disponibles.sort((a, b) => {
-                    const [hA, mA] = a.split(':').map(Number);
-                    const [hB, mB] = b.split(':').map(Number);
-                    return (hA * 60 + mA) - (hB * 60 + mB);
-                });
-
-                if (reservaEditando?.fecha === nuevaReservaData.fecha && reservaEditando?.hora_inicio) {
-                    disponibles.push(reservaEditando.hora_inicio);
-                }
-
-                setHorariosDisponibles(Array.from(new Set(disponibles)).sort((a, b) => {
-                    const [hA, mA] = a.split(':').map(Number);
-                    const [hB, mB] = b.split(':').map(Number);
-                    return (hA * 60 + mA) - (hB * 60 + mB);
-                }));
+                setHorariosDisponibles(disponibles);
 
             } catch (error) {
                 console.error('Error cargando horarios:', error);
@@ -769,6 +818,8 @@ function AdminApp() {
             const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
             const duracionTurno = Number(configGlobal?.duracion_turnos || 60);
             const intervaloTurnos = Number(configGlobal?.intervalo_entre_turnos || 0);
+            const minAntelacionHoras = configGlobal?.min_antelacion_horas ?? 2;
+            const maxAntelacionDias = configGlobal?.max_antelacion_dias ?? 30;
             
             const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
             const horasTrabajo = horarios.horas || [];
@@ -810,28 +861,38 @@ function AdminApp() {
             const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
             const profesionalObj = profesionalesList.find(p => p.id === parseInt(profesionalId));
             const fechasLibresPersonales = profesionalObj?.fechas_libres || [];
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            const minFechaPermitida = new Date(Date.now() + (minAntelacionHoras * 60 * 60 * 1000));
             
             for (let d = 1; d <= diasEnMes; d++) {
                 const fechaStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
                 const fechaActual = new Date(year, month, d);
                 const diaSemana = nombresDias[fechaActual.getDay()];
+                const diffDias = Math.ceil((fechaActual - hoy) / (1000 * 60 * 60 * 24));
+
+                if (!reservaEditando && diffDias > maxAntelacionDias) {
+                    disponibilidad[fechaStr] = false;
+                    conteosDisponibles[fechaStr] = 0;
+                    continue;
+                }
 
                 if (diasCerradosFechas.includes(fechaStr) || fechasLibresPersonales.includes(fechaStr)) {
                     disponibilidad[fechaStr] = false;
+                    conteosDisponibles[fechaStr] = 0;
                     continue;
                 }
 
                 if (diasTrabajo.length > 0 && !diasTrabajo.includes(diaSemana)) {
                     disponibilidad[fechaStr] = false;
+                    conteosDisponibles[fechaStr] = 0;
                     continue;
                 }
 
                 let horariosDelDia = horariosPorDia[diaSemana] || horasTrabajo;
-                const horariosPermitidos = serviciosSeleccionados
-                    .map(servicio => servicio.horarios_permitidos || [])
-                    .filter(horarios => horarios.length > 0);
-                if (horariosPermitidos.length > 0) {
-                    horariosDelDia = horariosDelDia.filter(indice => horariosPermitidos.every(horarios => horarios.includes(indiceToHoraLegible(indice))));
+                const primerServicio = serviciosSeleccionados[0];
+                if (primerServicio?.horarios_permitidos?.length) {
+                    horariosDelDia = horariosDelDia.filter(indice => servicioPermiteHorario(primerServicio, indiceToHoraLegible(indice)));
                 }
 
                 if (horariosDelDia.length === 0) {
@@ -846,6 +907,11 @@ function AdminApp() {
                     const slotStr = indiceToHoraLegible(horaIndice);
                     const slotStart = timeToMinutes(slotStr);
                     const slotEnd = slotStart + duracion;
+                    const fechaHoraSlot = new Date(year, month, d, Math.floor(slotStart / 60), slotStart % 60, 0);
+
+                    if (!reservaEditando && fechaHoraSlot < minFechaPermitida) {
+                        return false;
+                    }
 
                     if (!estaDentroBloqueTrabajo(slotStart, slotEnd, horariosDelDia, duracionTurno, intervaloTurnos)) {
                         return false;
@@ -1132,6 +1198,17 @@ function AdminApp() {
                 return;
             }
             
+            const horariosVigentes = await calcularHorariosDisponiblesManual(
+                nuevaReservaData.fecha,
+                nuevaReservaData.profesional_id,
+                serviciosSeleccionados
+            );
+            if (!horariosVigentes.includes(nuevaReservaData.hora_inicio)) {
+                setHorariosDisponibles(horariosVigentes);
+                alert('Ese horario ya no esta disponible. Elegi otro horario.');
+                return;
+            }
+
             const servicio = reservaEditando ? serviciosSeleccionados[0] : null;
             const duracionTotal = serviciosSeleccionados.reduce((total, item) => total + Number(item.duracion || 60), 0);
             const endTime = calculateEndTime(nuevaReservaData.hora_inicio, reservaEditando ? servicio.duracion : duracionTotal);
