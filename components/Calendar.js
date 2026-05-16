@@ -25,6 +25,28 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
         return (hours || 0) * 60 + (minutes || 0);
     };
 
+    const variantesHorarioPermitido = (timeStr) => {
+        const partes = String(timeStr || '').trim().split(':');
+        if (partes.length < 2) return [];
+        const hours = parseInt(partes[0], 10);
+        const minutes = parseInt(partes[1], 10);
+        if (Number.isNaN(hours) || Number.isNaN(minutes)) return [];
+
+        const normal = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        const variantes = [normal];
+        if (hours >= 1 && hours <= 7) {
+            variantes.push(`${String(hours + 12).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+        }
+        return variantes;
+    };
+
+    const servicioPermiteHorario = (servicio, slot) => {
+        const permitidos = servicio?.horarios_permitidos || [];
+        if (!permitidos.length) return true;
+        const normalizados = new Set(permitidos.flatMap(variantesHorarioPermitido));
+        return normalizados.has(slot);
+    };
+
     const formatDate = (date) => {
         const y = date.getFullYear();
         const m = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -226,7 +248,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                 const diffDias = Math.ceil((new Date(`${fechaStr}T00:00:00`) - new Date(formatDate(ahora) + 'T00:00:00')) / (1000 * 60 * 60 * 24));
                 let baseSlots = (horarios[diaSemana] || []).map(indiceToHoraLegible);
                 if (!service?.esMultiple && service?.horarios_permitidos?.length) {
-                    baseSlots = baseSlots.filter(slot => service.horarios_permitidos.includes(slot));
+                    baseSlots = baseSlots.filter(slot => servicioPermiteHorario(service, slot));
                 }
                 
                 if (baseSlots.length === 0 || diffDias > maxDias) {
@@ -240,7 +262,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                     const primerItem = datosMultiples[0];
                     baseSlots = (primerItem.horarios[diaSemana] || []).map(indiceToHoraLegible);
                     if (primerItem.servicio?.horarios_permitidos?.length) {
-                        baseSlots = baseSlots.filter(slot => primerItem.servicio.horarios_permitidos.includes(slot));
+                        baseSlots = baseSlots.filter(slot => servicioPermiteHorario(primerItem.servicio, slot));
                     }
 
                     tieneHorarioFuturo = baseSlots.some(slotStr => {

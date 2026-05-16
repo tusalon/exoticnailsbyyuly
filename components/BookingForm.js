@@ -46,6 +46,28 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         return `${horas.toString().padStart(2, '0')}:${minutos}`;
     };
 
+    const variantesHorarioPermitido = (timeStr) => {
+        const partes = String(timeStr || '').trim().split(':');
+        if (partes.length < 2) return [];
+        const hours = parseInt(partes[0], 10);
+        const minutes = parseInt(partes[1], 10);
+        if (Number.isNaN(hours) || Number.isNaN(minutes)) return [];
+
+        const normal = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        const variantes = [normal];
+        if (hours >= 1 && hours <= 7) {
+            variantes.push(`${String(hours + 12).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+        }
+        return variantes;
+    };
+
+    const servicioPermiteHorario = (servicio, slot) => {
+        const permitidos = servicio?.horarios_permitidos || [];
+        if (!permitidos.length) return true;
+        const normalizados = new Set(permitidos.flatMap(variantesHorarioPermitido));
+        return normalizados.has(slot);
+    };
+
     const slotTieneDescanso = (slotStart, slotEnd, descansosDelDia = []) => {
         return descansosDelDia.some(descanso => {
             if (!descanso?.inicio || !descanso?.fin) return false;
@@ -283,7 +305,7 @@ END:VCALENDAR`;
                         const bookingEnd = timeToMinutes(booking.hora_fin);
                         return (inicioMin < bookingEnd) && (finMin > bookingStart);
                     });
-                    const horarioPermitido = index > 0 || !servicioItem.horarios_permitidos?.length || servicioItem.horarios_permitidos.includes(cursor);
+                    const horarioPermitido = index > 0 || servicioPermiteHorario(servicioItem, cursor);
 
                     if (!dentroHorario || tocaDescanso || tieneConflicto || !horarioPermitido) {
                         setError(`El horario de ${servicioItem.nombre} con ${profesionalItem.nombre} ya no está disponible.`);

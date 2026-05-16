@@ -57,6 +57,28 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
         return hours * 60 + minutes;
     };
 
+    const variantesHorarioPermitido = (timeStr) => {
+        const partes = String(timeStr || '').trim().split(':');
+        if (partes.length < 2) return [];
+        const hours = parseInt(partes[0], 10);
+        const minutes = parseInt(partes[1], 10);
+        if (Number.isNaN(hours) || Number.isNaN(minutes)) return [];
+
+        const normal = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        const variantes = [normal];
+        if (hours >= 1 && hours <= 7) {
+            variantes.push(`${String(hours + 12).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+        }
+        return variantes;
+    };
+
+    const servicioPermiteHorario = (servicio, slot) => {
+        const permitidos = servicio?.horarios_permitidos || [];
+        if (!permitidos.length) return true;
+        const normalizados = new Set(permitidos.flatMap(variantesHorarioPermitido));
+        return normalizados.has(slot);
+    };
+
     const slotTieneDescanso = (slotStart, slotEnd, descansosDelDia = []) => {
         return descansosDelDia.some(descanso => {
             if (!descanso?.inicio || !descanso?.fin) return false;
@@ -202,7 +224,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                 
                 // 🔥 FILTRO POR HORARIOS PERMITIDOS DEL SERVICIO (si existen)
                 if (service.horarios_permitidos && service.horarios_permitidos.length > 0) {
-                    baseSlots = baseSlots.filter(slot => service.horarios_permitidos.includes(slot));
+                    baseSlots = baseSlots.filter(slot => servicioPermiteHorario(service, slot));
                     console.log(`📋 Slots filtrados por horarios permitidos del servicio:`, baseSlots);
                 }
                 

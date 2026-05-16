@@ -19,6 +19,28 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
         return (hours || 0) * 60 + (minutes || 0);
     };
 
+    const variantesHorarioPermitido = (timeStr) => {
+        const partes = String(timeStr || '').trim().split(':');
+        if (partes.length < 2) return [];
+        const hours = parseInt(partes[0], 10);
+        const minutes = parseInt(partes[1], 10);
+        if (Number.isNaN(hours) || Number.isNaN(minutes)) return [];
+
+        const normal = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        const variantes = [normal];
+        if (hours >= 1 && hours <= 7) {
+            variantes.push(`${String(hours + 12).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
+        }
+        return variantes;
+    };
+
+    const servicioPermiteHorario = (servicio, slot) => {
+        const permitidos = servicio?.horarios_permitidos || [];
+        if (!permitidos.length) return true;
+        const normalizados = new Set(permitidos.flatMap(variantesHorarioPermitido));
+        return normalizados.has(slot);
+    };
+
     const minutesToTime = (minutes) => {
         const h = Math.floor(minutes / 60);
         const m = minutes % 60;
@@ -103,7 +125,7 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
                 let baseSlots = (datos[0].horarios[diaSemana] || []).map(indiceToHoraLegible);
                 const primerServicio = datos[0].servicio;
                 if (primerServicio.horarios_permitidos?.length) {
-                    baseSlots = baseSlots.filter(slot => primerServicio.horarios_permitidos.includes(slot));
+                    baseSlots = baseSlots.filter(slot => servicioPermiteHorario(primerServicio, slot));
                 }
 
                 const esHoy = date === getCurrentLocalDate();
@@ -125,7 +147,7 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
 
                         // En una reserva multiple, solo la primera hora la elige la clienta.
                         // Los servicios siguientes empiezan automaticamente al terminar el anterior.
-                        if (index === 0 && item.servicio.horarios_permitidos?.length && !item.servicio.horarios_permitidos.includes(minutesToTime(inicio))) return false;
+                        if (index === 0 && !servicioPermiteHorario(item.servicio, minutesToTime(inicio))) return false;
 
                         if (slotTieneDescanso(inicio, fin, item.descansos[diaSemana] || [])) return false;
 
