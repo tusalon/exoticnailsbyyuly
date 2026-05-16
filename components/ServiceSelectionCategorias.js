@@ -16,8 +16,26 @@ function catIcono(categoria) {
     return categoria?.icono || '⭐';
 }
 
+function categoriaCoincideCliente(categoria, valorNormalizado) {
+    if (!categoria || !valorNormalizado) return false;
+    return [catId(categoria), categoria.id, categoria.slug, catNombre(categoria)]
+        .some(valor => normalizarCategoriaServicio(valor) === valorNormalizado);
+}
+
+function resolverCategoriaGuardadaCliente(valor, categorias = []) {
+    const normalizada = normalizarCategoriaServicio(valor);
+    if (!normalizada) return '';
+
+    const categoria = categorias.find(item => categoriaCoincideCliente(item, normalizada));
+    if (categoria) return catId(categoria);
+
+    const conocidas = ['manicura', 'pedicura', 'faciales', 'barberia', 'cejas', 'combos', 'otros'];
+    return conocidas.includes(normalizada) ? normalizada : '';
+}
+
 function inferirCategoriaCliente(servicio, categorias = []) {
-    if (servicio?.categoria) return servicio.categoria;
+    const categoriaGuardada = resolverCategoriaGuardadaCliente(servicio?.categoria, categorias);
+    if (categoriaGuardada) return categoriaGuardada;
 
     const texto = normalizarCategoriaServicio(`${servicio?.nombre || ''} ${servicio?.descripcion || ''}`);
     if (texto.includes('pedic') || texto.includes('pie')) return 'pedicura';
