@@ -10,6 +10,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
     const [descansosPorDia, setDescansosPorDia] = React.useState({});
     const [fechasSinDisponibilidad, setFechasSinDisponibilidad] = React.useState([]);
     const [cargandoDisponibilidad, setCargandoDisponibilidad] = React.useState(false);
+    const [disponibilidadVerificada, setDisponibilidadVerificada] = React.useState(false);
     const [minAntelacionHoras, setMinAntelacionHoras] = React.useState(2);
     const [maxAntelacionDias, setMaxAntelacionDias] = React.useState(30);
 
@@ -165,13 +166,22 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
         }
     }, [currentDate, service]);
 
+    React.useEffect(() => {
+        if (!selectedDate || cargandoDisponibilidad || !disponibilidadVerificada) return;
+        if (fechasSinDisponibilidad.includes(selectedDate)) {
+            onDateSelect('');
+        }
+    }, [selectedDate, fechasSinDisponibilidad, cargandoDisponibilidad, disponibilidadVerificada]);
+
     const verificarDisponibilidadMes = async (horarios, descansos = {}, configOverride = null) => {
         if (!service || !profesional) {
             setFechasSinDisponibilidad([]);
+            setDisponibilidadVerificada(false);
             return;
         }
 
         setCargandoDisponibilidad(true);
+        setDisponibilidadVerificada(false);
         
         try {
             const negocioId = getNegocioIdLocal();
@@ -284,9 +294,11 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
             }
             
             setFechasSinDisponibilidad(sinDisponibilidad);
+            setDisponibilidadVerificada(true);
         } catch (error) {
             console.error('Error verificando disponibilidad real del mes:', error);
             setFechasSinDisponibilidad([]);
+            setDisponibilidadVerificada(true);
         } finally {
             setCargandoDisponibilidad(false);
         }
@@ -411,7 +423,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                             const diaLibreProfesional = esDiaLibreProfesional(date);
                             const sinDisponibilidad = esDiaSinDisponibilidad(date);
                             const tieneHorarios = tieneHorariosConfigurados(date);
-                            const available = !past && profesionalTrabaja && !cerrado && !diaLibreProfesional && !sinDisponibilidad && tieneHorarios;
+                            const available = disponibilidadVerificada && !cargandoDisponibilidad && !past && profesionalTrabaja && !cerrado && !diaLibreProfesional && !sinDisponibilidad && tieneHorarios;
                             
                             let className = "h-10 w-full flex items-center justify-center rounded-lg text-sm font-medium transition-all relative";
                             if (selected) className += " bg-pink-500 text-white shadow-md scale-105 ring-2 ring-pink-300";
@@ -422,6 +434,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                             if (cerrado) title = "Dia cerrado";
                             else if (diaLibreProfesional) title = `${profesional?.nombre} no trabaja este dia`;
                             else if (sinDisponibilidad) title = "Sin horarios disponibles para este servicio";
+                            else if (!disponibilidadVerificada || cargandoDisponibilidad) title = "Verificando disponibilidad";
                             else if (past && dateStr === getTodayLocalString()) title = "Hoy ya no hay horarios disponibles";
                             else if (past) title = "Fecha pasada";
                             else if (!profesionalTrabaja && profesional) {
