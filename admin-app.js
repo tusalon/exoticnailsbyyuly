@@ -385,6 +385,7 @@ function AdminApp() {
     const [tabActivo, setTabActivo] = React.useState('reservas');
     const [agendaDate, setAgendaDate] = React.useState(new Date());
     const [agendaMode, setAgendaMode] = React.useState('dia');
+    const [agendaDetalleBooking, setAgendaDetalleBooking] = React.useState(null);
     
     const [showClientesRegistrados, setShowClientesRegistrados] = React.useState(false);
     const [clientesRegistrados, setClientesRegistrados] = React.useState([]);
@@ -396,6 +397,8 @@ function AdminApp() {
     const [busquedaClienteManual, setBusquedaClienteManual] = React.useState('');
 
     const [showNuevaReservaModal, setShowNuevaReservaModal] = React.useState(false);
+    const [creandoReservaManual, setCreandoReservaManual] = React.useState(false);
+    const creandoReservaManualRef = React.useRef(false);
     const [reservaEditando, setReservaEditando] = React.useState(null);
     const [nuevaReservaData, setNuevaReservaData] = React.useState({
         cliente_nombre: '',
@@ -1178,12 +1181,17 @@ function AdminApp() {
     // CREAR RESERVA MANUAL
     // ============================================
     const handleCrearReservaManual = async () => {
+        if (creandoReservaManualRef.current) return;
+
         if (!nuevaReservaData.cliente_nombre || !nuevaReservaData.cliente_whatsapp || 
             !nuevaReservaData.servicio || !nuevaReservaData.profesional_id || 
             !nuevaReservaData.fecha || !nuevaReservaData.hora_inicio) {
             alert('Complet√° todos los campos');
             return;
         }
+
+        creandoReservaManualRef.current = true;
+        setCreandoReservaManual(true);
 
         try {
             const serviciosSeleccionados = getServiciosManualSeleccionados();
@@ -1357,6 +1365,9 @@ function AdminApp() {
         } catch (error) {
             console.error('Error creando reserva:', error);
             alert('Error al crear la reserva: ' + error.message);
+        } finally {
+            creandoReservaManualRef.current = false;
+            setCreandoReservaManual(false);
         }
     };
 
@@ -1899,10 +1910,89 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
         Pendiente: 'bg-amber-400 border-amber-500 text-amber-950',
         Completado: 'bg-emerald-500 border-emerald-600 text-white'
     };
+    const estadoNormalizado = (estado) => String(estado || '').trim().toLowerCase();
+    const puedeEditarReserva = (booking) => {
+        const estado = estadoNormalizado(booking.estado);
+        return estado !== 'cancelado' && estado !== 'cancelada' && estado !== 'completado' && estado !== 'completada';
+    };
 
     const getAgendaDayBookings = (date) => {
         const dateStr = formatDate(date);
         return agendaBookings.filter(b => b.fecha === dateStr);
+    };
+
+    const getBookingEndMinutes = (booking) => {
+        const start = timeToMinutes(booking.hora_inicio);
+        const end = timeToMinutes(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60));
+        return end > start ? end : start + Number(booking.duracion || 60);
+    };
+
+    const getAgendaLayoutBookings = (dayBookings = []) => {
+        const sorted = [...dayBookings].sort((a, b) => {
+            const startDiff = timeToMinutes(a.hora_inicio) - timeToMinutes(b.hora_inicio);
+            if (startDiff !== 0) return startDiff;
+            return getBookingEndMinutes(a) - getBookingEndMinutes(b);
+        });
+
+        const clusters = [];
+        let cluster = [];
+        let clusterEnd = -1;
+
+        sorted.forEach(booking => {
+            const start = timeToMinutes(booking.hora_inicio);
+            const end = getBookingEndMinutes(booking);
+
+            if (cluster.length === 0 || start < clusterEnd) {
+                cluster.push(booking);
+                clusterEnd = Math.max(clusterEnd, end);
+            } else {
+                clusters.push(cluster);
+                cluster = [booking];
+                clusterEnd = end;
+            }
+        });
+
+        if (cluster.length > 0) clusters.push(cluster);
+
+        return clusters.flatMap(group => {
+            const columnEnds = [];
+            const positioned = group.map(booking => {
+                const start = timeToMinutes(booking.hora_inicio);
+                const end = getBookingEndMinutes(booking);
+                let columnIndex = columnEnds.findIndex(columnEnd => start >= columnEnd);
+
+                if (columnIndex === -1) {
+                    columnIndex = columnEnds.length;
+                    columnEnds.push(end);
+                } else {
+                    columnEnds[columnIndex] = end;
+                }
+
+                return { ...booking, _agendaColumn: columnIndex };
+            });
+
+            const columnCount = Math.max(1, columnEnds.length);
+            return positioned.map(booking => ({
+                ...booking,
+                _agendaColumns: columnCount
+            }));
+        });
+    };
+
+    const getAgendaBookingStyle = (booking) => {
+        const columns = Math.max(1, booking._agendaColumns || 1);
+        const column = Math.min(columns - 1, Math.max(0, booking._agendaColumn || 0));
+        const widthPercent = 100 / columns;
+        const leftPercent = column * widthPercent;
+        const rightPercent = 100 - leftPercent - widthPercent;
+        const halfGap = columns > 1 ? 3 : 0;
+
+        return {
+            top: `${getBookingTop(booking)}px`,
+            height: `${getBookingHeight(booking)}px`,
+            left: `calc(${leftPercent}% + 0.5rem + ${column > 0 ? halfGap : 0}px)`,
+            right: `calc(${rightPercent}% + 0.5rem + ${column < columns - 1 ? halfGap : 0}px)`
+        };
     };
 
     const getBookingTop = (booking) => {
@@ -1914,6 +2004,10 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
         const end = timeToMinutes(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60));
         return Math.max(44, (end - start) * agendaPxPerMinute - 4);
     };
+
+    const agendaDayLayoutBookings = getAgendaLayoutBookings(agendaDayBookings);
+    const agendaDayMaxColumns = Math.max(1, ...agendaDayLayoutBookings.map(b => b._agendaColumns || 1));
+    const agendaDayMinWidth = Math.max(0, 72 + (agendaDayMaxColumns * 180));
 
     const normalizePhone = (phone) => String(phone || '').replace(/\D/g, '').replace(/^53/, '');
 
@@ -2010,6 +2104,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
 
     const abrirModalReprogramar = (booking) => {
         const servicio = serviciosList.find(s => s.nombre === booking.servicio);
+        setAgendaDetalleBooking(null);
         setReservaEditando(booking);
         setNuevaReservaData({
             cliente_nombre: booking.cliente_nombre || '',
@@ -2030,6 +2125,10 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
         setBusquedaClienteManual('');
         loadClientesRegistrados();
         setShowNuevaReservaModal(true);
+    };
+
+    const abrirDetalleAgenda = (booking) => {
+        setAgendaDetalleBooking(booking);
     };
 
     const abrirModalDisponibilidad = () => {
@@ -2143,7 +2242,11 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                         <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xl font-bold">Nueva Reserva Manual</h3>
-                                <button onClick={() => setShowNuevaReservaModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">√ó</button>
+                                    <button
+                                        onClick={() => setShowNuevaReservaModal(false)}
+                                        disabled={creandoReservaManual}
+                                        className="text-gray-500 hover:text-gray-700 text-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >√ó</button>
                             </div>
                             <div className="space-y-4">
                                 {!reservaEditando && (
@@ -2327,7 +2430,13 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                     </div>
                                 )}
                                 <div className="flex gap-3 pt-4">
-                                    <button onClick={() => { setShowNuevaReservaModal(false); setReservaEditando(null); setServiciosManualSeleccionados([]); }} className="flex-1 px-4 py-2 border rounded-lg">Cancelar</button>
+                                    <button
+                                        onClick={() => { setShowNuevaReservaModal(false); setReservaEditando(null); setServiciosManualSeleccionados([]); }}
+                                        disabled={creandoReservaManual}
+                                        className="flex-1 px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Cancelar
+                                    </button>
                                     {reservaEditando?.estado === 'Pendiente' && (
                                         <button
                                             onClick={async () => {
@@ -2340,8 +2449,80 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                             Confirmar pago
                                         </button>
                                     )}
-                                    <button onClick={handleCrearReservaManual} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg">{reservaEditando ? 'Guardar cambios' : 'Crear Reserva'}</button>
+                                    <button
+                                        onClick={handleCrearReservaManual}
+                                        disabled={creandoReservaManual}
+                                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                                    >
+                                        {creandoReservaManual ? 'Guardando...' : reservaEditando ? 'Guardar cambios' : 'Crear Reserva'}
+                                    </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {agendaDetalleBooking && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-xl max-w-lg w-full p-5 shadow-xl">
+                            <div className="flex items-start justify-between gap-4 border-b pb-3">
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-pink-500 font-bold">Detalle de cita</p>
+                                    <h3 className="text-xl font-bold text-gray-900">{agendaDetalleBooking.cliente_nombre || 'Cliente sin nombre'}</h3>
+                                </div>
+                                <button onClick={() => setAgendaDetalleBooking(null)} className="text-gray-500 hover:text-gray-700 text-2xl leading-none">√ó</button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-4 text-sm">
+                                <div className="rounded-lg bg-gray-50 p-3">
+                                    <p className="text-xs font-bold uppercase text-gray-400">Fecha</p>
+                                    <p className="font-semibold text-gray-900">{agendaDetalleBooking.fecha}</p>
+                                </div>
+                                <div className="rounded-lg bg-gray-50 p-3">
+                                    <p className="text-xs font-bold uppercase text-gray-400">Hora</p>
+                                    <p className="font-semibold text-gray-900">
+                                        {formatTo12Hour(agendaDetalleBooking.hora_inicio)} - {formatTo12Hour(agendaDetalleBooking.hora_fin || calculateEndTime(agendaDetalleBooking.hora_inicio, agendaDetalleBooking.duracion || 60))}
+                                    </p>
+                                </div>
+                                <div className="rounded-lg bg-gray-50 p-3">
+                                    <p className="text-xs font-bold uppercase text-gray-400">Servicio</p>
+                                    <p className="font-semibold text-gray-900">{agendaDetalleBooking.servicio}</p>
+                                </div>
+                                <div className="rounded-lg bg-gray-50 p-3">
+                                    <p className="text-xs font-bold uppercase text-gray-400">Profesional</p>
+                                    <p className="font-semibold text-gray-900">{agendaDetalleBooking.profesional_nombre || agendaDetalleBooking.trabajador_nombre || 'Sin profesional'}</p>
+                                </div>
+                                <div className="rounded-lg bg-gray-50 p-3">
+                                    <p className="text-xs font-bold uppercase text-gray-400">Estado</p>
+                                    <p className="font-semibold text-gray-900">{agendaDetalleBooking.estado || 'Sin estado'}</p>
+                                </div>
+                                <div className="rounded-lg bg-gray-50 p-3">
+                                    <p className="text-xs font-bold uppercase text-gray-400">WhatsApp</p>
+                                    <p className="font-semibold text-gray-900">+{agendaDetalleBooking.cliente_whatsapp || 'Sin numero'}</p>
+                                </div>
+                            </div>
+
+                            {agendaDetalleBooking._grupoVisual && Array.isArray(agendaDetalleBooking._reservasGrupo) && (
+                                <div className="mb-4 rounded-lg border border-pink-100 bg-pink-50 p-3">
+                                    <p className="text-xs font-bold uppercase text-pink-500 mb-2">Servicios del turno</p>
+                                    <div className="space-y-2">
+                                        {agendaDetalleBooking._reservasGrupo.map(item => (
+                                            <div key={item.id} className="flex justify-between gap-3 text-sm">
+                                                <span className="font-semibold text-gray-800">{item.servicio}</span>
+                                                <span className="text-gray-500">{formatTo12Hour(item.hora_inicio)} - {formatTo12Hour(item.hora_fin)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3">
+                                <button onClick={() => setAgendaDetalleBooking(null)} className="flex-1 px-4 py-2 border rounded-lg">Cerrar</button>
+                                {puedeEditarReserva(agendaDetalleBooking) && (
+                                    <button onClick={() => abrirModalReprogramar(agendaDetalleBooking)} className="flex-1 px-4 py-2 bg-pink-500 text-white rounded-lg font-bold hover:bg-pink-600">
+                                        Editar
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -2632,8 +2813,8 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                         </div>
 
                         {agendaMode === 'dia' && (
-                            <div className="p-3 sm:p-5">
-                                <div className="relative border rounded-xl overflow-hidden bg-white" style={{ height: `${agendaGridHeight}px` }}>
+                            <div className="p-3 sm:p-5 overflow-x-auto">
+                                <div className="relative border rounded-xl overflow-hidden bg-white" style={{ height: `${agendaGridHeight}px`, minWidth: `${agendaDayMinWidth}px` }}>
                                     <div className="absolute left-0 top-0 bottom-0 w-16 bg-gray-50 border-r z-0">
                                         {agendaHours.map(hour => (
                                             <div key={hour} className="relative border-b border-gray-100 text-right pr-2 text-xs text-gray-400" style={{ height: `${60 * agendaPxPerMinute}px` }}>
@@ -2653,26 +2834,26 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                             </div>
                                         )}
 
-                                        {agendaDayBookings.map(booking => {
+                                        {agendaDayLayoutBookings.map(booking => {
                                             const statusClass = agendaStatusStyle[booking.estado] || 'bg-gray-500 border-gray-600 text-white';
+                                            const isShort = getBookingHeight(booking) < 76;
                                             return (
                                                 <div
                                                     key={booking._grupoVisualId || booking.id}
-                                                    className={`absolute left-2 right-2 rounded-lg border shadow-sm p-3 overflow-hidden ${statusClass}`}
-                                                    style={{ top: `${getBookingTop(booking)}px`, height: `${getBookingHeight(booking)}px` }}
+                                                    className={`absolute rounded-lg border shadow-sm ${isShort ? 'p-2' : 'p-3'} overflow-hidden cursor-pointer ${statusClass}`}
+                                                    style={getAgendaBookingStyle(booking)}
+                                                    onClick={() => abrirDetalleAgenda(booking)}
                                                 >
-                                                    <div className="flex h-full justify-between gap-3">
+                                                    <div className="flex h-full flex-col gap-1">
                                                         <div className="min-w-0">
-                                                            <p className="text-xs font-bold opacity-90">{formatTo12Hour(booking.hora_inicio)} - {formatTo12Hour(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60))}</p>
-                                                            <p className="text-base font-bold truncate">{booking.cliente_nombre}</p>
-                                                            <p className="text-sm truncate opacity-90">{booking._grupoVisual ? `${booking._reservasGrupo.length} servicios ¬∑ ${booking.servicio}` : booking.servicio}</p>
-                                                            <p className="text-xs truncate opacity-80">{booking.profesional_nombre || booking.trabajador_nombre || 'Sin profesional'}</p>
+                                                            <p className="text-[11px] font-bold leading-tight opacity-90">{formatTo12Hour(booking.hora_inicio)} - {formatTo12Hour(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60))}</p>
+                                                            {!isShort && <p className="text-sm font-bold truncate">{booking.cliente_nombre}</p>}
+                                                            {!isShort && <p className="text-xs truncate opacity-90">{booking._grupoVisual ? `${booking._reservasGrupo.length} servicios ¬∑ ${booking.servicio}` : booking.servicio}</p>}
+                                                            {!isShort && <p className="text-[11px] truncate opacity-80">{booking.profesional_nombre || booking.trabajador_nombre || 'Sin profesional'}</p>}
                                                         </div>
-                                                        {(booking.estado === 'Reservado' || booking.estado === 'Pendiente') && (
-                                                            <button onClick={() => abrirModalReprogramar(booking)} className="self-start shrink-0 bg-white/20 hover:bg-white/30 rounded-full px-3 py-1 text-xs font-bold">
-                                                                Editar
-                                                            </button>
-                                                        )}
+                                                        <button onClick={(event) => { event.stopPropagation(); abrirDetalleAgenda(booking); }} className="mt-auto w-full rounded-md py-1 text-[11px] bg-white/20 hover:bg-white/30 font-bold">
+                                                            Detalles
+                                                        </button>
                                                     </div>
                                                 </div>
                                             );
@@ -2684,8 +2865,8 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
 
                         {agendaMode === 'semana' && (
                         <div className="overflow-x-auto">
-                            <div className="min-w-[1080px]">
-                                <div className="grid grid-cols-[72px_repeat(7,minmax(140px,1fr))] border-b bg-white sticky top-0 z-10">
+                            <div className="min-w-[1440px]">
+                                <div className="grid grid-cols-[72px_repeat(7,minmax(190px,1fr))] border-b bg-white sticky top-0 z-10">
                                     <div className="p-3 text-xs font-semibold text-gray-400 border-r">Hora</div>
                                     {agendaDays.map(day => {
                                         const dateStr = formatDate(day);
@@ -2707,7 +2888,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                     })}
                                 </div>
 
-                                <div className="grid grid-cols-[72px_repeat(7,minmax(140px,1fr))] relative" style={{ height: `${agendaGridHeight}px` }}>
+                                <div className="grid grid-cols-[72px_repeat(7,minmax(190px,1fr))] relative" style={{ height: `${agendaGridHeight}px` }}>
                                     <div className="border-r bg-gray-50">
                                         {agendaHours.map(hour => (
                                             <div key={hour} className="relative border-b border-gray-100 text-right pr-2 text-xs text-gray-400" style={{ height: `${60 * agendaPxPerMinute}px` }}>
@@ -2719,6 +2900,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                     {agendaDays.map(day => {
                                         const dateStr = formatDate(day);
                                         const dayBookings = getAgendaDayBookings(day);
+                                        const dayLayoutBookings = getAgendaLayoutBookings(dayBookings);
                                         const isToday = dateStr === agendaToday;
                                         return (
                                             <div key={dateStr} className={`relative border-r last:border-r-0 ${isToday ? 'bg-pink-50/40' : 'bg-white'}`}>
@@ -2726,27 +2908,27 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                                     <div key={hour} className="border-b border-gray-100" style={{ height: `${60 * agendaPxPerMinute}px` }}></div>
                                                 ))}
 
-                                                {dayBookings.map(booking => {
+                                                {dayLayoutBookings.map(booking => {
                                                     const statusClass = agendaStatusStyle[booking.estado] || 'bg-gray-500 border-gray-600 text-white';
+                                                    const isShort = getBookingHeight(booking) < 76;
                                                     return (
                                                         <div
                                                             key={booking._grupoVisualId || booking.id}
-                                                            className={`absolute left-2 right-2 rounded-lg border shadow-sm p-2 overflow-hidden ${statusClass}`}
-                                                            style={{ top: `${getBookingTop(booking)}px`, height: `${getBookingHeight(booking)}px` }}
+                                                            className={`absolute rounded-lg border shadow-sm p-2 overflow-hidden cursor-pointer ${statusClass}`}
+                                                            style={getAgendaBookingStyle(booking)}
                                                             title={`${booking.cliente_nombre} - ${booking._grupoVisual ? `${booking._reservasGrupo.length} servicios: ` : ''}${booking.servicio}`}
+                                                            onClick={() => abrirDetalleAgenda(booking)}
                                                         >
-                                                            <div className="flex items-start justify-between gap-2">
+                                                            <div className="flex h-full flex-col gap-1">
                                                                 <div className="min-w-0">
                                                                     <p className="text-xs font-bold leading-tight">{formatTo12Hour(booking.hora_inicio)} - {formatTo12Hour(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60))}</p>
-                                                                    <p className="font-bold text-sm truncate">{booking.cliente_nombre}</p>
-                                                                    <p className="text-xs truncate opacity-90">{booking._grupoVisual ? `${booking._reservasGrupo.length} servicios ¬∑ ${booking.servicio}` : booking.servicio}</p>
-                                                                    <p className="text-xs truncate opacity-80">{booking.profesional_nombre || booking.trabajador_nombre || 'Sin profesional'}</p>
+                                                                    {!isShort && <p className="font-bold text-sm truncate">{booking.cliente_nombre}</p>}
+                                                                    {!isShort && <p className="text-xs truncate opacity-90">{booking._grupoVisual ? `${booking._reservasGrupo.length} servicios ¬∑ ${booking.servicio}` : booking.servicio}</p>}
+                                                                    {!isShort && <p className="text-xs truncate opacity-80">{booking.profesional_nombre || booking.trabajador_nombre || 'Sin profesional'}</p>}
                                                                 </div>
-                                                                {(booking.estado === 'Reservado' || booking.estado === 'Pendiente') && (
-                                                                    <button onClick={() => abrirModalReprogramar(booking)} className="shrink-0 bg-white/20 hover:bg-white/30 rounded px-2 py-1 text-[11px] font-bold">
-                                                                        Editar
-                                                                    </button>
-                                                                )}
+                                                                <button onClick={(event) => { event.stopPropagation(); abrirDetalleAgenda(booking); }} className="mt-auto w-full bg-white/20 hover:bg-white/30 rounded px-2 py-1 text-[11px] font-bold">
+                                                                    Detalles
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     );

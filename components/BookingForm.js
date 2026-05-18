@@ -5,6 +5,7 @@
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
+    const submittingRef = React.useRef(false);
     const [error, setError] = React.useState(null);
 
     // ============================================
@@ -258,6 +259,9 @@ END:VCALENDAR`;
     // ============================================
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submittingRef.current) return;
+
+        submittingRef.current = true;
         setSubmitting(true);
         setError(null);
 
@@ -448,6 +452,7 @@ END:VCALENDAR`;
             console.error('Error:', err);
             setError("Ocurrió un error al guardar la reserva.");
         } finally {
+            submittingRef.current = false;
             setSubmitting(false);
         }
     };
