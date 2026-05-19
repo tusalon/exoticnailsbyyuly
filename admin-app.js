@@ -429,6 +429,11 @@ function AdminApp() {
     const [diasLaborales, setDiasLaborales] = React.useState([]);
     const [fechasConHorarios, setFechasConHorarios] = React.useState({});
 
+    const esAdminPanel = userRole === 'admin';
+    const esProfesionalPanel = userRole === 'profesional';
+    const puedeGestionarReservas = esAdminPanel || (esProfesionalPanel && userNivel >= 2);
+    const puedeGestionarAvanzado = esAdminPanel || (esProfesionalPanel && userNivel >= 3);
+
     const getServicioManual = (servicioNombre = nuevaReservaData.servicio) => {
         if (!servicioNombre) return null;
         const servicio = serviciosList.find(s => s.nombre === servicioNombre);
@@ -1181,6 +1186,10 @@ function AdminApp() {
     // CREAR RESERVA MANUAL
     // ============================================
     const handleCrearReservaManual = async () => {
+        if (!puedeGestionarReservas) {
+            alert('Tu nivel de acceso solo permite ver reservas.');
+            return;
+        }
         if (creandoReservaManualRef.current) return;
 
         if (!nuevaReservaData.cliente_nombre || !nuevaReservaData.cliente_whatsapp || 
@@ -1416,6 +1425,10 @@ function AdminApp() {
     };
 
     const handleBloquearCliente = async (cliente = null) => {
+        if (!puedeGestionarAvanzado) {
+            alert('No tenés permiso para bloquear clientes.');
+            return;
+        }
         const nombre = cliente?.nombre || nuevoBloqueo.nombre;
         const whatsapp = cliente?.whatsapp || nuevoBloqueo.whatsapp;
         const motivo = cliente ? prompt('Motivo del bloqueo (opcional):', '') : nuevoBloqueo.motivo;
@@ -1439,6 +1452,10 @@ function AdminApp() {
     };
 
     const handleDesbloquearCliente = async (whatsapp) => {
+        if (!puedeGestionarAvanzado) {
+            alert('No tenés permiso para desbloquear clientes.');
+            return;
+        }
         if (!confirm(`Desbloquear al cliente +${String(whatsapp).replace(/\D/g, '')}?`)) return;
         const ok = await window.desbloquearCliente?.(whatsapp);
         if (ok) {
@@ -1450,6 +1467,10 @@ function AdminApp() {
     };
 
     const handleEliminarCliente = async (whatsapp) => {
+        if (!puedeGestionarAvanzado) {
+            alert('No tenés permiso para eliminar clientes.');
+            return;
+        }
         if (!confirm('¿Seguro que querés eliminar este cliente? Perderá el acceso a la app.')) return;
         console.log('🗑️ Eliminando cliente:', whatsapp);
         try {
@@ -1548,6 +1569,10 @@ function AdminApp() {
     // FUNCIÓN PARA CONFIRMAR PAGO
     // ============================================
     const confirmarPago = async (id, bookingData) => {
+        if (!puedeGestionarReservas) {
+            alert('Tu nivel de acceso solo permite ver reservas.');
+            return;
+        }
         const reservasGrupo = bookingData?._reservasGrupo || [];
         if (bookingData?._grupoVisual && reservasGrupo.length > 1) {
             if (!confirm(`Confirmar que se recibió el pago de ${bookingData.cliente_nombre}? Los ${reservasGrupo.length} servicios pasarán a "Reservado".`)) return;
@@ -1677,6 +1702,10 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     // FUNCIÓN PARA BORRAR TODAS LAS RESERVAS CANCELADAS
     // ============================================
     const borrarCanceladas = async () => {
+        if (!puedeGestionarAvanzado) {
+            alert('No tenés permiso para borrar reservas canceladas.');
+            return;
+        }
         if (!confirm('Estas segura de querer borrar TODAS las reservas canceladas? Esta accion no se puede deshacer.')) return;
         
         try {
@@ -1714,6 +1743,10 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     // HANDLE CANCEL
     // ============================================
     const handleCancel = async (id, bookingData) => {
+        if (!puedeGestionarReservas) {
+            alert('Tu nivel de acceso solo permite ver reservas.');
+            return;
+        }
         const reservasGrupo = bookingData?._reservasGrupo || [];
         if (bookingData?._grupoVisual && reservasGrupo.length > 1) {
             if (!confirm(`¿Cancelar la cita completa de ${bookingData.cliente_nombre}? Se cancelarán ${reservasGrupo.length} servicios.`)) return;
@@ -1766,6 +1799,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
             localStorage.removeItem('adminUser');
             localStorage.removeItem('adminLoginTime');
             localStorage.removeItem('profesionalAuth');
+            localStorage.removeItem('profesionalLoginTime');
             localStorage.removeItem('userRole');
             localStorage.removeItem('clienteAuth');
             localStorage.removeItem('negocioId');
@@ -1913,6 +1947,8 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     const estadoNormalizado = (estado) => String(estado || '').trim().toLowerCase();
     const puedeEditarReserva = (booking) => {
         const estado = estadoNormalizado(booking.estado);
+        if (!puedeGestionarReservas) return false;
+        if (userRole === 'profesional' && profesional && Number(booking.profesional_id) !== Number(profesional.id)) return false;
         return estado !== 'cancelado' && estado !== 'cancelada' && estado !== 'completado' && estado !== 'completada';
     };
 
@@ -2083,6 +2119,10 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     };
 
     const abrirModalNuevaReserva = () => {
+        if (!puedeGestionarReservas) {
+            alert('Tu nivel de acceso solo permite ver reservas.');
+            return;
+        }
         setReservaEditando(null);
         setNuevaReservaData({
             cliente_nombre: '',
@@ -2103,6 +2143,14 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     };
 
     const abrirModalReprogramar = (booking) => {
+        if (!puedeGestionarReservas) {
+            alert('Tu nivel de acceso solo permite ver reservas.');
+            return;
+        }
+        if (userRole === 'profesional' && profesional && Number(booking.profesional_id) !== Number(profesional.id)) {
+            alert('Solo podés editar tus propias reservas.');
+            return;
+        }
         const servicio = serviciosList.find(s => s.nombre === booking.servicio);
         setAgendaDetalleBooking(null);
         setReservaEditando(booking);
@@ -2183,7 +2231,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                         {/* BOTÓN NUEVA RESERVA */}
                         <button
                             onClick={abrirModalNuevaReserva}
-                            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-green-400 flex-1 sm:flex-none justify-center"
+                            className={`${puedeGestionarReservas ? 'flex' : 'hidden'} items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-green-400 flex-1 sm:flex-none justify-center`}
                         >
                             <span className="text-lg">➕</span>
                             <span className="font-medium">Nueva Reserva</span>
@@ -2201,7 +2249,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
 
                         <button
                             onClick={() => window.location.href = 'editar-negocio.html'}
-                            className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-pink-400 flex-1 sm:flex-none justify-center"
+                            className={`${puedeGestionarAvanzado ? 'flex' : 'hidden'} items-center gap-2 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-pink-400 flex-1 sm:flex-none justify-center`}
                         >
                             <span className="text-lg">🏢</span>
                             <span className="font-medium">Editar Negocio</span>
@@ -2437,7 +2485,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                     >
                                         Cancelar
                                     </button>
-                                    {reservaEditando?.estado === 'Pendiente' && (
+                                    {puedeGestionarReservas && reservaEditando?.estado === 'Pendiente' && (
                                         <button
                                             onClick={async () => {
                                                 await confirmarPago(reservaEditando.id, reservaEditando);
@@ -2970,7 +3018,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                 <button onClick={() => setStatusFilter('completadas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'completadas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Completadas ({completadasCount})</button>
                                 <button onClick={() => setStatusFilter('canceladas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'canceladas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Canceladas ({canceladasCount})</button>
                                 <button onClick={() => setStatusFilter('todas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'todas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Todas ({bookings.length})</button>
-                                {statusFilter === 'canceladas' && (
+                                {puedeGestionarAvanzado && statusFilter === 'canceladas' && (
                                     <button onClick={borrarCanceladas} className="px-4 py-2 bg-red-700 text-white rounded-lg text-sm">🗑️ Borrar todas</button>
                                 )}
                             </div>
@@ -3015,13 +3063,13 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                                     {b.estado}
                                                 </span>
                                                 <div className="flex gap-2">
-                                                    {(b.estado === 'Pendiente' || b.estado === 'Reservado') && (
+                                                    {puedeEditarReserva(b) && (b.estado === 'Pendiente' || b.estado === 'Reservado') && (
                                                         <button onClick={() => abrirModalReprogramar(b)} className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600">Reprogramar</button>
                                                     )}
-                                                    {b.estado === 'Pendiente' && (
+                                                    {puedeGestionarReservas && b.estado === 'Pendiente' && (
                                                         <button onClick={() => confirmarPago(b.id, b)} className="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">Confirmar pago</button>
                                                     )}
-                                                    {b.estado === 'Reservado' && (
+                                                    {puedeGestionarReservas && b.estado === 'Reservado' && (
                                                         <button onClick={() => handleCancel(b.id, b)} className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">❌ Cancelar</button>
                                                     )}
                                                 </div>

@@ -184,7 +184,7 @@ function ProfesionalesPanel() {
 }
 
 function ProfesionalForm({ profesional, onGuardar, onCancelar }) {
-    const [form, setForm] = React.useState(profesional || {
+    const [form, setForm] = React.useState(profesional ? { ...profesional, password: '' } : {
         nombre: '',
         especialidad: '',
         telefono: '',
@@ -212,7 +212,20 @@ function ProfesionalForm({ profesional, onGuardar, onCancelar }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onGuardar(form);
+        if (!form.telefono || form.telefono.length < 8) {
+            alert('Ingresá un teléfono válido para el acceso del profesional');
+            return;
+        }
+        if (!profesional && !String(form.password || '').trim()) {
+            alert('Ingresá una contraseña para el acceso del profesional');
+            return;
+        }
+
+        const payload = { ...form };
+        if (!String(payload.password || '').trim()) {
+            delete payload.password;
+        }
+        onGuardar(payload);
     };
 
     return (
@@ -289,7 +302,8 @@ function ProfesionalForm({ profesional, onGuardar, onCancelar }) {
                         value={form.password}
                         onChange={(e) => setForm({...form, password: e.target.value})}
                         className="w-full border rounded-lg px-3 py-2"
-                        placeholder="********"
+                        placeholder={profesional ? 'Dejar vacío para mantener la actual' : 'Contraseña de acceso'}
+                        required={!profesional}
                     />
                 </div>
                 

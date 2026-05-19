@@ -16,13 +16,23 @@ let profesionalesCache = [];
 let ultimaActualizacionProfesionales = 0;
 const CACHE_DURATION_PROFESIONALES = 5 * 60 * 1000;
 
+async function hashPasswordProfesional(password) {
+    const texto = String(password || '').trim();
+    if (!texto || !window.crypto?.subtle) return texto;
+
+    const encoder = new TextEncoder();
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', encoder.encode(texto));
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return `sha256$${hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
+}
+
 async function cargarProfesionalesDesdeDB() {
     try {
         const negocioId = getNegocioId();
         console.log('🌐 Cargando profesionales desde Supabase para negocio:', negocioId);
         
         const response = await fetch(
-            `${window.SUPABASE_URL}/rest/v1/profesionales?negocio_id=eq.${negocioId}&select=*&order=id.asc`,
+            `${window.SUPABASE_URL}/rest/v1/profesionales?negocio_id=eq.${negocioId}&select=id,negocio_id,nombre,especialidad,color,avatar,activo,telefono,nivel,fechas_libres&order=id.asc`,
             {
                 headers: {
                     'apikey': window.SUPABASE_ANON_KEY,
@@ -67,7 +77,7 @@ window.salonProfesionales = {
         try {
             const negocioId = getNegocioId();
             const response = await fetch(
-                `${window.SUPABASE_URL}/rest/v1/profesionales?negocio_id=eq.${negocioId}&id=eq.${id}&select=*`,
+                `${window.SUPABASE_URL}/rest/v1/profesionales?negocio_id=eq.${negocioId}&id=eq.${id}&select=id,negocio_id,nombre,especialidad,color,avatar,activo,telefono,nivel,fechas_libres`,
                 {
                     headers: {
                         'apikey': window.SUPABASE_ANON_KEY,
@@ -87,6 +97,7 @@ window.salonProfesionales = {
     
     crear: async function(profesional) {
         try {
+            const passwordHash = profesional.password ? await hashPasswordProfesional(profesional.password) : null;
             const negocioId = getNegocioId();
             console.log('➕ Creando profesional para negocio:', negocioId);
             
@@ -108,7 +119,7 @@ window.salonProfesionales = {
                         avatar: profesional.avatar || '👤',
                         activo: true,
                         telefono: profesional.telefono || null,
-                        password: profesional.password || null,
+                        password: passwordHash,
                         nivel: profesional.nivel || 1
                     })
                 }
@@ -135,6 +146,13 @@ window.salonProfesionales = {
             const negocioId = getNegocioId();
             console.log('✏️ Actualizando profesional:', id, 'negocio:', negocioId);
             
+            const cambiosLimpios = { ...cambios };
+            if (!String(cambiosLimpios.password || '').trim()) {
+                delete cambiosLimpios.password;
+            } else {
+                cambiosLimpios.password = await hashPasswordProfesional(cambiosLimpios.password);
+            }
+
             const response = await fetch(
                 `${window.SUPABASE_URL}/rest/v1/profesionales?negocio_id=eq.${negocioId}&id=eq.${id}`,
                 {
@@ -145,7 +163,7 @@ window.salonProfesionales = {
                         'Content-Type': 'application/json',
                         'Prefer': 'return=representation'
                     },
-                    body: JSON.stringify(cambios)
+                    body: JSON.stringify(cambiosLimpios)
                 }
             );
             

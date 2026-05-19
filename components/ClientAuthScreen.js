@@ -12,6 +12,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     const [necesitaNombre, setNecesitaNombre] = React.useState(false);
     const [esProfesional, setEsProfesional] = React.useState(false);
     const [profesionalInfo, setProfesionalInfo] = React.useState(null);
+    const [profesionalPassword, setProfesionalPassword] = React.useState('');
     const [esAdmin, setEsAdmin] = React.useState(false);
 
     React.useEffect(() => {
@@ -44,6 +45,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
         setClienteBloqueado(null);
         setEsProfesional(false);
         setProfesionalInfo(null);
+        setProfesionalPassword('');
         setEsAdmin(false);
         setError('');
     };
@@ -62,6 +64,10 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
         setError('');
         setNecesitaNombre(false);
         setClienteBloqueado(null);
+        setEsProfesional(false);
+        setProfesionalInfo(null);
+        setProfesionalPassword('');
+        setEsAdmin(false);
 
         const numeroCompleto = `53${numeroLimpio}`;
 
@@ -80,6 +86,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                 if (profesional) {
                     setEsProfesional(true);
                     setProfesionalInfo(profesional);
+                    setProfesionalPassword('');
                     setEsAdmin(false);
                     setNecesitaNombre(false);
                     return;
@@ -105,6 +112,43 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
         } catch (err) {
             console.error('Error verificando teléfono:', err);
             setError('Error verificando el número. Intentá más tarde.');
+        } finally {
+            setVerificando(false);
+        }
+    };
+
+    const ingresarComoProfesional = async () => {
+        if (!profesionalInfo) return;
+        if (!String(profesionalPassword || '').trim()) {
+            setError('Ingresá tu contraseña profesional.');
+            return;
+        }
+
+        setVerificando(true);
+        setError('');
+
+        try {
+            const profesional = await window.loginProfesional?.(whatsapp, profesionalPassword);
+            if (!profesional) {
+                setError('Teléfono o contraseña profesional incorrectos.');
+                return;
+            }
+
+            guardarNegocioEnSesion();
+            localStorage.removeItem('clienteAuth');
+            localStorage.removeItem('adminAuth');
+            localStorage.removeItem('adminLoginTime');
+            localStorage.setItem('profesionalAuth', JSON.stringify({
+                id: profesional.id,
+                nombre: profesional.nombre,
+                telefono: profesional.telefono,
+                nivel: profesional.nivel || 1
+            }));
+            localStorage.setItem('profesionalLoginTime', Date.now());
+            window.location.href = 'admin.html';
+        } catch (err) {
+            console.error('Error ingresando como profesional:', err);
+            setError('Error al iniciar sesión profesional. Intentá de nuevo.');
         } finally {
             setVerificando(false);
         }
@@ -279,13 +323,29 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                             </div>
                         )}
 
+                        {esProfesional && profesionalInfo && !verificando && (
+                            <div>
+                                <label className="block text-sm font-medium text-white mb-1">
+                                    ContraseÃ±a profesional
+                                </label>
+                                <input
+                                    type="password"
+                                    value={profesionalPassword}
+                                    onChange={(e) => setProfesionalPassword(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-lg border border-pink-300/30 bg-black/20 text-white placeholder-pink-200/70 focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition"
+                                    placeholder="Tu contraseÃ±a"
+                                    autoComplete="current-password"
+                                />
+                            </div>
+                        )}
+
                         {necesitaNombre && !verificando && !clienteBloqueado && !esAdmin && !esProfesional && (
                             <div className="bg-pink-500/20 border border-pink-300/30 rounded-lg p-3 text-pink-100 text-sm">
                                 No encontramos ese WhatsApp. Completá tu nombre para registrarte y reservar.
                             </div>
                         )}
 
-                        {error && !esAdmin && !esProfesional && (
+                        {error && !esAdmin && (
                             <div className="text-sm p-3 rounded-lg flex items-start gap-2 bg-red-500/20 text-red-300 border border-red-500/30">
                                 <i className="icon-triangle-alert mt-0.5"></i>
                                 <span>{error}</span>
@@ -296,15 +356,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                             {esProfesional && profesionalInfo && !verificando && (
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        localStorage.setItem('profesionalAuth', JSON.stringify({
-                                            id: profesionalInfo.id,
-                                            nombre: profesionalInfo.nombre,
-                                            telefono: profesionalInfo.telefono,
-                                            nivel: profesionalInfo.nivel || 1
-                                        }));
-                                        window.location.href = 'admin.html';
-                                    }}
+                                    onClick={ingresarComoProfesional}
                                     className="w-full bg-white text-pink-600 py-4 rounded-xl font-bold hover:bg-pink-50 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 shadow-lg text-lg border border-pink-200/70"
                                 >
                                     <span className="text-xl">✂️</span>

@@ -46,11 +46,19 @@
             }
             
             // Verificar sesión (8 horas)
-            const loginTime = localStorage.getItem('adminLoginTime');
-            const isValidSession = loginTime && (Date.now() - parseInt(loginTime)) < 8 * 60 * 60 * 1000;
+            const ahora = Date.now();
+            const maxSesion = 8 * 60 * 60 * 1000;
+            const adminLoginTime = localStorage.getItem('adminLoginTime');
+            const profesionalLoginTime = localStorage.getItem('profesionalLoginTime');
+            const profesionalAuth = localStorage.getItem('profesionalAuth');
+            const isValidAdminSession = adminLoginTime && (ahora - parseInt(adminLoginTime)) < maxSesion;
+            const isValidProfesionalSession = profesionalAuth && profesionalLoginTime && (ahora - parseInt(profesionalLoginTime)) < maxSesion;
             
-            if (!isValidSession) {
-                localStorage.clear();
+            if (!isValidAdminSession && !isValidProfesionalSession) {
+                localStorage.removeItem('adminAuth');
+                localStorage.removeItem('adminLoginTime');
+                localStorage.removeItem('profesionalAuth');
+                localStorage.removeItem('profesionalLoginTime');
                 window.location.href = 'admin-login.html';
             }
         })();

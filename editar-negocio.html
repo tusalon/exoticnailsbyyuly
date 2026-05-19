@@ -35,8 +35,18 @@
         (function() {
             const negocioId = localStorage.getItem('negocioId');
             const adminAuth = localStorage.getItem('adminAuth') === 'true';
+            const profesionalAuthRaw = localStorage.getItem('profesionalAuth');
+            const profesionalLoginTime = localStorage.getItem('profesionalLoginTime');
+            let profesionalNivel = 0;
+            try {
+                profesionalNivel = profesionalAuthRaw ? (JSON.parse(profesionalAuthRaw).nivel || 1) : 0;
+            } catch (e) {
+                profesionalNivel = 0;
+            }
+            const profesionalAvanzado = profesionalAuthRaw && profesionalNivel >= 3 && profesionalLoginTime &&
+                (Date.now() - parseInt(profesionalLoginTime)) < 8 * 60 * 60 * 1000;
             
-            if (!negocioId || !adminAuth) {
+            if (!negocioId || (!adminAuth && !profesionalAvanzado)) {
                 console.log('🚫 No hay sesión, redirigiendo a login');
                 window.location.href = 'admin-login.html';
             }
