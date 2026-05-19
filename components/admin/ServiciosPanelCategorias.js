@@ -131,8 +131,15 @@ function ServiciosPanel() {
     };
 
     const guardarServicio = async (servicio) => {
-        if (editando) await window.salonServicios.actualizar(editando.id, servicio);
-        else await window.salonServicios.crear(servicio);
+        const resultado = editando
+            ? await window.salonServicios.actualizar(editando.id, servicio)
+            : await window.salonServicios.crear(servicio);
+
+        if (!resultado) {
+            alert('No se pudo guardar el servicio. Revisa la consola para ver el detalle de Supabase.');
+            return;
+        }
+
         setMostrarForm(false);
         setEditando(null);
         await cargarDatos();
@@ -145,6 +152,7 @@ function ServiciosPanel() {
             duracion: servicio.duracion,
             precio: servicio.precio,
             descripcion: servicio.descripcion || '',
+            imagen: servicio.imagen || null,
             horarios_permitidos: servicio.horarios_permitidos || []
         });
         await cargarDatos();
@@ -264,7 +272,15 @@ function ServiciosPanel() {
                         return (
                             <div key={servicio.id} className={`bg-white border rounded-xl p-4 shadow-sm transition hover:shadow-md ${servicio.activo === false ? 'opacity-60 border-gray-200 bg-gray-50' : 'border-gray-100'}`}>
                                 <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
+                                    {servicio.imagen && (
+                                        <img
+                                            src={servicio.imagen}
+                                            alt={servicio.nombre}
+                                            className="h-20 w-20 rounded-lg object-cover border border-gray-100 shrink-0"
+                                            loading="lazy"
+                                        />
+                                    )}
+                                    <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span className="text-2xl">{categoriaIcono(categoria)}</span>
                                             <h3 className="font-bold text-gray-900 text-lg truncate">{servicio.nombre}</h3>

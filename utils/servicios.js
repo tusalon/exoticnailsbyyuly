@@ -17,6 +17,41 @@ let serviciosCache = [];
 let ultimaActualizacionServicios = 0;
 const CACHE_DURATION_SERVICIOS = 5 * 60 * 1000;
 
+function extraerColumnaFaltante(errorTexto) {
+    const texto = String(errorTexto || '');
+    const match = texto.match(/Could not find the '([^']+)' column/i);
+    return match ? match[1] : null;
+}
+
+async function fetchServicioConCompatibilidad(url, options, payloadOriginal) {
+    const payload = { ...payloadOriginal };
+
+    for (let intento = 0; intento < 6; intento++) {
+        const response = await fetch(url, {
+            ...options,
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) return response;
+
+        const error = await response.text();
+        const columnaFaltante = extraerColumnaFaltante(error);
+
+        if (columnaFaltante && Object.prototype.hasOwnProperty.call(payload, columnaFaltante)) {
+            console.warn(`La columna ${columnaFaltante} no existe en servicios. Reintentando sin esa columna.`);
+            delete payload[columnaFaltante];
+            continue;
+        }
+
+        response.errorText = error;
+        return response;
+    }
+
+    const response = new Response(null, { status: 400, statusText: 'Payload incompatible' });
+    response.errorText = 'No se pudo crear/actualizar el servicio porque varias columnas no existen en el esquema.';
+    return response;
+}
+
 async function cargarServiciosDesdeDB() {
     try {
         const negocioId = getNegocioId();
@@ -108,7 +143,7 @@ window.salonServicios = {
                 horarios_permitidos: servicio.horarios_permitidos || []
             };
 
-            let response = await fetch(
+            let response = await fetchServicioConCompatibilidad(
                 `${window.SUPABASE_URL}/rest/v1/servicios`,
                 {
                     method: 'POST',
@@ -117,17 +152,17 @@ window.salonServicios = {
                         'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
                         'Content-Type': 'application/json',
                         'Prefer': 'return=representation'
-                    },
-                    body: JSON.stringify(payloadCrearServicio)
-                }
+                    }
+                },
+                payloadCrearServicio
             );
             
             if (!response.ok) {
-                const error = await response.text();
+                const error = response.errorText || await response.text();
                 if (payloadCrearServicio.categoria && error.toLowerCase().includes('categoria')) {
                     console.warn('La columna categoria no existe en servicios. Reintentando sin categoria. Ejecuta sql-servicios-categorias.sql para guardarla.');
                     delete payloadCrearServicio.categoria;
-                    response = await fetch(
+                    response = await fetchServicioConCompatibilidad(
                         `${window.SUPABASE_URL}/rest/v1/servicios`,
                         {
                             method: 'POST',
@@ -136,9 +171,9 @@ window.salonServicios = {
                                 'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
                                 'Content-Type': 'application/json',
                                 'Prefer': 'return=representation'
-                            },
-                            body: JSON.stringify(payloadCrearServicio)
-                        }
+                            }
+                        },
+                        payloadCrearServicio
                     );
                     if (response.ok) {
                         const nuevoSinCategoria = await response.json();
@@ -182,7 +217,7 @@ window.salonServicios = {
             if (cambios.imagen !== undefined) datosActualizar.imagen = cambios.imagen;
             if (cambios.horarios_permitidos !== undefined) datosActualizar.horarios_permitidos = cambios.horarios_permitidos;
             
-            let response = await fetch(
+            let response = await fetchServicioConCompatibilidad(
                 `${window.SUPABASE_URL}/rest/v1/servicios?negocio_id=eq.${negocioId}&id=eq.${id}`,
                 {
                     method: 'PATCH',
@@ -191,17 +226,17 @@ window.salonServicios = {
                         'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
                         'Content-Type': 'application/json',
                         'Prefer': 'return=representation'
-                    },
-                    body: JSON.stringify(datosActualizar)
-                }
+                    }
+                },
+                datosActualizar
             );
             
             if (!response.ok) {
-                const error = await response.text();
+                const error = response.errorText || await response.text();
                 if (datosActualizar.categoria && error.toLowerCase().includes('categoria')) {
                     console.warn('La columna categoria no existe en servicios. Reintentando sin categoria. Ejecuta sql-servicios-categorias.sql para guardarla.');
                     delete datosActualizar.categoria;
-                    response = await fetch(
+                    response = await fetchServicioConCompatibilidad(
                         `${window.SUPABASE_URL}/rest/v1/servicios?negocio_id=eq.${negocioId}&id=eq.${id}`,
                         {
                             method: 'PATCH',
@@ -210,9 +245,9 @@ window.salonServicios = {
                                 'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
                                 'Content-Type': 'application/json',
                                 'Prefer': 'return=representation'
-                            },
-                            body: JSON.stringify(datosActualizar)
-                        }
+                            }
+                        },
+                        datosActualizar
                     );
                     if (response.ok) {
                         const actualizadoSinCategoria = await response.json();
@@ -372,7 +407,29 @@ window.salonCategoriasServicios = {
             });
 
             if (!response.ok) {
-                console.error('Error creando categoria:', await response.text());
+                const error = await response.text();
+                if (response.status === 409 || error.includes('duplicate key') || error.includes('23505')) {
+                    const existenteResponse = await fetch(
+                        `${window.SUPABASE_URL}/rest/v1/categorias_servicios?negocio_id=eq.${negocioId}&slug=eq.${payload.slug}&select=*&limit=1`,
+                        {
+                            headers: {
+                                'apikey': window.SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                                'Content-Type': 'application/json'
+                            }
+                        }
+                    );
+
+                    if (existenteResponse.ok) {
+                        const existentes = await existenteResponse.json();
+                        if (existentes[0]) {
+                            console.warn('La categoria ya existia. Usando la categoria existente:', existentes[0]);
+                            return existentes[0];
+                        }
+                    }
+                }
+
+                console.error('Error creando categoria:', error);
                 return null;
             }
 
