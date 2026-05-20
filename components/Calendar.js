@@ -251,7 +251,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                     baseSlots = baseSlots.filter(slot => servicioPermiteHorario(service, slot));
                 }
                 
-                if (baseSlots.length === 0 || diffDias > maxDias) {
+                if (baseSlots.length === 0 || (Number(maxDias) > 0 && diffDias > Number(maxDias))) {
                     sinDisponibilidad.push(fechaStr);
                     continue;
                 }
