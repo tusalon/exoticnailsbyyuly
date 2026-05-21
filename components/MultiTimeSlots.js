@@ -99,8 +99,6 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
             try {
                 const config = window.salonConfig ? await window.salonConfig.get() : {};
                 const minHoras = config?.min_antelacion_horas ?? 2;
-                const duracionTurno = Number(config?.duracion_turnos || 60);
-                const intervaloTurnos = Number(config?.intervalo_entre_turnos || 0);
                 setMinAntelacionHoras(minHoras);
 
                 const [year, month, day] = date.split('-').map(Number);
@@ -142,9 +140,7 @@ function MultiTimeSlots({ service, date, profesional, onTimeSelect, selectedTime
                         const inicio = cursor;
                         const fin = inicio + duracion;
                         const indicesDelDia = item.horarios[diaSemana] || [];
-
-                        if (!estaDentroBloqueTrabajo(inicio, fin, indicesDelDia, duracionTurno, intervaloTurnos)) return false;
-
+                        if (indicesDelDia.length === 0) return false;
                         // En una reserva multiple, solo la primera hora la elige la clienta.
                         // Los servicios siguientes empiezan automaticamente al terminar el anterior.
                         if (index === 0 && !servicioPermiteHorario(item.servicio, minutesToTime(inicio))) return false;

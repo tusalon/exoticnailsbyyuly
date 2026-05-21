@@ -118,13 +118,11 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
         }, {});
     };
 
-    const slotDisponible = ({ slotStr, duracion, slotsDia, descansosDelDia, reservasDia, fechaHoraSlot, minFechaPermitida, duracionTurno, intervaloTurnos }) => {
+    const slotDisponible = ({ slotStr, duracion, descansosDelDia, reservasDia, fechaHoraSlot, minFechaPermitida }) => {
         const slotStart = timeToMinutes(slotStr);
         const slotEnd = slotStart + (parseInt(duracion, 10) || 60);
-        const bloquesTrabajo = crearBloquesTrabajo(slotsDia, duracionTurno, intervaloTurnos);
 
         if (fechaHoraSlot < minFechaPermitida) return false;
-        if (!bloquesTrabajo.some(bloque => slotStart >= bloque.inicio && slotEnd <= bloque.fin)) return false;
         if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) return false;
 
         return !reservasDia.some(reserva => {
@@ -214,8 +212,6 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
             const fechaFin = formatDate(new Date(year, month + 1, 0));
             const minHoras = configOverride?.min_antelacion_horas ?? minAntelacionHoras;
             const maxDias = configOverride?.max_antelacion_dias ?? maxAntelacionDias;
-            const duracionTurno = Number(configOverride?.duracion_turnos || 60);
-            const intervaloTurnos = Number(configOverride?.intervalo_entre_turnos || 0);
             
             const asignacionesMultiples = service?.esMultiple && profesionalCompleto?.esMultiple
                 ? (profesionalCompleto.asignaciones || [])
@@ -274,10 +270,8 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                             const duracion = parseInt(item.servicio?.duracion, 10) || 60;
                             const inicio = cursor;
                             const fin = inicio + duracion;
-                            const slotsDia = (item.horarios[diaSemana] || []).map(indiceToHoraLegible);
-                            const bloquesTrabajo = crearBloquesTrabajo(slotsDia, duracionTurno, intervaloTurnos);
-
-                            if (!bloquesTrabajo.some(bloque => inicio >= bloque.inicio && fin <= bloque.fin)) return false;
+                            const slotsDia = item.horarios[diaSemana] || [];
+                            if (slotsDia.length === 0) return false;
                             if (slotTieneDescanso(inicio, fin, item.descansos[diaSemana] || [])) return false;
 
                             const conflicto = (item.reservasPorFecha[fechaStr] || []).some(reserva => {
@@ -304,8 +298,6 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                             reservasDia: reservasPorFecha[fechaStr] || [],
                             fechaHoraSlot,
                             minFechaPermitida,
-                            duracionTurno,
-                            intervaloTurnos
                         });
                     });
                 }

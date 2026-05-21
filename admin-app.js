@@ -707,8 +707,6 @@ function AdminApp() {
             ? Number(serviciosSeleccionados[0]?.duracion || reservaEditando?.duracion || 60)
             : serviciosSeleccionados.reduce((total, servicio) => total + Number(servicio.duracion || 60), 0);
         const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
-        const duracionTurno = Number(configGlobal?.duracion_turnos || 60);
-        const intervaloTurnos = Number(configGlobal?.intervalo_entre_turnos || 0);
         const minAntelacionHoras = configGlobal?.min_antelacion_horas ?? 2;
         const maxAntelacionDias = configGlobal?.max_antelacion_dias ?? 30;
 
@@ -758,10 +756,6 @@ function AdminApp() {
             const fechaHoraSlot = new Date(year, month - 1, day, horas, minutos, 0);
 
             if (!reservaEditando && fechaHoraSlot < minFechaPermitida) return false;
-
-            if (!estaDentroBloqueTrabajo(slotStart, slotEnd, horasTrabajoFiltradas, duracionTurno, intervaloTurnos)) {
-                return false;
-            }
 
             if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) {
                 return false;
@@ -827,8 +821,6 @@ function AdminApp() {
                 ? serviciosSeleccionados.reduce((total, servicio) => total + Number(servicio.duracion || 60), 0)
                 : (reservaEditando?.duracion || 60);
             const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
-            const duracionTurno = Number(configGlobal?.duracion_turnos || 60);
-            const intervaloTurnos = Number(configGlobal?.intervalo_entre_turnos || 0);
             const minAntelacionHoras = configGlobal?.min_antelacion_horas ?? 2;
             const maxAntelacionDias = configGlobal?.max_antelacion_dias ?? 30;
             
@@ -921,10 +913,6 @@ function AdminApp() {
                     const fechaHoraSlot = new Date(year, month, d, Math.floor(slotStart / 60), slotStart % 60, 0);
 
                     if (!reservaEditando && fechaHoraSlot < minFechaPermitida) {
-                        return false;
-                    }
-
-                    if (!estaDentroBloqueTrabajo(slotStart, slotEnd, horariosDelDia, duracionTurno, intervaloTurnos)) {
                         return false;
                     }
 
