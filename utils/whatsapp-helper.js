@@ -423,6 +423,8 @@ window.notificarReservaPendiente = async function(booking) {
 ⏰ *Hora:* ${horaFormateada}
 💅 *Servicio:* ${booking.servicio}
 👩‍🎨 *Profesional:* ${profesional}
+*Cliente:* ${booking.cliente_nombre}
+*WhatsApp:* ${booking.cliente_whatsapp}
 ${lineaDireccion}
 
 ${mensajePagoConfig || `
@@ -441,8 +443,6 @@ ${lineaCalendario}
 
 ¡Gracias por elegirnos! 💖`;
 
-        window.enviarWhatsApp(booking.cliente_whatsapp, mensajeFinal);
-
         const mensajePush =
 `🆕 RESERVA PENDIENTE - ${configNegocio.nombre}
 👤 Cliente: ${booking.cliente_nombre}
@@ -456,7 +456,9 @@ ${lineaCalendario}
             'high'
         );
 
-        console.log('✅ Cliente notificada con datos de pago + Push a la dueña');
+        window.enviarWhatsApp(configNegocio.telefono, mensajeFinal);
+
+        console.log('✅ Admin notificado con solicitud de anticipo + push enviado');
         return true;
     } catch (error) {
         console.error('Error en notificarReservaPendiente:', error);
