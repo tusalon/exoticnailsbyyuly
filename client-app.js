@@ -280,7 +280,6 @@ function ClientApp() {
                                         profesionalCompleto={selectedProfesional}
                                         service={selectedService}
                                         onHorariosCargados={setHorariosPorDia}
-                                        onTimeSelect={setSelectedTime}
                                     />
                                 </div>
                             )}

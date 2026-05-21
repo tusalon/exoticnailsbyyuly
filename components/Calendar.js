@@ -1,6 +1,6 @@
 // components/Calendar.js - Disponibilidad real por servicio, profesional y reservas
 
-function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto, service, onHorariosCargados, onTimeSelect }) {
+function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto, service, onHorariosCargados }) {
     const [currentDate, setCurrentDate] = React.useState(new Date());
     const [diasLaborales, setDiasLaborales] = React.useState([]);
     const [diasCerrados, setDiasCerrados] = React.useState([]);
@@ -13,10 +13,6 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
     const [disponibilidadVerificada, setDisponibilidadVerificada] = React.useState(false);
     const [minAntelacionHoras, setMinAntelacionHoras] = React.useState(2);
     const [maxAntelacionDias, setMaxAntelacionDias] = React.useState(30);
-    const [mostrarSemana, setMostrarSemana] = React.useState(false);
-    const [semanaBase, setSemanaBase] = React.useState(new Date());
-    const [disponibilidadSemana, setDisponibilidadSemana] = React.useState({});
-    const [cargandoSemana, setCargandoSemana] = React.useState(false);
 
     const indiceToHoraLegible = (indice) => {
         const horas = Math.floor(indice / 2);
@@ -122,24 +118,6 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
         }, {});
     };
 
-    const inicioSemana = (date) => {
-        const base = new Date(date);
-        base.setHours(0, 0, 0, 0);
-        const dia = base.getDay();
-        const diff = dia === 0 ? -6 : 1 - dia;
-        base.setDate(base.getDate() + diff);
-        return base;
-    };
-
-    const diasDeSemana = (date) => {
-        const inicio = inicioSemana(date);
-        return Array.from({ length: 7 }, (_, index) => {
-            const dia = new Date(inicio);
-            dia.setDate(inicio.getDate() + index);
-            return dia;
-        });
-    };
-
     const slotDisponible = ({ slotStr, duracion, descansosDelDia, reservasDia, fechaHoraSlot, minFechaPermitida }) => {
         const slotStart = timeToMinutes(slotStr);
         const slotEnd = slotStart + (parseInt(duracion, 10) || 60);
@@ -207,120 +185,6 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
             verificarDisponibilidadMes(horariosPorDia, descansosPorDia);
         }
     }, [currentDate, service]);
-
-    React.useEffect(() => {
-        if (!mostrarSemana || !service || !profesional || cargandoHorarios) return;
-        cargarDisponibilidadSemana();
-    }, [mostrarSemana, semanaBase, service, profesional, profesionalCompleto, horariosPorDia, descansosPorDia, cargandoHorarios]);
-
-    const cargarDisponibilidadSemana = async () => {
-        setCargandoSemana(true);
-        try {
-            const negocioId = getNegocioIdLocal();
-            const dias = diasDeSemana(semanaBase);
-            const fechaInicio = formatDate(dias[0]);
-            const fechaFin = formatDate(dias[6]);
-            const config = window.salonConfig ? await window.salonConfig.get() : {};
-            const minHoras = config?.min_antelacion_horas ?? minAntelacionHoras;
-            const maxDias = config?.max_antelacion_dias ?? maxAntelacionDias;
-            const minFechaPermitida = new Date(Date.now() + (minHoras * 60 * 60 * 1000));
-            const hoy = new Date();
-            hoy.setHours(0, 0, 0, 0);
-            const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-            const asignacionesMultiples = service?.esMultiple && profesionalCompleto?.esMultiple
-                ? (profesionalCompleto.asignaciones || [])
-                : [];
-
-            const datosMultiples = asignacionesMultiples.length > 0
-                ? await Promise.all(asignacionesMultiples.map(async item => {
-                    const horariosItem = await window.salonConfig.getHorariosPorDia(item.profesional.id);
-                    const descansosItem = window.salonConfig.getDescansosPorDia
-                        ? await window.salonConfig.getDescansosPorDia(item.profesional.id)
-                        : {};
-                    const reservasItem = await getReservasPorFechaProfesional(negocioId, item.profesional.id, fechaInicio, fechaFin);
-                    return { ...item, horarios: horariosItem || {}, descansos: descansosItem || {}, reservasPorFecha: reservasItem || {} };
-                }))
-                : [];
-
-            const reservasPorFecha = asignacionesMultiples.length > 0
-                ? {}
-                : await getReservasPorFechaProfesional(negocioId, profesional.id, fechaInicio, fechaFin);
-
-            const resultado = {};
-            dias.forEach(dia => {
-                const fechaStr = formatDate(dia);
-                const diaSemana = diasSemana[dia.getDay()];
-                const diffDias = Math.ceil((new Date(`${fechaStr}T00:00:00`) - new Date(formatDate(hoy) + 'T00:00:00')) / (1000 * 60 * 60 * 24));
-
-                if (
-                    isPastDate(dia) ||
-                    esDiaCerrado(dia) ||
-                    esDiaLibreProfesional(dia) ||
-                    (Number(maxDias) > 0 && diffDias > Number(maxDias))
-                ) {
-                    resultado[fechaStr] = [];
-                    return;
-                }
-
-                if (datosMultiples.length > 0) {
-                    let baseSlots = (datosMultiples[0].horarios[diaSemana] || []).map(indiceToHoraLegible);
-                    const primerServicio = datosMultiples[0].servicio;
-                    if (primerServicio?.horarios_permitidos?.length) {
-                        baseSlots = baseSlots.filter(slot => servicioPermiteHorario(primerServicio, slot));
-                    }
-
-                    resultado[fechaStr] = baseSlots.filter(slotStr => {
-                        let cursor = timeToMinutes(slotStr);
-                        const fechaHoraSlot = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), Math.floor(cursor / 60), cursor % 60, 0);
-                        if (fechaHoraSlot < minFechaPermitida) return false;
-
-                        for (const item of datosMultiples) {
-                            const duracion = parseInt(item.servicio?.duracion, 10) || 60;
-                            const inicio = cursor;
-                            const fin = inicio + duracion;
-                            const slotsDia = item.horarios[diaSemana] || [];
-                            if (slotsDia.length === 0) return false;
-                            if (slotTieneDescanso(inicio, fin, item.descansos[diaSemana] || [])) return false;
-                            if ((item.reservasPorFecha[fechaStr] || []).some(reserva => {
-                                const reservaStart = timeToMinutes(reserva.hora_inicio);
-                                const reservaEnd = timeToMinutes(reserva.hora_fin);
-                                return (inicio < reservaEnd) && (fin > reservaStart);
-                            })) return false;
-                            cursor = fin;
-                        }
-
-                        return true;
-                    });
-                    return;
-                }
-
-                let slotsDia = (horariosPorDia[diaSemana] || []).map(indiceToHoraLegible);
-                if (service?.horarios_permitidos?.length) {
-                    slotsDia = slotsDia.filter(slot => servicioPermiteHorario(service, slot));
-                }
-
-                resultado[fechaStr] = slotsDia.filter(slotStr => {
-                    const slotStart = timeToMinutes(slotStr);
-                    const fechaHoraSlot = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), Math.floor(slotStart / 60), slotStart % 60, 0);
-                    return slotDisponible({
-                        slotStr,
-                        duracion: service.duracion,
-                        descansosDelDia: descansosPorDia[diaSemana] || [],
-                        reservasDia: reservasPorFecha[fechaStr] || [],
-                        fechaHoraSlot,
-                        minFechaPermitida
-                    });
-                });
-            });
-
-            setDisponibilidadSemana(resultado);
-        } catch (error) {
-            console.error('Error cargando disponibilidad semanal:', error);
-            setDisponibilidadSemana({});
-        } finally {
-            setCargandoSemana(false);
-        }
-    };
 
     React.useEffect(() => {
         if (!selectedDate || cargandoDisponibilidad || !disponibilidadVerificada) return;
@@ -605,93 +469,6 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                         })}
                     </div>
                 </div>
-            </div>
-
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-pink-200 shadow-sm overflow-hidden">
-                <button
-                    type="button"
-                    onClick={() => setMostrarSemana(!mostrarSemana)}
-                    className="w-full p-4 flex items-center justify-between text-left hover:bg-pink-50 transition-colors"
-                >
-                    <span className="font-bold text-pink-800">Ver disponibilidad semanal</span>
-                    <span className="text-pink-500">{mostrarSemana ? 'Ocultar' : 'Mostrar'}</span>
-                </button>
-
-                {mostrarSemana && (
-                    <div className="border-t border-pink-100 p-4 space-y-4">
-                        <div className="flex items-center justify-between gap-3">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const prev = new Date(semanaBase);
-                                    prev.setDate(prev.getDate() - 7);
-                                    setSemanaBase(prev);
-                                }}
-                                className="px-3 py-2 rounded-lg border border-pink-200 text-pink-700 hover:bg-pink-50 text-sm"
-                            >
-                                Semana anterior
-                            </button>
-                            <div className="text-sm font-semibold text-pink-700 text-center">
-                                {formatDate(diasDeSemana(semanaBase)[0])} - {formatDate(diasDeSemana(semanaBase)[6])}
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const next = new Date(semanaBase);
-                                    next.setDate(next.getDate() + 7);
-                                    setSemanaBase(next);
-                                }}
-                                className="px-3 py-2 rounded-lg border border-pink-200 text-pink-700 hover:bg-pink-50 text-sm"
-                            >
-                                Semana siguiente
-                            </button>
-                        </div>
-
-                        {cargandoSemana ? (
-                            <div className="text-center py-6">
-                                <div className="animate-spin h-7 w-7 border-b-2 border-pink-500 rounded-full mx-auto"></div>
-                                <p className="text-sm text-pink-500 mt-3">Cargando semana...</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {diasDeSemana(semanaBase).map(dia => {
-                                    const fechaStr = formatDate(dia);
-                                    const slots = disponibilidadSemana[fechaStr] || [];
-                                    const nombreDia = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'][dia.getDay()];
-
-                                    return (
-                                        <div key={fechaStr} className={`rounded-lg border p-3 ${selectedDate === fechaStr ? 'border-pink-400 bg-pink-50' : 'border-pink-100 bg-white'}`}>
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="font-bold text-pink-800">{nombreDia} {dia.getDate()}</span>
-                                                <span className="text-xs text-pink-500">{slots.length} turno{slots.length === 1 ? '' : 's'}</span>
-                                            </div>
-
-                                            {slots.length === 0 ? (
-                                                <p className="text-xs text-pink-300 py-2">Sin horarios</p>
-                                            ) : (
-                                                <div className="flex flex-wrap gap-2">
-                                                    {slots.map(slot => (
-                                                        <button
-                                                            key={`${fechaStr}-${slot}`}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                onDateSelect(fechaStr);
-                                                                if (onTimeSelect) onTimeSelect(slot);
-                                                            }}
-                                                            className="px-3 py-2 rounded-lg bg-pink-50 border border-pink-200 text-pink-700 text-sm font-semibold hover:bg-pink-100 hover:border-pink-300"
-                                                        >
-                                                            {window.formatTo12Hour ? window.formatTo12Hour(slot) : slot}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
 
             {profesional && (
