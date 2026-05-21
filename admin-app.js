@@ -2890,47 +2890,65 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                 <div className="text-center py-12"><div className="animate-spin h-8 w-8 border-b-2 border-pink-500 mx-auto"></div><p className="mt-2">Cargando disponibilidad...</p></div>
                             ) : modoDisponibilidad === 'semana' ? (
                                 <div className="space-y-3">
-                                    <button
-                                        onClick={compartirDisponibilidadSemanal}
-                                        disabled={disponibilidadSemanal.length === 0}
-                                        className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 disabled:opacity-50"
-                                    >
-                                        Compartir por WhatsApp
-                                    </button>
-                                    {disponibilidadSemanal.map(dia => (
-                                        <div key={dia.fecha} className="rounded-xl border border-gray-200 bg-white p-3">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <div>
-                                                    <p className="font-bold text-gray-900">{dia.diaNombre}</p>
-                                                    <p className="text-xs text-gray-500">{dia.fecha}</p>
-                                                </div>
-                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${dia.libres > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                    {dia.libres > 0 ? `${dia.libres} disponible(s)` : 'Sin disponibilidad'}
-                                                </span>
-                                            </div>
-                                            {dia.turnos.length === 0 ? (
-                                                <p className="text-sm text-gray-400">Sin horarios configurados</p>
-                                            ) : (
-                                                <div className="flex flex-wrap gap-2">
-                                                    {dia.turnos.map(turno => {
-                                                        const estadoLibre = turno.estado === 'Disponible';
-                                                        const estadoOcupado = turno.estado === 'Ocupado';
-                                                        const cls = estadoLibre
-                                                            ? 'bg-green-50 text-green-700 border-green-200'
-                                                            : estadoOcupado
-                                                                ? 'bg-red-50 text-red-700 border-red-200'
-                                                                : 'bg-gray-50 text-gray-500 border-gray-200';
-                                                        return (
-                                                            <div key={`${dia.fecha}-${turno.hora}`} className={`px-3 py-2 rounded-lg border text-sm ${cls}`} title={turno.detalle}>
-                                                                <span className="font-bold">{formatTo12Hour(turno.hora)}</span>
-                                                                <span className="block text-[11px]">{turno.estado}</span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                        <div className="text-sm text-gray-600">
+                                            Vista semanal por profesional. Verde significa turno disponible para compartir.
                                         </div>
-                                    ))}
+                                        <button
+                                            onClick={compartirDisponibilidadSemanal}
+                                            disabled={disponibilidadSemanal.length === 0}
+                                            className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 disabled:opacity-50"
+                                        >
+                                            Compartir por WhatsApp
+                                        </button>
+                                    </div>
+
+                                    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                                        <div className="min-w-[780px] grid grid-cols-7 divide-x divide-gray-200">
+                                            {disponibilidadSemanal.map(dia => (
+                                                <div key={dia.fecha} className="min-h-80 bg-gray-50/60">
+                                                    <div className={`p-3 border-b ${dia.libres > 0 ? 'bg-green-50 border-green-100' : 'bg-gray-100 border-gray-200'}`}>
+                                                        <p className="font-bold text-gray-900 leading-tight">{dia.diaNombre}</p>
+                                                        <p className="text-xs text-gray-500">{dia.fecha}</p>
+                                                        <p className={`mt-2 text-xs font-bold ${dia.libres > 0 ? 'text-green-700' : 'text-gray-500'}`}>
+                                                            {dia.libres > 0 ? `${dia.libres} disponible(s)` : 'Sin disponibilidad'}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="p-2 space-y-2">
+                                                        {dia.turnos.length === 0 ? (
+                                                            <div className="h-20 rounded-lg border border-dashed border-gray-200 text-gray-400 text-xs flex items-center justify-center text-center px-2">
+                                                                Sin horarios configurados
+                                                            </div>
+                                                        ) : (
+                                                            dia.turnos.map(turno => {
+                                                                const estadoLibre = turno.estado === 'Disponible';
+                                                                const estadoOcupado = turno.estado === 'Ocupado';
+                                                                const cls = estadoLibre
+                                                                    ? 'bg-green-500 text-white border-green-600 shadow-sm'
+                                                                    : estadoOcupado
+                                                                        ? 'bg-red-50 text-red-700 border-red-200'
+                                                                        : 'bg-gray-100 text-gray-500 border-gray-200';
+                                                                return (
+                                                                    <div key={`${dia.fecha}-${turno.hora}`} className={`rounded-lg border px-2 py-2 text-center ${cls}`} title={turno.detalle}>
+                                                                        <div className="text-base font-extrabold leading-tight">{formatTo12Hour(turno.hora)}</div>
+                                                                        <div className="text-[11px] font-semibold leading-tight mt-1">{turno.estado}</div>
+                                                                        {estadoOcupado && <div className="text-[10px] leading-tight mt-1 truncate">{turno.detalle}</div>}
+                                                                    </div>
+                                                                );
+                                                            })
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-3 text-xs text-gray-600">
+                                        <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-500"></span>Disponible</span>
+                                        <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 border border-red-200"></span>Ocupado</span>
+                                        <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 border border-gray-200"></span>No disponible</span>
+                                    </div>
                                 </div>
                             ) : (
                                 <div>
