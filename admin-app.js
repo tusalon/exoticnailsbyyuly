@@ -418,6 +418,8 @@ function AdminApp() {
     const [disponibilidadCargando, setDisponibilidadCargando] = React.useState(false);
     const [disponibilidadDias, setDisponibilidadDias] = React.useState({});
     const [disponibilidadConteos, setDisponibilidadConteos] = React.useState({});
+    const [modoDisponibilidad, setModoDisponibilidad] = React.useState('mes');
+    const [disponibilidadSemanal, setDisponibilidadSemanal] = React.useState([]);
     const [diasCerradosFechas, setDiasCerradosFechas] = React.useState([]);
     const [profesionalSeleccionadoDispo, setProfesionalSeleccionadoDispo] = React.useState(null);
     const [cobroEditando, setCobroEditando] = React.useState(null);
@@ -1091,6 +1093,97 @@ function AdminApp() {
         }
     };
 
+    const cargarDisponibilidadSemanal = async (fecha, profesionalId = null) => {
+        if (!profesionalId && profesionalesList.length > 0) profesionalId = profesionalesList[0]?.id;
+        if (!profesionalId) {
+            setDisponibilidadSemanal([]);
+            return;
+        }
+
+        setDisponibilidadCargando(true);
+        try {
+            const profesionalObj = profesionalesList.find(p => p.id === parseInt(profesionalId));
+            const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
+            const horasTrabajo = horarios.horas || [];
+            const diasTrabajo = horarios.dias || [];
+            const horariosPorDia = horarios.horariosPorDia || {};
+            const descansosPorDia = horarios.descansosPorDia || {};
+            const fechasLibresPersonales = profesionalObj?.fechas_libres || [];
+            const diasSemanaVista = getDiasSemanaDisponibilidad(fecha);
+            const fechaInicio = formatDate(diasSemanaVista[0]);
+            const fechaFin = formatDate(diasSemanaVista[6]);
+            const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+            const negocioId = typeof getNegocioId === "function" ? getNegocioId() : (window.getNegocioIdFromConfig ? window.getNegocioIdFromConfig() : localStorage.getItem("negocioId"));
+            const response = await fetch(
+                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&fecha=gte.${fechaInicio}&fecha=lte.${fechaFin}&profesional_id=eq.${profesionalId}&estado=neq.Cancelado&select=fecha,hora_inicio,hora_fin,cliente_nombre,servicio,estado`,
+                {
+                    headers: {
+                        'apikey': window.SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+                    }
+                }
+            );
+
+            if (!response.ok) throw new Error(await response.text());
+            const reservas = await response.json();
+            const reservasPorFecha = {};
+            (reservas || []).forEach(r => {
+                if (!reservasPorFecha[r.fecha]) reservasPorFecha[r.fecha] = [];
+                reservasPorFecha[r.fecha].push(r);
+            });
+
+            const semana = diasSemanaVista.map(dia => {
+                const fechaStr = formatDate(dia);
+                const diaSemana = nombresDias[dia.getDay()];
+                const reservasDia = reservasPorFecha[fechaStr] || [];
+                const horariosDelDia = (horariosPorDia[diaSemana] && horariosPorDia[diaSemana].length ? horariosPorDia[diaSemana] : horasTrabajo) || [];
+                const descansosDelDia = descansosPorDia[diaSemana] || [];
+                const esCerrado = diasCerradosFechas.includes(fechaStr);
+                const esPasado = fechaStr < getCurrentLocalDate();
+                const esLibre = fechasLibresPersonales.includes(fechaStr);
+                const trabaja = !(diasTrabajo.length > 0 && !diasTrabajo.includes(diaSemana));
+
+                const turnos = horariosDelDia.map(horaIndice => {
+                    const hora = indiceToHoraLegible(horaIndice);
+                    const slotStart = timeToMinutes(hora);
+                    const slotEnd = slotStart + 60;
+
+                    if (esCerrado) return { hora, estado: 'Cerrado', detalle: 'Local cerrado' };
+                    if (esPasado) return { hora, estado: 'Pasado', detalle: 'Fecha pasada' };
+                    if (esLibre) return { hora, estado: 'Libre', detalle: `${profesionalObj?.nombre || 'Profesional'} no trabaja` };
+                    if (!trabaja) return { hora, estado: 'No trabaja', detalle: 'Dia no laboral' };
+                    if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) return { hora, estado: 'Descanso', detalle: 'Descanso configurado' };
+
+                    const reserva = reservasDia.find(item => {
+                        const reservaStart = timeToMinutes(item.hora_inicio);
+                        const reservaEnd = timeToMinutes(item.hora_fin);
+                        return (slotStart < reservaEnd) && (slotEnd > reservaStart);
+                    });
+
+                    if (reserva) {
+                        return { hora, estado: 'Ocupado', detalle: `${reserva.cliente_nombre || 'Cliente'} - ${reserva.servicio || 'Servicio'}` };
+                    }
+
+                    return { hora, estado: 'Disponible', detalle: 'Disponible' };
+                });
+
+                return {
+                    fecha: fechaStr,
+                    diaNombre: diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1),
+                    turnos,
+                    libres: turnos.filter(t => t.estado === 'Disponible').length
+                };
+            });
+
+            setDisponibilidadSemanal(semana);
+        } catch (error) {
+            console.error('Error cargando disponibilidad semanal:', error);
+            setDisponibilidadSemanal([]);
+        } finally {
+            setDisponibilidadCargando(false);
+        }
+    };
+
     // ============================================
     // FUNCIONES DEL CALENDARIO
     // ============================================
@@ -1170,7 +1263,56 @@ function AdminApp() {
         const nuevaFecha = new Date(disponibilidadFecha);
         nuevaFecha.setMonth(disponibilidadFecha.getMonth() + direccion);
         setDisponibilidadFecha(nuevaFecha);
-        cargarDisponibilidadDelMes(nuevaFecha, profesionalSeleccionadoDispo);
+        if (modoDisponibilidad === 'semana') {
+            cargarDisponibilidadSemanal(nuevaFecha, profesionalSeleccionadoDispo);
+        } else {
+            cargarDisponibilidadDelMes(nuevaFecha, profesionalSeleccionadoDispo);
+        }
+    };
+
+    const inicioSemana = (date) => {
+        const base = new Date(date);
+        base.setHours(0, 0, 0, 0);
+        const dia = base.getDay();
+        const diff = dia === 0 ? -6 : 1 - dia;
+        base.setDate(base.getDate() + diff);
+        return base;
+    };
+
+    const getDiasSemanaDisponibilidad = (date) => {
+        const inicio = inicioSemana(date);
+        return Array.from({ length: 7 }, (_, index) => {
+            const dia = new Date(inicio);
+            dia.setDate(inicio.getDate() + index);
+            return dia;
+        });
+    };
+
+    const cambiarSemanaDisponibilidad = (direccion) => {
+        const nuevaFecha = new Date(disponibilidadFecha);
+        nuevaFecha.setDate(disponibilidadFecha.getDate() + (direccion * 7));
+        setDisponibilidadFecha(nuevaFecha);
+        cargarDisponibilidadSemanal(nuevaFecha, profesionalSeleccionadoDispo);
+    };
+
+    const compartirDisponibilidadSemanal = () => {
+        const profesional = profesionalesList.find(p => p.id === parseInt(profesionalSeleccionadoDispo));
+        const lineas = [
+            `Disponibilidad semanal - ${nombreNegocio}`,
+            profesional ? `Profesional: ${profesional.nombre}` : '',
+            ''
+        ].filter(Boolean);
+
+        disponibilidadSemanal.forEach(dia => {
+            const disponibles = dia.turnos.filter(t => t.estado === 'Disponible').map(t => formatTo12Hour(t.hora));
+            const ocupados = dia.turnos.filter(t => t.estado === 'Ocupado').map(t => `${formatTo12Hour(t.hora)} ocupado`);
+            const estado = disponibles.length > 0 ? disponibles.join(', ') : 'Sin turnos disponibles';
+            lineas.push(`${dia.diaNombre} ${dia.fecha}: ${estado}`);
+            if (ocupados.length > 0) lineas.push(`Ocupados: ${ocupados.join(', ')}`);
+        });
+
+        const texto = encodeURIComponent(lineas.join('\n'));
+        window.open(`https://wa.me/?text=${texto}`, '_blank');
     };
 
     // ============================================
@@ -2310,6 +2452,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
         if (profesionalId) {
             setProfesionalSeleccionadoDispo(profesionalId);
         }
+        setModoDisponibilidad('mes');
         setShowDisponibilidadModal(true);
         cargarDisponibilidadDelMes(fechaActual, profesionalId);
     };
@@ -2717,7 +2860,8 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                         onChange={(e) => {
                                             const id = e.target.value ? parseInt(e.target.value) : null;
                                             setProfesionalSeleccionadoDispo(id);
-                                            cargarDisponibilidadDelMes(disponibilidadFecha, id);
+                                            if (modoDisponibilidad === 'semana') cargarDisponibilidadSemanal(disponibilidadFecha, id);
+                                            else cargarDisponibilidadDelMes(disponibilidadFecha, id);
                                         }}
                                         className="w-full border rounded-lg px-3 py-2"
                                     >
@@ -2729,14 +2873,65 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                 </div>
                             )}
                             
+                            <div className="flex gap-2 mb-4">
+                                <button onClick={() => { setModoDisponibilidad('mes'); cargarDisponibilidadDelMes(disponibilidadFecha, profesionalSeleccionadoDispo); }} className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold ${modoDisponibilidad === 'mes' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Mensual</button>
+                                <button onClick={() => { setModoDisponibilidad('semana'); cargarDisponibilidadSemanal(disponibilidadFecha, profesionalSeleccionadoDispo); }} className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold ${modoDisponibilidad === 'semana' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Semanal</button>
+                            </div>
+
                             <div className="flex justify-between items-center mb-4">
-                                <button onClick={() => cambiarMesDisponibilidad(-1)} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">‹</button>
-                                <span className="text-lg font-bold">{monthNames[disponibilidadFecha.getMonth()]} {disponibilidadFecha.getFullYear()}</span>
-                                <button onClick={() => cambiarMesDisponibilidad(1)} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">›</button>
+                                <button onClick={() => modoDisponibilidad === 'semana' ? cambiarSemanaDisponibilidad(-1) : cambiarMesDisponibilidad(-1)} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">‹</button>
+                                <span className="text-lg font-bold">
+                                    {modoDisponibilidad === 'semana' ? `${formatDate(getDiasSemanaDisponibilidad(disponibilidadFecha)[0])} - ${formatDate(getDiasSemanaDisponibilidad(disponibilidadFecha)[6])}` : `${monthNames[disponibilidadFecha.getMonth()]} ${disponibilidadFecha.getFullYear()}`}
+                                </span>
+                                <button onClick={() => modoDisponibilidad === 'semana' ? cambiarSemanaDisponibilidad(1) : cambiarMesDisponibilidad(1)} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">›</button>
                             </div>
                             
                             {disponibilidadCargando ? (
                                 <div className="text-center py-12"><div className="animate-spin h-8 w-8 border-b-2 border-pink-500 mx-auto"></div><p className="mt-2">Cargando disponibilidad...</p></div>
+                            ) : modoDisponibilidad === 'semana' ? (
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={compartirDisponibilidadSemanal}
+                                        disabled={disponibilidadSemanal.length === 0}
+                                        className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 disabled:opacity-50"
+                                    >
+                                        Compartir por WhatsApp
+                                    </button>
+                                    {disponibilidadSemanal.map(dia => (
+                                        <div key={dia.fecha} className="rounded-xl border border-gray-200 bg-white p-3">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <div>
+                                                    <p className="font-bold text-gray-900">{dia.diaNombre}</p>
+                                                    <p className="text-xs text-gray-500">{dia.fecha}</p>
+                                                </div>
+                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${dia.libres > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                    {dia.libres > 0 ? `${dia.libres} disponible(s)` : 'Sin disponibilidad'}
+                                                </span>
+                                            </div>
+                                            {dia.turnos.length === 0 ? (
+                                                <p className="text-sm text-gray-400">Sin horarios configurados</p>
+                                            ) : (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {dia.turnos.map(turno => {
+                                                        const estadoLibre = turno.estado === 'Disponible';
+                                                        const estadoOcupado = turno.estado === 'Ocupado';
+                                                        const cls = estadoLibre
+                                                            ? 'bg-green-50 text-green-700 border-green-200'
+                                                            : estadoOcupado
+                                                                ? 'bg-red-50 text-red-700 border-red-200'
+                                                                : 'bg-gray-50 text-gray-500 border-gray-200';
+                                                        return (
+                                                            <div key={`${dia.fecha}-${turno.hora}`} className={`px-3 py-2 rounded-lg border text-sm ${cls}`} title={turno.detalle}>
+                                                                <span className="font-bold">{formatTo12Hour(turno.hora)}</span>
+                                                                <span className="block text-[11px]">{turno.estado}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
                             ) : (
                                 <div>
                                     <div className="grid grid-cols-7 mb-2 text-center">
@@ -2780,14 +2975,14 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                 </div>
                             )}
                             
-                            <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs">
+                            {modoDisponibilidad === 'mes' && <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs">
                                 <div className="flex flex-wrap gap-4">
                                     <div className="flex items-center gap-2"><div className="w-5 h-5 bg-green-100 border border-green-300 rounded-full flex items-center justify-center text-[10px] font-bold text-green-700">6</div><span>4+ tranquilo</span></div>
                                     <div className="flex items-center gap-2"><div className="w-5 h-5 bg-yellow-100 border border-yellow-300 rounded-full flex items-center justify-center text-[10px] font-bold text-yellow-700">3</div><span>3 medio</span></div>
                                     <div className="flex items-center gap-2"><div className="w-5 h-5 bg-red-100 border border-red-300 rounded-full flex items-center justify-center text-[10px] font-bold text-red-700">2</div><span>1-2 urgente</span></div>
                                     <div className="flex items-center gap-2"><div className="w-5 h-5 bg-gray-100 border border-gray-200 rounded-full flex items-center justify-center text-[10px] font-bold text-gray-400">0</div><span>Sin horarios</span></div>
                                 </div>
-                            </div>
+                            </div>}
                         </div>
                     </div>
                 )}
