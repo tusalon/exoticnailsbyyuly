@@ -26,13 +26,13 @@
             id: 'peluqueria',
             label: 'Salon de peluqueria',
             description: 'Para cortes, color, peinados y tratamientos.',
-            image: 'https://images.unsplash.com/photo-1522337660859-02fbefca4702?q=80&w=2069&auto=format&fit=crop'
+            image: 'https://images.unsplash.com/photo-1701976333339-1d41dad8138b?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy&cs=srgb&w=2070&auto=format&fit=crop'
         },
         {
             id: 'lashes',
             label: 'Salon de lashes',
             description: 'Para pestanas, cejas y mirada.',
-            image: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?q=80&w=2070&auto=format&fit=crop'
+            image: 'https://images.unsplash.com/photo-1589710751893-f9a6770ad71b?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy&cs=srgb&w=2070&auto=format&fit=crop'
         }
     ];
 
