@@ -18,6 +18,7 @@ function EditarNegocio() {
         imagen_fondo_tipo: 'unas',
         mensaje_bienvenida: '',
         mensaje_confirmacion: '',
+        mensaje_inasistencia: 'Hola {cliente}, registramos que no asististe a tu turno en {nombre_negocio}.\n\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}\nProfesional: {profesional}\n\nSi necesitas reprogramar, por favor escribenos por este WhatsApp.',
         instagram: '',
         facebook: '',
         horario_atencion: '',
@@ -65,6 +66,7 @@ function EditarNegocio() {
                     imagen_fondo_tipo: configData.imagen_fondo_tipo || 'unas',
                     mensaje_bienvenida: configData.mensaje_bienvenida || '¡Bienvenido!',
                     mensaje_confirmacion: configData.mensaje_confirmacion || 'Tu turno ha sido reservado',
+                    mensaje_inasistencia: configData.mensaje_inasistencia || 'Hola {cliente}, registramos que no asististe a tu turno en {nombre_negocio}.\n\nServicio: {servicio}\nFecha: {fecha}\nHora: {hora}\nProfesional: {profesional}\n\nSi necesitas reprogramar, por favor escribenos por este WhatsApp.',
                     instagram: configData.instagram || '',
                     facebook: configData.facebook || '',
                     horario_atencion: configData.horario_atencion || '',
@@ -175,6 +177,7 @@ function EditarNegocio() {
                 direccion: config.direccion || null,
                 mensaje_bienvenida: config.mensaje_bienvenida,
                 mensaje_confirmacion: config.mensaje_confirmacion,
+                mensaje_inasistencia: config.mensaje_inasistencia || null,
                 instagram: config.instagram || null,
                 facebook: config.facebook || null,
                 horario_atencion: config.horario_atencion || null,
@@ -638,6 +641,20 @@ function EditarNegocio() {
                                         className="w-full border rounded-lg px-3 py-2"
                                         rows="3"
                                     />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Mensaje por inasistencia
+                                    </label>
+                                    <textarea
+                                        value={config.mensaje_inasistencia}
+                                        onChange={(e) => setConfig({...config, mensaje_inasistencia: e.target.value})}
+                                        className="w-full border rounded-lg px-3 py-2"
+                                        rows="6"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Variables: {'{cliente}'}, {'{nombre_negocio}'}, {'{servicio}'}, {'{fecha}'}, {'{hora}'}, {'{profesional}'}.
+                                    </p>
                                 </div>
                             </div>
                         </div>

@@ -358,6 +358,11 @@ const getCurrentLocalDate = () => {
     return `${year}-${month}-${day}`;
 };
 
+const getCurrentLocalMinutes = () => {
+    const ahora = new Date();
+    return ahora.getHours() * 60 + ahora.getMinutes();
+};
+
 const indiceToHoraLegible = (indice) => {
     const horas = Math.floor(indice / 2);
     const minutos = indice % 2 === 0 ? '00' : '30';
@@ -1879,8 +1884,8 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
         }
 
         const estado = bookingData?.estado;
-        if (estado !== 'Cancelado' && estado !== 'Completado') {
-            alert('Solo se pueden eliminar citas canceladas o completadas.');
+        if (estado !== 'Cancelado' && estado !== 'Completado' && estado !== 'Ausente') {
+            alert('Solo se pueden eliminar citas canceladas, completadas o ausentes.');
             return;
         }
 
@@ -2000,6 +2005,72 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
         }
     };
 
+    const turnoYaPaso = (bookingData) => {
+        if (!bookingData?.fecha) return false;
+        const hoy = getCurrentLocalDate();
+        if (bookingData.fecha < hoy) return true;
+        if (bookingData.fecha > hoy) return false;
+        const fin = bookingData.hora_fin || calculateEndTime(bookingData.hora_inicio, bookingData.duracion || 60);
+        return timeToMinutes(fin) <= getCurrentLocalMinutes();
+    };
+
+    const marcarAusencia = async (bookingData) => {
+        if (!puedeGestionarReservas) {
+            alert('No tenes permiso para marcar ausencias.');
+            return;
+        }
+
+        if (!turnoYaPaso(bookingData)) {
+            alert('Solo se puede marcar ausencia en turnos que ya pasaron.');
+            return;
+        }
+
+        const estado = bookingData?.estado;
+        if (estado === 'Cancelado' || estado === 'Ausente') {
+            alert('Esta cita no se puede marcar como ausencia.');
+            return;
+        }
+
+        const reservasGrupo = bookingData?._reservasGrupo || [];
+        const reservas = reservasGrupo.length > 0 ? reservasGrupo : [bookingData];
+        const ids = reservas.map(reserva => reserva.id).filter(Boolean);
+        const detalle = reservas.length > 1 ? `la cita completa (${reservas.length} servicios)` : 'esta cita';
+        if (!ids.length) return;
+
+        if (!confirm(`Marcar ${detalle} como AUSENTE?`)) return;
+        const enviarMensaje = confirm('Quieres enviarle ahora el mensaje de inasistencia por WhatsApp?');
+
+        try {
+            const negocioId = getNegocioId();
+            const response = await fetch(
+                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&id=in.(${ids.join(',')})`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': window.SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ estado: 'Ausente' })
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            if (enviarMensaje && window.enviarMensajeInasistencia) {
+                await window.enviarMensajeInasistencia(bookingData, config);
+            }
+
+            alert(enviarMensaje ? 'Ausencia marcada y WhatsApp preparado.' : 'Ausencia marcada.');
+            fetchBookings();
+        } catch (error) {
+            console.error('Error marcando ausencia:', error);
+            alert('Error al marcar la ausencia.');
+        }
+    };
+
     // ============================================
     // HANDLE CANCEL
     // ============================================
@@ -2089,6 +2160,8 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
             resultado = filtradas.filter(b => b.estado === 'Pendiente');
         } else if (statusFilter === 'completadas') {
             resultado = filtradas.filter(b => b.estado === 'Completado');
+        } else if (statusFilter === 'ausentes') {
+            resultado = filtradas.filter(b => b.estado === 'Ausente');
         } else if (statusFilter === 'canceladas') {
             resultado = filtradas.filter(b => b.estado === 'Cancelado');
         } else {
@@ -2103,6 +2176,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
     const activasCount = bookings.filter(b => b.estado === 'Reservado').length;
     const pendientesCount = bookings.filter(b => b.estado === 'Pendiente').length;
     const completadasCount = bookings.filter(b => b.estado === 'Completado').length;
+    const ausentesCount = bookings.filter(b => b.estado === 'Ausente').length;
     const canceladasCount = bookings.filter(b => b.estado === 'Cancelado').length;
     const filteredBookings = getFilteredBookings();
 
@@ -2208,14 +2282,15 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
     const agendaStatusStyle = {
         Reservado: 'bg-pink-500 border-pink-600 text-white',
         Pendiente: 'bg-amber-400 border-amber-500 text-amber-950',
-        Completado: 'bg-emerald-500 border-emerald-600 text-white'
+        Completado: 'bg-emerald-500 border-emerald-600 text-white',
+        Ausente: 'bg-slate-500 border-slate-600 text-white'
     };
     const estadoNormalizado = (estado) => String(estado || '').trim().toLowerCase();
     const puedeEditarReserva = (booking) => {
         const estado = estadoNormalizado(booking.estado);
         if (!puedeGestionarReservas) return false;
         if (userRole === 'profesional' && profesional && Number(booking.profesional_id) !== Number(profesional.id)) return false;
-        return estado !== 'cancelado' && estado !== 'cancelada' && estado !== 'completado' && estado !== 'completada';
+        return estado !== 'cancelado' && estado !== 'cancelada' && estado !== 'completado' && estado !== 'completada' && estado !== 'ausente';
     };
 
     const getAgendaDayBookings = (date) => {
@@ -3404,6 +3479,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                 <button onClick={() => setStatusFilter('activas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'activas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Activas ({activasCount})</button>
                                 <button onClick={() => setStatusFilter('pendientes')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'pendientes' ? 'bg-yellow-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Pendientes ({pendientesCount})</button>
                                 <button onClick={() => setStatusFilter('completadas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'completadas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Completadas ({completadasCount})</button>
+                                <button onClick={() => setStatusFilter('ausentes')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'ausentes' ? 'bg-slate-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Ausentes ({ausentesCount})</button>
                                 <button onClick={() => setStatusFilter('canceladas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'canceladas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Canceladas ({canceladasCount})</button>
                                 <button onClick={() => setStatusFilter('todas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'todas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Todas ({bookings.length})</button>
                                 {puedeGestionarAvanzado && statusFilter === 'canceladas' && (
@@ -3424,6 +3500,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                             b.estado === 'Reservado' ? 'border-l-pink-500' :
                                             b.estado === 'Pendiente' ? 'border-l-yellow-500' :
                                             b.estado === 'Completado' ? 'border-l-green-500' :
+                                            b.estado === 'Ausente' ? 'border-l-slate-500' :
                                             'border-l-red-500'
                                         }`}>
                                             <div className="flex justify-between mb-2">
@@ -3453,7 +3530,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                                 )}
                                             </div>
                                             <div className="flex justify-between items-center mt-3 pt-2 border-t">
-                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${b.estado === 'Reservado' ? 'bg-pink-100 text-pink-700' : b.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-700' : b.estado === 'Completado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${b.estado === 'Reservado' ? 'bg-pink-100 text-pink-700' : b.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-700' : b.estado === 'Completado' ? 'bg-green-100 text-green-700' : b.estado === 'Ausente' ? 'bg-slate-100 text-slate-700' : 'bg-red-100 text-red-700'}`}>
                                                     {b.estado}
                                                 </span>
                                                 <div className="flex flex-wrap justify-end gap-2">
@@ -3471,7 +3548,10 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                                             {Number(b.monto_cobrado || 0) > 0 ? 'Editar cobro' : 'Cobro real'}
                                                         </button>
                                                     )}
-                                                    {puedeGestionarAvanzado && (b.estado === 'Cancelado' || b.estado === 'Completado') && (
+                                                    {puedeGestionarReservas && turnoYaPaso(b) && b.estado !== 'Cancelado' && b.estado !== 'Ausente' && (
+                                                        <button onClick={() => marcarAusencia(b)} className="px-3 py-1 bg-slate-600 text-white rounded-lg text-sm hover:bg-slate-700">Marcar ausencia</button>
+                                                    )}
+                                                    {puedeGestionarAvanzado && (b.estado === 'Cancelado' || b.estado === 'Completado' || b.estado === 'Ausente') && (
                                                         <button onClick={() => eliminarReservaHistorial(b)} className="px-3 py-1 bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-800">Eliminar</button>
                                                     )}
                                                 </div>
