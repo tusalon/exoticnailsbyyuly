@@ -11,13 +11,17 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
             console.log('📱 WelcomeScreen - Config cargada:', configData);
             setConfig(configData);
             setCargando(false);
+
+            const fondo = window.getHeroBackgroundOption
+                ? window.getHeroBackgroundOption(configData?.imagen_fondo_tipo)
+                : { image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=2071&auto=format&fit=crop' };
+            const img = new Image();
+            img.src = fondo.image;
+            img.onload = () => setImagenCargada(true);
+            img.onerror = () => setImagenCargada(true);
         };
         cargarDatos();
 
-        // Precargar la imagen de fondo
-        const img = new Image();
-        img.src = 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=2071&auto=format&fit=crop';
-        img.onload = () => setImagenCargada(true);
     }, []);
 
     if (cargando || !imagenCargada) {
@@ -29,6 +33,9 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
     }
 
     const colorPrimario = config?.color_primario || '#ec4899';
+    const fondoPortada = window.getHeroBackgroundOption
+        ? window.getHeroBackgroundOption(config?.imagen_fondo_tipo)
+        : { image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=2071&auto=format&fit=crop', label: 'Fondo de salon' };
     const sticker = config?.especialidad?.toLowerCase().includes('uñas') ? '💅' : 
                     config?.especialidad?.toLowerCase().includes('pelo') ? '💇‍♀️' : 
                     config?.especialidad?.toLowerCase().includes('belleza') ? '🌸' : '💖';
@@ -110,7 +117,7 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
             {/* Imagen de fondo fija */}
             <div className="fixed inset-0 z-0">
                 <img 
-                    src="https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=2071&auto=format&fit=crop"
+                    src={fondoPortada.image}
                     alt="Fondo de salón" 
                     className="w-full h-full object-cover"
                 />

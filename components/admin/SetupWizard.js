@@ -19,6 +19,7 @@ function SetupWizard() {
         color_secundario: '#f59e0b',
         logo: null,
         logo_preview: '',
+        imagen_fondo_tipo: 'unas',
         
         // Paso 3: Mensajes
         mensaje_bienvenida: '¡Bienvenido a nuestro salón!',
@@ -46,7 +47,7 @@ function SetupWizard() {
     const cargarDatosNegocio = async (id) => {
         try {
             const response = await fetch(
-                `${window.SUPABASE_URL}/rest/v1/negocios?id=eq.${id}&select=nombre,telefono,email`,
+                `${window.SUPABASE_URL}/rest/v1/negocios?id=eq.${id}&select=nombre,telefono,email,imagen_fondo_tipo`,
                 {
                     headers: {
                         'apikey': window.SUPABASE_ANON_KEY,
@@ -62,7 +63,8 @@ function SetupWizard() {
                         ...prev,
                         nombre: data[0].nombre || '',
                         telefono_whatsapp: data[0].telefono || '',
-                        email: data[0].email || ''
+                        email: data[0].email || '',
+                        imagen_fondo_tipo: data[0].imagen_fondo_tipo || 'unas'
                     }));
                 }
             }
@@ -173,6 +175,7 @@ function SetupWizard() {
                 direccion: config.direccion || null,
                 color_primario: config.color_primario,
                 color_secundario: config.color_secundario,
+                imagen_fondo_tipo: config.imagen_fondo_tipo || 'unas',
                 mensaje_bienvenida: config.mensaje_bienvenida,
                 mensaje_confirmacion: config.mensaje_confirmacion,
                 instagram: config.instagram || null,
@@ -472,6 +475,31 @@ function SetupWizard() {
                                 className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                                 placeholder="Lun-Vie 9:00-20:00, Sáb 9:00-18:00"
                             />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Imagen de fondo para clientes
+                            </label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {(window.HERO_BACKGROUND_OPTIONS || []).map((opcion) => (
+                                    <button
+                                        type="button"
+                                        key={opcion.id}
+                                        onClick={() => setConfig({...config, imagen_fondo_tipo: opcion.id})}
+                                        className={`overflow-hidden rounded-lg border-2 bg-white text-left transition ${
+                                            config.imagen_fondo_tipo === opcion.id
+                                                ? 'border-amber-600 ring-2 ring-amber-200'
+                                                : 'border-gray-200 hover:border-amber-300'
+                                        }`}
+                                    >
+                                        <img src={opcion.image} alt={opcion.label} className="h-24 w-full object-cover" />
+                                        <div className="p-3">
+                                            <p className="text-sm font-semibold text-gray-900">{opcion.label}</p>
+                                            <p className="text-xs text-gray-500 mt-1">{opcion.description}</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}

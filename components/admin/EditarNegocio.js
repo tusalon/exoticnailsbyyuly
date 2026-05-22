@@ -15,6 +15,7 @@ function EditarNegocio() {
         logo_url: '',
         logo_preview: '',
         logo_file: null,
+        imagen_fondo_tipo: 'unas',
         mensaje_bienvenida: '',
         mensaje_confirmacion: '',
         instagram: '',
@@ -61,6 +62,7 @@ function EditarNegocio() {
                     logo_url: configData.logo_url || '',
                     logo_preview: configData.logo_url || '',
                     logo_file: null,
+                    imagen_fondo_tipo: configData.imagen_fondo_tipo || 'unas',
                     mensaje_bienvenida: configData.mensaje_bienvenida || '¡Bienvenido!',
                     mensaje_confirmacion: configData.mensaje_confirmacion || 'Tu turno ha sido reservado',
                     instagram: configData.instagram || '',
@@ -177,6 +179,7 @@ function EditarNegocio() {
                 facebook: config.facebook || null,
                 horario_atencion: config.horario_atencion || null,
                 logo_url: logo_url,
+                imagen_fondo_tipo: config.imagen_fondo_tipo || 'unas',
                 // 🆕 INCLUIR CAMPOS DE ANTICIPO
                 requiere_anticipo: config.requiere_anticipo,
                 tipo_anticipo: config.tipo_anticipo,
@@ -380,6 +383,34 @@ function EditarNegocio() {
                                         </div>
                                     )}
                                 </div>
+                            </div>
+
+                            {/* Fondo de la app de clientes */}
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Imagen de fondo para clientes
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {(window.HERO_BACKGROUND_OPTIONS || []).map((opcion) => (
+                                        <button
+                                            type="button"
+                                            key={opcion.id}
+                                            onClick={() => setConfig({...config, imagen_fondo_tipo: opcion.id})}
+                                            className={`overflow-hidden rounded-lg border-2 bg-white text-left transition ${
+                                                config.imagen_fondo_tipo === opcion.id
+                                                    ? 'border-amber-600 ring-2 ring-amber-200'
+                                                    : 'border-gray-200 hover:border-amber-300'
+                                            }`}
+                                        >
+                                            <img src={opcion.image} alt={opcion.label} className="h-24 w-full object-cover" />
+                                            <div className="p-3">
+                                                <p className="text-sm font-semibold text-gray-900">{opcion.label}</p>
+                                                <p className="text-xs text-gray-500 mt-1">{opcion.description}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">Esta imagen se vera en la pantalla de acceso y bienvenida de la clienta.</p>
                             </div>
 
                             {/* Horario de atención */}
