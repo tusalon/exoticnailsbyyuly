@@ -2920,16 +2920,16 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
 
                 {/* MODAL CALENDARIO DE DISPONIBILIDAD */}
                 {showDisponibilidadModal && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl font-bold">📆 Disponibilidad mensual</h3>
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+                        <div className="bg-white rounded-xl max-w-5xl w-full p-3 sm:p-6 max-h-[96vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="text-lg sm:text-xl font-bold">📆 Disponibilidad</h3>
                                 <button onClick={() => setShowDisponibilidadModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
                             </div>
                             
                             {userRole === 'admin' && profesionalesList.length > 0 && (
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Profesional:</label>
+                                <div className="mb-3">
+                                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Profesional:</label>
                                     <select
                                         value={profesionalSeleccionadoDispo || ''}
                                         onChange={(e) => {
@@ -2938,7 +2938,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                             if (modoDisponibilidad === 'semana') cargarDisponibilidadSemanal(disponibilidadFecha, id);
                                             else cargarDisponibilidadDelMes(disponibilidadFecha, id);
                                         }}
-                                        className="w-full border rounded-lg px-3 py-2"
+                                        className="w-full border rounded-lg px-3 py-2 text-sm"
                                     >
                                         <option value="">Seleccionar profesional</option>
                                         {profesionalesList.map(p => (
@@ -2948,14 +2948,14 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                 </div>
                             )}
                             
-                            <div className="flex gap-2 mb-4">
+                            <div className="flex gap-2 mb-3">
                                 <button onClick={() => { setModoDisponibilidad('mes'); cargarDisponibilidadDelMes(disponibilidadFecha, profesionalSeleccionadoDispo); }} className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold ${modoDisponibilidad === 'mes' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Mensual</button>
                                 <button onClick={() => { setModoDisponibilidad('semana'); cargarDisponibilidadSemanal(disponibilidadFecha, profesionalSeleccionadoDispo); }} className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold ${modoDisponibilidad === 'semana' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Semanal</button>
                             </div>
 
-                            <div className="flex justify-between items-center mb-4">
+                            <div className="flex justify-between items-center mb-3">
                                 <button onClick={() => modoDisponibilidad === 'semana' ? cambiarSemanaDisponibilidad(-1) : cambiarMesDisponibilidad(-1)} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">‹</button>
-                                <span className="text-lg font-bold">
+                                <span className="text-sm sm:text-lg font-bold text-center px-2">
                                     {modoDisponibilidad === 'semana' ? `${formatDate(getDiasSemanaDisponibilidad(disponibilidadFecha)[0])} - ${formatDate(getDiasSemanaDisponibilidad(disponibilidadFecha)[6])}` : `${monthNames[disponibilidadFecha.getMonth()]} ${disponibilidadFecha.getFullYear()}`}
                                 </span>
                                 <button onClick={() => modoDisponibilidad === 'semana' ? cambiarSemanaDisponibilidad(1) : cambiarMesDisponibilidad(1)} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">›</button>
@@ -2964,65 +2964,55 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                             {disponibilidadCargando ? (
                                 <div className="text-center py-12"><div className="animate-spin h-8 w-8 border-b-2 border-pink-500 mx-auto"></div><p className="mt-2">Cargando disponibilidad...</p></div>
                             ) : modoDisponibilidad === 'semana' ? (
-                                <div className="space-y-3">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                        <div className="text-sm text-gray-600">
-                                            Vista semanal por profesional. Verde significa turno disponible para compartir.
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="text-xs text-gray-600">
+                                            Semana completa lista para captura.
                                         </div>
                                         <button
                                             onClick={compartirDisponibilidadSemanal}
                                             disabled={disponibilidadSemanal.length === 0}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 disabled:opacity-50"
+                                            className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs sm:text-sm font-bold hover:bg-green-700 disabled:opacity-50"
                                         >
-                                            Compartir por WhatsApp
+                                            Compartir
                                         </button>
                                     </div>
 
-                                    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-                                        <div className="min-w-[780px] grid grid-cols-7 divide-x divide-gray-200">
-                                            {disponibilidadSemanal.map(dia => (
-                                                <div key={dia.fecha} className="min-h-80 bg-gray-50/60">
-                                                    <div className={`p-3 border-b ${dia.libres > 0 ? 'bg-green-50 border-green-100' : 'bg-gray-100 border-gray-200'}`}>
-                                                        <p className="font-bold text-gray-900 leading-tight">{dia.diaNombre}</p>
-                                                        <p className="text-xs text-gray-500">{dia.fecha}</p>
-                                                        <p className={`mt-2 text-xs font-bold ${dia.libres > 0 ? 'text-green-700' : 'text-gray-500'}`}>
-                                                            {dia.libres > 0 ? `${dia.libres} disponible(s)` : 'Sin disponibilidad'}
-                                                        </p>
+                                    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                                        <div className="grid grid-cols-7 divide-x divide-gray-200">
+                                            {disponibilidadSemanal.map(dia => {
+                                                const disponibles = dia.turnos.filter(turno => turno.estado === 'Disponible');
+                                                const diaCorto = dia.diaNombre.slice(0, 3);
+                                                const fechaCorta = dia.fecha.slice(5);
+
+                                                return (
+                                                <div key={dia.fecha} className="bg-gray-50/70 min-w-0">
+                                                    <div className={`px-1 py-1.5 sm:p-2 border-b text-center ${dia.libres > 0 ? 'bg-green-50 border-green-100' : 'bg-gray-100 border-gray-200'}`}>
+                                                        <p className="font-extrabold text-gray-900 leading-tight text-[10px] sm:text-sm uppercase truncate">{diaCorto}</p>
+                                                        <p className="text-[9px] sm:text-xs text-gray-500 leading-tight">{fechaCorta}</p>
                                                     </div>
 
-                                                    <div className="p-2 space-y-2">
-                                                        {dia.turnos.length === 0 ? (
-                                                            <div className="h-20 rounded-lg border border-dashed border-gray-200 text-gray-400 text-xs flex items-center justify-center text-center px-2">
-                                                                Sin horarios configurados
+                                                    <div className="px-1 py-1.5 sm:p-2 space-y-1">
+                                                        {disponibles.length === 0 ? (
+                                                            <div className="h-8 sm:h-10 rounded-md border border-dashed border-gray-200 text-gray-400 text-[9px] sm:text-xs flex items-center justify-center text-center px-1">
+                                                                Sin turnos
                                                             </div>
                                                         ) : (
-                                                            dia.turnos.map(turno => {
-                                                                const estadoLibre = turno.estado === 'Disponible';
-                                                                const estadoOcupado = turno.estado === 'Ocupado';
-                                                                const cls = estadoLibre
-                                                                    ? 'bg-green-500 text-white border-green-600 shadow-sm'
-                                                                    : estadoOcupado
-                                                                        ? 'bg-red-50 text-red-700 border-red-200'
-                                                                        : 'bg-gray-100 text-gray-500 border-gray-200';
-                                                                return (
-                                                                    <div key={`${dia.fecha}-${turno.hora}`} className={`rounded-lg border px-2 py-2 text-center ${cls}`} title={turno.detalle}>
-                                                                        <div className="text-base font-extrabold leading-tight">{formatTo12Hour(turno.hora)}</div>
-                                                                        <div className="text-[11px] font-semibold leading-tight mt-1">{turno.estado}</div>
-                                                                        {estadoOcupado && <div className="text-[10px] leading-tight mt-1 truncate">{turno.detalle}</div>}
-                                                                    </div>
-                                                                );
-                                                            })
+                                                            disponibles.map(turno => (
+                                                                <div key={`${dia.fecha}-${turno.hora}`} className="rounded-md border border-green-600 bg-green-500 text-white px-1 py-1 text-center shadow-sm" title={turno.detalle}>
+                                                                    <div className="text-[10px] sm:text-sm font-extrabold leading-none whitespace-nowrap">{formatTo12Hour(turno.hora).replace(' ', '')}</div>
+                                                                </div>
+                                                            ))
                                                         )}
                                                     </div>
                                                 </div>
-                                            ))}
+                                            );})}
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-wrap gap-3 text-xs text-gray-600">
+                                    <div className="flex flex-wrap gap-3 text-[11px] sm:text-xs text-gray-600">
                                         <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-500"></span>Disponible</span>
-                                        <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 border border-red-200"></span>Ocupado</span>
-                                        <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 border border-gray-200"></span>No disponible</span>
+                                        <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 border border-gray-200"></span>Sin turnos</span>
                                     </div>
                                 </div>
                             ) : (
