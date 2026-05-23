@@ -2964,21 +2964,22 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                             {disponibilidadCargando ? (
                                 <div className="text-center py-12"><div className="animate-spin h-8 w-8 border-b-2 border-pink-500 mx-auto"></div><p className="mt-2">Cargando disponibilidad...</p></div>
                             ) : modoDisponibilidad === 'semana' ? (
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                     <div className="flex items-center justify-between gap-2">
-                                        <div className="text-xs text-gray-600">
-                                            Semana completa lista para captura.
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">Disponibilidad semanal</p>
+                                            <p className="text-xs text-gray-500">Turnos libres en verde para compartir.</p>
                                         </div>
                                         <button
                                             onClick={compartirDisponibilidadSemanal}
                                             disabled={disponibilidadSemanal.length === 0}
-                                            className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs sm:text-sm font-bold hover:bg-green-700 disabled:opacity-50"
+                                            className="px-4 py-2 bg-green-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-green-700 disabled:opacity-50 shadow-sm"
                                         >
                                             Compartir
                                         </button>
                                     </div>
 
-                                    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                                    <div className="rounded-2xl border border-pink-100 bg-white overflow-hidden shadow-sm">
                                         <div className="grid grid-cols-7 divide-x divide-gray-200">
                                             {disponibilidadSemanal.map(dia => {
                                                 const disponibles = dia.turnos.filter(turno => turno.estado === 'Disponible');
@@ -2986,21 +2987,21 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                                 const fechaCorta = dia.fecha.slice(5);
 
                                                 return (
-                                                <div key={dia.fecha} className="bg-gray-50/70 min-w-0">
-                                                    <div className={`px-1 py-1.5 sm:p-2 border-b text-center ${dia.libres > 0 ? 'bg-green-50 border-green-100' : 'bg-gray-100 border-gray-200'}`}>
-                                                        <p className="font-extrabold text-gray-900 leading-tight text-[10px] sm:text-sm uppercase truncate">{diaCorto}</p>
-                                                        <p className="text-[9px] sm:text-xs text-gray-500 leading-tight">{fechaCorta}</p>
+                                                <div key={dia.fecha} className="bg-gradient-to-b from-white to-pink-50/50 min-w-0 min-h-[112px] sm:min-h-[150px]">
+                                                    <div className={`px-1 py-2 sm:p-3 border-b text-center ${dia.libres > 0 ? 'bg-green-50 border-green-100' : 'bg-gray-100 border-gray-200'}`}>
+                                                        <p className="font-extrabold text-gray-900 leading-tight text-[11px] sm:text-base uppercase truncate">{diaCorto}</p>
+                                                        <p className="text-[9px] sm:text-xs text-gray-500 leading-tight mt-0.5">{fechaCorta}</p>
                                                     </div>
 
-                                                    <div className="px-1 py-1.5 sm:p-2 space-y-1">
+                                                    <div className="px-1.5 py-2 sm:p-3 space-y-1.5 sm:space-y-2">
                                                         {disponibles.length === 0 ? (
-                                                            <div className="h-8 sm:h-10 rounded-md border border-dashed border-gray-200 text-gray-400 text-[9px] sm:text-xs flex items-center justify-center text-center px-1">
+                                                            <div className="h-12 sm:h-16 rounded-xl border border-dashed border-gray-200 bg-white/70 text-gray-400 text-[9px] sm:text-xs flex items-center justify-center text-center px-1 leading-tight">
                                                                 Sin turnos
                                                             </div>
                                                         ) : (
                                                             disponibles.map(turno => (
-                                                                <div key={`${dia.fecha}-${turno.hora}`} className="rounded-md border border-green-600 bg-green-500 text-white px-1 py-1 text-center shadow-sm" title={turno.detalle}>
-                                                                    <div className="text-[10px] sm:text-sm font-extrabold leading-none whitespace-nowrap">{formatTo12Hour(turno.hora).replace(' ', '')}</div>
+                                                                <div key={`${dia.fecha}-${turno.hora}`} className="rounded-xl border border-green-600 bg-gradient-to-b from-emerald-400 to-green-600 text-white px-1 py-2 sm:py-2.5 text-center shadow-md" title={turno.detalle}>
+                                                                    <div className="text-[11px] sm:text-base font-extrabold leading-none whitespace-nowrap">{formatTo12Hour(turno.hora).replace(' ', '')}</div>
                                                                 </div>
                                                             ))
                                                         )}
