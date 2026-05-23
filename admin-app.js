@@ -2964,7 +2964,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                             {disponibilidadCargando ? (
                                 <div className="text-center py-12"><div className="animate-spin h-8 w-8 border-b-2 border-pink-500 mx-auto"></div><p className="mt-2">Cargando disponibilidad...</p></div>
                             ) : modoDisponibilidad === 'semana' ? (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     <div className="flex items-center justify-between gap-2">
                                         <div>
                                             <p className="text-sm font-bold text-gray-900">Disponibilidad semanal</p>
@@ -2987,21 +2987,21 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                                 const fechaCorta = dia.fecha.slice(5);
 
                                                 return (
-                                                <div key={dia.fecha} className="bg-gradient-to-b from-white to-pink-50/50 min-w-0 min-h-[112px] sm:min-h-[150px]">
-                                                    <div className={`px-1 py-2 sm:p-3 border-b text-center ${dia.libres > 0 ? 'bg-green-50 border-green-100' : 'bg-gray-100 border-gray-200'}`}>
+                                                <div key={dia.fecha} className="bg-gradient-to-b from-white to-pink-50/50 min-w-0 min-h-[190px] sm:min-h-[260px]">
+                                                    <div className={`px-1 py-3 sm:p-4 border-b text-center ${dia.libres > 0 ? 'bg-green-50 border-green-100' : 'bg-gray-100 border-gray-200'}`}>
                                                         <p className="font-extrabold text-gray-900 leading-tight text-[11px] sm:text-base uppercase truncate">{diaCorto}</p>
-                                                        <p className="text-[9px] sm:text-xs text-gray-500 leading-tight mt-0.5">{fechaCorta}</p>
+                                                        <p className="text-[9px] sm:text-xs text-gray-500 leading-tight mt-1">{fechaCorta}</p>
                                                     </div>
 
-                                                    <div className="px-1.5 py-2 sm:p-3 space-y-1.5 sm:space-y-2">
+                                                    <div className="px-1.5 py-3 sm:p-4 space-y-2 sm:space-y-3">
                                                         {disponibles.length === 0 ? (
-                                                            <div className="h-12 sm:h-16 rounded-xl border border-dashed border-gray-200 bg-white/70 text-gray-400 text-[9px] sm:text-xs flex items-center justify-center text-center px-1 leading-tight">
+                                                            <div className="h-24 sm:h-32 rounded-xl border border-dashed border-gray-200 bg-white/70 text-gray-400 text-[9px] sm:text-xs flex items-center justify-center text-center px-1 leading-tight">
                                                                 Sin turnos
                                                             </div>
                                                         ) : (
                                                             disponibles.map(turno => (
-                                                                <div key={`${dia.fecha}-${turno.hora}`} className="rounded-xl border border-green-600 bg-gradient-to-b from-emerald-400 to-green-600 text-white px-1 py-2 sm:py-2.5 text-center shadow-md" title={turno.detalle}>
-                                                                    <div className="text-[11px] sm:text-base font-extrabold leading-none whitespace-nowrap">{formatTo12Hour(turno.hora).replace(' ', '')}</div>
+                                                                <div key={`${dia.fecha}-${turno.hora}`} className="rounded-xl border border-green-600 bg-gradient-to-b from-emerald-400 to-green-600 text-white px-1 py-3 sm:py-4 text-center shadow-md" title={turno.detalle}>
+                                                                    <div className="text-[12px] sm:text-lg font-extrabold leading-none whitespace-nowrap">{formatTo12Hour(turno.hora).replace(' ', '')}</div>
                                                                 </div>
                                                             ))
                                                         )}
