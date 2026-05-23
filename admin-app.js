@@ -1465,6 +1465,10 @@ function AdminApp() {
         ctx.font = '500 26px Arial';
         ctx.fillText('Horarios sujetos a disponibilidad al momento de reservar', 540, 1790);
 
+        ctx.fillStyle = '#be185d';
+        ctx.font = '800 30px Arial';
+        ctx.fillText('ByReservasRoma', 540, 1850);
+
         return canvas;
     };
 
@@ -3156,7 +3160,7 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
                                             disabled={disponibilidadSemanal.length === 0}
                                             className="px-4 py-2 bg-green-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-green-700 disabled:opacity-50 shadow-sm"
                                         >
-                                            Crear imagen
+                                            Compartir
                                         </button>
                                     </div>
 
