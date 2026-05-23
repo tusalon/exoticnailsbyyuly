@@ -1300,7 +1300,7 @@ function AdminApp() {
         cargarDisponibilidadSemanal(nuevaFecha, profesionalSeleccionadoDispo);
     };
 
-    const compartirDisponibilidadSemanal = () => {
+    const compartirDisponibilidadSemanalTexto = () => {
         const profesional = profesionalesList.find(p => p.id === parseInt(profesionalSeleccionadoDispo));
         const lineas = [
             `Disponibilidad semanal - ${nombreNegocio}`,
@@ -1318,6 +1318,187 @@ function AdminApp() {
 
         const texto = encodeURIComponent(lineas.join('\n'));
         window.open(`https://wa.me/?text=${texto}`, '_blank');
+    };
+
+    const canvasToBlob = (canvas) => new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.95));
+
+    const dibujarTextoCentrado = (ctx, texto, x, y, maxWidth, lineHeight) => {
+        const palabras = String(texto || '').split(' ');
+        const lineas = [];
+        let linea = '';
+
+        palabras.forEach(palabra => {
+            const prueba = linea ? `${linea} ${palabra}` : palabra;
+            if (ctx.measureText(prueba).width > maxWidth && linea) {
+                lineas.push(linea);
+                linea = palabra;
+            } else {
+                linea = prueba;
+            }
+        });
+        if (linea) lineas.push(linea);
+
+        lineas.forEach((item, index) => ctx.fillText(item, x, y + (index * lineHeight)));
+        return y + (lineas.length * lineHeight);
+    };
+
+    const generarImagenDisponibilidadSemanal = async () => {
+        const profesional = profesionalesList.find(p => p.id === parseInt(profesionalSeleccionadoDispo));
+        const canvas = document.createElement('canvas');
+        canvas.width = 1080;
+        canvas.height = 1920;
+        const ctx = canvas.getContext('2d');
+        const semanaInicio = disponibilidadSemanal[0]?.fecha || formatDate(getDiasSemanaDisponibilidad(disponibilidadFecha)[0]);
+        const semanaFin = disponibilidadSemanal[6]?.fecha || formatDate(getDiasSemanaDisponibilidad(disponibilidadFecha)[6]);
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#fff7fb');
+        gradient.addColorStop(0.45, '#ffffff');
+        gradient.addColorStop(1, '#fdf2f8');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#be185d';
+        ctx.beginPath();
+        ctx.arc(980, 120, 180, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(244,114,182,0.22)';
+        ctx.beginPath();
+        ctx.arc(120, 1820, 220, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#831843';
+        ctx.font = '800 58px Arial';
+        dibujarTextoCentrado(ctx, nombreNegocio || 'Exotic Nails by Yuly', 540, 145, 850, 64);
+
+        ctx.fillStyle = '#374151';
+        ctx.font = '700 34px Arial';
+        ctx.fillText('Disponibilidad semanal', 540, 265);
+
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '500 28px Arial';
+        ctx.fillText(`${semanaInicio} - ${semanaFin}`, 540, 312);
+        if (profesional?.nombre) {
+            ctx.fillText(`Profesional: ${profesional.nombre}`, 540, 355);
+        }
+
+        const cardX = 70;
+        const cardY = 430;
+        const cardW = 940;
+        const cardH = 1230;
+        const columnW = cardW / 7;
+        const radius = 34;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(15, 23, 42, 0.14)';
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetY = 14;
+        ctx.beginPath();
+        ctx.roundRect(cardX, cardY, cardW, cardH, radius);
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
+
+        disponibilidadSemanal.forEach((dia, index) => {
+            const x = cardX + (index * columnW);
+            const disponibles = dia.turnos.filter(turno => turno.estado === 'Disponible');
+            const headerH = 150;
+
+            ctx.fillStyle = disponibles.length > 0 ? '#ecfdf5' : '#f3f4f6';
+            ctx.beginPath();
+            ctx.rect(x, cardY, columnW, headerH);
+            ctx.fill();
+
+            if (index > 0) {
+                ctx.strokeStyle = '#e5e7eb';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x, cardY);
+                ctx.lineTo(x, cardY + cardH);
+                ctx.stroke();
+            }
+
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#111827';
+            ctx.font = '800 27px Arial';
+            ctx.fillText(dia.diaNombre.slice(0, 3).toUpperCase(), x + columnW / 2, cardY + 58);
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '600 21px Arial';
+            ctx.fillText(dia.fecha.slice(5), x + columnW / 2, cardY + 94);
+
+            const slotX = x + 12;
+            let y = cardY + headerH + 42;
+            const slotW = columnW - 24;
+            const slotH = 82;
+            const gap = 24;
+
+            if (disponibles.length === 0) {
+                ctx.strokeStyle = '#d1d5db';
+                ctx.setLineDash([8, 8]);
+                ctx.strokeRect(slotX, y, slotW, 190);
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#9ca3af';
+                ctx.font = '700 20px Arial';
+                dibujarTextoCentrado(ctx, 'Sin turnos', x + columnW / 2, y + 90, slotW - 16, 24);
+            } else {
+                disponibles.slice(0, 8).forEach(turno => {
+                    const g = ctx.createLinearGradient(slotX, y, slotX, y + slotH);
+                    g.addColorStop(0, '#34d399');
+                    g.addColorStop(1, '#16a34a');
+                    ctx.fillStyle = g;
+                    ctx.beginPath();
+                    ctx.roundRect(slotX, y, slotW, slotH, 22);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '900 24px Arial';
+                    ctx.fillText(formatTo12Hour(turno.hora).replace(' ', ''), x + columnW / 2, y + 50);
+                    y += slotH + gap;
+                });
+            }
+        });
+
+        ctx.fillStyle = '#831843';
+        ctx.font = '800 34px Arial';
+        ctx.fillText('Reserva tu turno', 540, 1740);
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '500 26px Arial';
+        ctx.fillText('Horarios sujetos a disponibilidad al momento de reservar', 540, 1790);
+
+        return canvas;
+    };
+
+    const compartirDisponibilidadSemanal = async () => {
+        try {
+            if (!disponibilidadSemanal.length) return;
+            const canvas = await generarImagenDisponibilidadSemanal();
+            const blob = await canvasToBlob(canvas);
+            if (!blob) {
+                compartirDisponibilidadSemanalTexto();
+                return;
+            }
+
+            const file = new File([blob], `disponibilidad-${nombreNegocio || 'salon'}.png`, { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+                await navigator.share({
+                    title: `Disponibilidad semanal - ${nombreNegocio}`,
+                    text: `Disponibilidad semanal de ${nombreNegocio}`,
+                    files: [file]
+                });
+                return;
+            }
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = file.name;
+            link.target = '_blank';
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (error) {
+            console.error('Error generando imagen de disponibilidad:', error);
+            compartirDisponibilidadSemanalTexto();
+        }
     };
 
     // ============================================
@@ -2975,7 +3156,7 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
                                             disabled={disponibilidadSemanal.length === 0}
                                             className="px-4 py-2 bg-green-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-green-700 disabled:opacity-50 shadow-sm"
                                         >
-                                            Compartir
+                                            Crear imagen
                                         </button>
                                     </div>
 
