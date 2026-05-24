@@ -1505,6 +1505,189 @@ function AdminApp() {
         }
     };
 
+    const generarImagenDisponibilidadMensual = async () => {
+        const profesional = profesionalesList.find(p => p.id === parseInt(profesionalSeleccionadoDispo));
+        const canvas = document.createElement('canvas');
+        canvas.width = 1080;
+        canvas.height = 1920;
+        const ctx = canvas.getContext('2d');
+        const year = disponibilidadFecha.getFullYear();
+        const month = disponibilidadFecha.getMonth();
+        const monthTitle = `${monthNames[month]} ${year}`;
+        const diasDelMes = getDaysInMonth(disponibilidadFecha);
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#fff7fb');
+        gradient.addColorStop(0.48, '#ffffff');
+        gradient.addColorStop(1, '#fdf2f8');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#be185d';
+        ctx.beginPath();
+        ctx.arc(970, 120, 180, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(244,114,182,0.22)';
+        ctx.beginPath();
+        ctx.arc(120, 1810, 220, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#831843';
+        ctx.font = '800 58px Arial';
+        dibujarTextoCentrado(ctx, nombreNegocio || 'Exotic Nails by Yuly', 540, 145, 850, 64);
+
+        ctx.fillStyle = '#374151';
+        ctx.font = '700 34px Arial';
+        ctx.fillText('Disponibilidad mensual', 540, 265);
+
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '500 28px Arial';
+        ctx.fillText(monthTitle, 540, 312);
+        if (profesional?.nombre) {
+            ctx.fillText(`Profesional: ${profesional.nombre}`, 540, 355);
+        }
+
+        const cardX = 70;
+        const cardY = 430;
+        const cardW = 940;
+        const cardH = 1150;
+        const colW = cardW / 7;
+        const headerH = 86;
+        const rowH = (cardH - headerH) / 6;
+        const diasCabecera = ['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'];
+
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(15, 23, 42, 0.14)';
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetY = 14;
+        ctx.beginPath();
+        ctx.roundRect(cardX, cardY, cardW, cardH, 34);
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
+
+        diasCabecera.forEach((dia, index) => {
+            const x = cardX + index * colW;
+            ctx.fillStyle = index === 0 || index === 6 ? '#fdf2f8' : '#f9fafb';
+            ctx.fillRect(x, cardY, colW, headerH);
+            ctx.fillStyle = '#831843';
+            ctx.font = '800 23px Arial';
+            ctx.fillText(dia, x + colW / 2, cardY + 54);
+        });
+
+        diasDelMes.forEach((date, idx) => {
+            const col = idx % 7;
+            const row = Math.floor(idx / 7);
+            const x = cardX + col * colW;
+            const y = cardY + headerH + row * rowH;
+
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, colW, rowH);
+
+            if (!date) return;
+
+            const fechaStr = formatDate(date);
+            const disponible = disponibilidadDias[fechaStr] === true;
+            const conteo = disponibilidadConteos[fechaStr] || 0;
+            const esCerrado = diasCerradosFechas.includes(fechaStr);
+            const esPasado = fechaStr < getCurrentLocalDate();
+            let fill = '#f3f4f6';
+            let text = '#9ca3af';
+
+            if (esCerrado || esPasado || !disponible) {
+                fill = '#f3f4f6';
+                text = '#9ca3af';
+            } else if (conteo >= 4) {
+                fill = '#dcfce7';
+                text = '#15803d';
+            } else if (conteo === 3) {
+                fill = '#fef3c7';
+                text = '#b45309';
+            } else if (conteo > 0) {
+                fill = '#fee2e2';
+                text = '#b91c1c';
+            }
+
+            ctx.fillStyle = fill;
+            ctx.fillRect(x + 8, y + 8, colW - 16, rowH - 16);
+            ctx.fillStyle = text;
+            ctx.font = '800 30px Arial';
+            ctx.fillText(String(date.getDate()), x + colW / 2, y + 52);
+
+            ctx.font = '800 22px Arial';
+            if (esCerrado) {
+                ctx.fillText('Cerrado', x + colW / 2, y + 100);
+            } else if (!esPasado && disponible) {
+                ctx.fillText(`${conteo} turnos`, x + colW / 2, y + 100);
+            } else {
+                ctx.fillText('Sin turnos', x + colW / 2, y + 100);
+            }
+        });
+
+        const legendY = 1645;
+        const legendas = [
+            ['#dcfce7', '#15803d', '4+ tranquilo'],
+            ['#fef3c7', '#b45309', '3 medio'],
+            ['#fee2e2', '#b91c1c', '1-2 urgente'],
+            ['#f3f4f6', '#9ca3af', 'Sin turnos']
+        ];
+
+        legendas.forEach((item, index) => {
+            const x = 150 + index * 220;
+            ctx.fillStyle = item[0];
+            ctx.beginPath();
+            ctx.roundRect(x, legendY, 38, 38, 10);
+            ctx.fill();
+            ctx.fillStyle = item[1];
+            ctx.font = '700 21px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(item[2], x + 50, legendY + 27);
+        });
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#831843';
+        ctx.font = '800 34px Arial';
+        ctx.fillText('Reserva tu turno', 540, 1740);
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '500 26px Arial';
+        ctx.fillText('Los numeros indican turnos disponibles por dia', 540, 1790);
+        ctx.fillStyle = '#be185d';
+        ctx.font = '800 30px Arial';
+        ctx.fillText('ByReservasRoma', 540, 1850);
+
+        return canvas;
+    };
+
+    const compartirDisponibilidadMensual = async () => {
+        try {
+            const canvas = await generarImagenDisponibilidadMensual();
+            const blob = await canvasToBlob(canvas);
+            if (!blob) return;
+
+            const file = new File([blob], `disponibilidad-mensual-${nombreNegocio || 'salon'}.png`, { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+                await navigator.share({
+                    title: `Disponibilidad mensual - ${nombreNegocio}`,
+                    text: `Disponibilidad mensual de ${nombreNegocio}`,
+                    files: [file]
+                });
+                return;
+            }
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = file.name;
+            link.target = '_blank';
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (error) {
+            console.error('Error generando imagen mensual:', error);
+            alert('No se pudo generar la imagen mensual.');
+        }
+    };
+
     // ============================================
     // CREAR RESERVA MANUAL
     // ============================================
@@ -3202,7 +3385,19 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                     </div>
                                 </div>
                             ) : (
-                                <div>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900">Disponibilidad mensual</p>
+                                            <p className="text-xs text-gray-500">Calendario listo para compartir.</p>
+                                        </div>
+                                        <button
+                                            onClick={compartirDisponibilidadMensual}
+                                            className="px-4 py-2 bg-green-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-green-700 shadow-sm"
+                                        >
+                                            Compartir
+                                        </button>
+                                    </div>
                                     <div className="grid grid-cols-7 mb-2 text-center">
                                         {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map(d => <div key={d} className="text-xs font-medium text-gray-500">{d}</div>)}
                                     </div>
