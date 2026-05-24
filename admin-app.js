@@ -412,6 +412,7 @@ function AdminApp() {
         profesional_id: '',
         fecha: '',
         hora_inicio: '',
+        duracion_personalizada: '',
         requiereAnticipo: false
     });
     const [serviciosManualSeleccionados, setServiciosManualSeleccionados] = React.useState([]);
@@ -464,6 +465,21 @@ function AdminApp() {
 
         const servicioUnico = getServicioManual();
         return servicios.length > 0 ? servicios : (servicioUnico ? [servicioUnico] : []);
+    };
+
+    const getDuracionManualConfigurada = (serviciosSeleccionados = getServiciosManualSeleccionados()) => {
+        return serviciosSeleccionados.reduce((total, servicio) => total + Number(servicio.duracion || 60), 0);
+    };
+
+    const getDuracionManualTotal = (serviciosSeleccionados = getServiciosManualSeleccionados()) => {
+        const personalizada = parseInt(nuevaReservaData.duracion_personalizada, 10);
+        if (!Number.isNaN(personalizada) && personalizada > 0) return personalizada;
+        return getDuracionManualConfigurada(serviciosSeleccionados);
+    };
+
+    const tieneDuracionManualPersonalizada = () => {
+        const personalizada = parseInt(nuevaReservaData.duracion_personalizada, 10);
+        return !Number.isNaN(personalizada) && personalizada > 0;
     };
 
     const toggleServicioManual = (nombreServicio) => {
@@ -694,7 +710,7 @@ function AdminApp() {
         if (showNuevaReservaModal && nuevaReservaData.profesional_id) {
             cargarDisponibilidadMes(currentDate, nuevaReservaData.profesional_id);
         }
-    }, [showNuevaReservaModal, nuevaReservaData.servicio, nuevaReservaData.profesional_id, reservaEditando]);
+    }, [showNuevaReservaModal, nuevaReservaData.servicio, nuevaReservaData.profesional_id, nuevaReservaData.duracion_personalizada, reservaEditando]);
 
     const ordenarHorarios = (horarios = []) => Array.from(new Set(horarios)).sort((a, b) => {
         const [hA, mA] = a.split(':').map(Number);
@@ -710,12 +726,11 @@ function AdminApp() {
             return [];
         }
 
-        const duracionTotal = reservaEditando
-            ? Number(serviciosSeleccionados[0]?.duracion || reservaEditando?.duracion || 60)
-            : serviciosSeleccionados.reduce((total, servicio) => total + Number(servicio.duracion || 60), 0);
+        const duracionTotal = getDuracionManualTotal(serviciosSeleccionados);
         const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
         const minAntelacionHoras = configGlobal?.min_antelacion_horas ?? 2;
         const maxAntelacionDias = configGlobal?.max_antelacion_dias ?? 30;
+        const respetarLimitesAntelacion = userRole !== 'admin' && !reservaEditando;
 
         const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
         const [year, month, day] = fecha.split('-').map(Number);
@@ -754,7 +769,7 @@ function AdminApp() {
         const diffDias = Math.ceil((new Date(year, month - 1, day) - hoy) / (1000 * 60 * 60 * 24));
         const minFechaPermitida = new Date(Date.now() + (minAntelacionHoras * 60 * 60 * 1000));
 
-        if (!reservaEditando && Number(maxAntelacionDias) > 0 && diffDias > Number(maxAntelacionDias)) return [];
+        if (respetarLimitesAntelacion && Number(maxAntelacionDias) > 0 && diffDias > Number(maxAntelacionDias)) return [];
 
         const disponibles = slotsTrabajo.filter(slot => {
             const [horas, minutos] = slot.split(':').map(Number);
@@ -762,7 +777,7 @@ function AdminApp() {
             const slotEnd = slotStart + duracionTotal;
             const fechaHoraSlot = new Date(year, month - 1, day, horas, minutos, 0);
 
-            if (!reservaEditando && fechaHoraSlot < minFechaPermitida) return false;
+            if (respetarLimitesAntelacion && fechaHoraSlot < minFechaPermitida) return false;
 
             if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) {
                 return false;
@@ -807,7 +822,7 @@ function AdminApp() {
         };
 
         cargarHorarios();
-    }, [nuevaReservaData.profesional_id, nuevaReservaData.fecha, nuevaReservaData.servicio, serviciosManualSeleccionados, serviciosList, reservaEditando]);
+    }, [nuevaReservaData.profesional_id, nuevaReservaData.fecha, nuevaReservaData.servicio, nuevaReservaData.duracion_personalizada, serviciosManualSeleccionados, serviciosList, reservaEditando]);
 
     // ============================================
     // FUNCIONES DE DISPONIBILIDAD
@@ -824,12 +839,11 @@ function AdminApp() {
                 setFechasConHorarios({});
                 return;
             }
-            const duracion = serviciosSeleccionados.length > 0
-                ? serviciosSeleccionados.reduce((total, servicio) => total + Number(servicio.duracion || 60), 0)
-                : (reservaEditando?.duracion || 60);
+            const duracion = getDuracionManualTotal(serviciosSeleccionados);
             const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
             const minAntelacionHoras = configGlobal?.min_antelacion_horas ?? 2;
             const maxAntelacionDias = configGlobal?.max_antelacion_dias ?? 30;
+            const respetarLimitesAntelacion = userRole !== 'admin' && !reservaEditando;
             
             const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
             const horasTrabajo = horarios.horas || [];
@@ -881,7 +895,7 @@ function AdminApp() {
                 const diaSemana = nombresDias[fechaActual.getDay()];
                 const diffDias = Math.ceil((fechaActual - hoy) / (1000 * 60 * 60 * 24));
 
-                if (!reservaEditando && Number(maxAntelacionDias) > 0 && diffDias > Number(maxAntelacionDias)) {
+                if (respetarLimitesAntelacion && Number(maxAntelacionDias) > 0 && diffDias > Number(maxAntelacionDias)) {
                     disponibilidad[fechaStr] = false;
                     conteosDisponibles[fechaStr] = 0;
                     continue;
@@ -919,7 +933,7 @@ function AdminApp() {
                     const slotEnd = slotStart + duracion;
                     const fechaHoraSlot = new Date(year, month, d, Math.floor(slotStart / 60), slotStart % 60, 0);
 
-                    if (!reservaEditando && fechaHoraSlot < minFechaPermitida) {
+                    if (respetarLimitesAntelacion && fechaHoraSlot < minFechaPermitida) {
                         return false;
                     }
 
@@ -1732,9 +1746,13 @@ function AdminApp() {
                 return;
             }
 
-            const servicio = reservaEditando ? serviciosSeleccionados[0] : null;
-            const duracionTotal = serviciosSeleccionados.reduce((total, item) => total + Number(item.duracion || 60), 0);
-            const endTime = calculateEndTime(nuevaReservaData.hora_inicio, reservaEditando ? servicio.duracion : duracionTotal);
+            const duracionTotal = getDuracionManualTotal(serviciosSeleccionados);
+            const usaDuracionPersonalizada = tieneDuracionManualPersonalizada();
+            if (duracionTotal <= 0) {
+                alert('La duracion de la cita debe ser mayor que 0 minutos.');
+                return;
+            }
+            const endTime = calculateEndTime(nuevaReservaData.hora_inicio, duracionTotal);
             const configNegocio = await window.cargarConfiguracionNegocio();
             const requiereAnticipo = nuevaReservaData.requiereAnticipo;
             
@@ -1742,7 +1760,7 @@ function AdminApp() {
                 cliente_nombre: nuevaReservaData.cliente_nombre,
                 cliente_whatsapp: `53${nuevaReservaData.cliente_whatsapp.replace(/\D/g, '').replace(/^53(?=\d{8,}$)/, '')}`,
                 servicio: nuevaReservaData.servicio,
-                duracion: reservaEditando ? servicio.duracion : duracionTotal,
+                duracion: duracionTotal,
                 profesional_id: nuevaReservaData.profesional_id,
                 profesional_nombre: profesional.nombre,
                 fecha: nuevaReservaData.fecha,
@@ -1783,6 +1801,16 @@ function AdminApp() {
                     const data = await response.json();
                     result = { success: true, data: Array.isArray(data) ? data[0] : data };
                 }
+            } else if (usaDuracionPersonalizada || serviciosSeleccionados.length === 1) {
+                const reservaServicio = {
+                    ...bookingData,
+                    servicio: bookingData.servicio,
+                    duracion: duracionTotal,
+                    hora_inicio: nuevaReservaData.hora_inicio,
+                    hora_fin: endTime
+                };
+
+                result = await createBooking(reservaServicio);
             } else {
                 const reservasCreadas = [];
                 let horaActual = nuevaReservaData.hora_inicio;
@@ -1868,6 +1896,7 @@ function AdminApp() {
                     profesional_id: userRole === 'profesional' ? profesional?.id : '',
                     fecha: '',
                     hora_inicio: '',
+                    duracion_personalizada: '',
                     requiereAnticipo: false
                 });
                 setServiciosManualSeleccionados([]);
@@ -2840,6 +2869,7 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
             profesional_id: userRole === 'profesional' ? profesional?.id : '',
             fecha: '',
             hora_inicio: '',
+            duracion_personalizada: '',
             requiereAnticipo: false
         });
         setCurrentDate(new Date());
@@ -2870,6 +2900,7 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
             profesional_id: booking.profesional_id || '',
             fecha: booking.fecha || '',
             hora_inicio: booking.hora_inicio || '',
+            duracion_personalizada: booking.duracion ? String(booking.duracion) : '',
             requiereAnticipo: booking.estado === 'Pendiente'
         });
         setCurrentDate(booking.fecha ? new Date(`${booking.fecha}T00:00:00`) : new Date());
@@ -3119,6 +3150,33 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
                                         </p>
                                     )}
                                 </div>
+                                {userRole === 'admin' && nuevaReservaData.servicio && (
+                                    <div className="rounded-xl border border-pink-100 bg-pink-50 p-3">
+                                        <label className="block text-sm font-medium text-pink-800 mb-1">Duracion para esta cita (min)</label>
+                                        <input
+                                            type="number"
+                                            min="5"
+                                            step="5"
+                                            value={nuevaReservaData.duracion_personalizada}
+                                            onChange={(e) => setNuevaReservaData({
+                                                ...nuevaReservaData,
+                                                duracion_personalizada: e.target.value.replace(/\D/g, ''),
+                                                fecha: '',
+                                                hora_inicio: ''
+                                            })}
+                                            className="w-full border border-pink-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-pink-300 focus:border-pink-400"
+                                            placeholder={`Usar ${getDuracionManualConfigurada(getServiciosManualSeleccionados())} min`}
+                                        />
+                                        <p className="text-xs text-pink-700 mt-1">
+                                            Dejalo vacio para usar la duracion configurada. Si escribes un tiempo, solo aplica a esta cita.
+                                        </p>
+                                        {tieneDuracionManualPersonalizada() && (
+                                            <p className="text-xs font-semibold text-pink-800 mt-1">
+                                                Esta reserva se calculara con {getDuracionManualTotal(getServiciosManualSeleccionados())} min.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Profesional *</label>
                                     <select value={nuevaReservaData.profesional_id} onChange={(e) => setNuevaReservaData({...nuevaReservaData, profesional_id: e.target.value})} className="w-full border rounded-lg px-3 py-2">
