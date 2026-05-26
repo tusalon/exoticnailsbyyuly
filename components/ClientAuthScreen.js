@@ -386,7 +386,6 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                     </form>
 
                     <div className="absolute -bottom-6 -right-6 text-7xl opacity-20 rotate-12 select-none">💇‍♀️</div>
-                    <div className="absolute -top-6 -left-6 text-7xl opacity-20 -rotate-12 select-none">💅</div>
                     <div className="absolute top-1/2 -translate-y-1/2 -right-8 text-5xl opacity-10 select-none">🌸</div>
                 </div>
             </div>
