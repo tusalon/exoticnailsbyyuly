@@ -505,9 +505,18 @@ function AdminApp() {
         .replace(/\s+/g, ' ')
         .trim();
 
-    const limpiarTelefonoCliente = (valor) => String(valor || '')
-        .replace(/\D/g, '')
-        .replace(/^53(?=\d{8,}$)/, '');
+    const normalizarTelefonoLocalSeguro = (valor) => {
+        const digitos = String(valor || '').replace(/\D/g, '');
+        if (!digitos) return '';
+        return digitos.startsWith('53') && digitos.length > 8 ? digitos.slice(2) : digitos;
+    };
+
+    const normalizarTelefonoCompletoSeguro = (valor) => {
+        const local = normalizarTelefonoLocalSeguro(valor);
+        return local ? `53${local}` : '';
+    };
+
+    const limpiarTelefonoCliente = normalizarTelefonoLocalSeguro;
 
     const clientesManualFiltrados = React.useMemo(() => {
         const queryTexto = normalizarBusquedaCliente(busquedaClienteManual);
@@ -1758,7 +1767,7 @@ function AdminApp() {
             
             const bookingData = {
                 cliente_nombre: nuevaReservaData.cliente_nombre,
-                cliente_whatsapp: `53${nuevaReservaData.cliente_whatsapp.replace(/\D/g, '').replace(/^53(?=\d{8,}$)/, '')}`,
+                cliente_whatsapp: normalizarTelefonoCompletoSeguro(nuevaReservaData.cliente_whatsapp),
                 servicio: nuevaReservaData.servicio,
                 duracion: duracionTotal,
                 profesional_id: nuevaReservaData.profesional_id,
@@ -2612,7 +2621,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
     };
 
     const agruparReservasVisuales = (reservas) => {
-        const normalizarTelefonoLocal = (phone) => String(phone || '').replace(/\D/g, '').replace(/^53/, '');
+        const normalizarTelefonoLocal = normalizarTelefonoLocalSeguro;
         const ordenadas = [...reservas].sort((a, b) =>
             String(a.fecha || '').localeCompare(String(b.fecha || '')) ||
             String(a.cliente_whatsapp || '').localeCompare(String(b.cliente_whatsapp || '')) ||
@@ -2783,7 +2792,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
     const agendaDayMaxColumns = Math.max(1, ...agendaDayLayoutBookings.map(b => b._agendaColumns || 1));
     const agendaDayMinWidth = Math.max(0, 72 + (agendaDayMaxColumns * 180));
 
-    const normalizePhone = (phone) => String(phone || '').replace(/\D/g, '').replace(/^53/, '');
+    const normalizePhone = normalizarTelefonoLocalSeguro;
 
     const getClienteScore = (cliente) => {
         const phone = normalizePhone(cliente.whatsapp);
@@ -2895,7 +2904,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
         setReservaEditando(booking);
         setNuevaReservaData({
             cliente_nombre: booking.cliente_nombre || '',
-            cliente_whatsapp: String(booking.cliente_whatsapp || '').replace(/^53/, '').replace(/\D/g, ''),
+            cliente_whatsapp: normalizarTelefonoLocalSeguro(booking.cliente_whatsapp),
             servicio: booking.servicio || '',
             profesional_id: booking.profesional_id || '',
             fecha: booking.fecha || '',

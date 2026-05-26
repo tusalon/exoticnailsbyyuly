@@ -16,7 +16,7 @@ function getNegocioId() {
 function normalizarWhatsappCliente(whatsapp) {
     const digits = String(whatsapp || '').replace(/\D/g, '');
     if (!digits) return '';
-    return digits.startsWith('53') ? digits : `53${digits}`;
+    return digits.startsWith('53') && digits.length > 8 ? digits : `53${digits}`;
 }
 
 window.getClienteBloqueado = async function(whatsapp) {
