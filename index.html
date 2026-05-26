@@ -56,6 +56,117 @@
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
+    <style>
+        :root {
+            --brand-primary: #ec4899;
+            --brand-secondary: #f9a8d4;
+            --brand-primary-rgb: 236 72 153;
+            --brand-secondary-rgb: 249 168 212;
+            --brand-soft: rgba(249, 168, 212, 0.20);
+            --brand-surface: rgba(249, 168, 212, 0.12);
+            --brand-surface-strong: rgba(249, 168, 212, 0.28);
+        }
+
+        .text-pink-300,
+        .text-pink-400,
+        .text-pink-500,
+        .text-pink-600,
+        .text-pink-700,
+        .text-pink-800 {
+            color: var(--brand-primary) !important;
+        }
+
+        .bg-pink-50,
+        .bg-pink-100 {
+            background-color: var(--brand-surface) !important;
+        }
+
+        .bg-pink-200,
+        .bg-pink-300 {
+            background-color: var(--brand-surface-strong) !important;
+        }
+
+        .bg-pink-400,
+        .bg-pink-500,
+        .bg-pink-600,
+        .bg-pink-700 {
+            background-color: var(--brand-primary) !important;
+        }
+
+        .border-pink-100,
+        .border-pink-200,
+        .border-pink-300,
+        .border-pink-400,
+        .border-pink-500 {
+            border-color: rgba(var(--brand-secondary-rgb), 0.62) !important;
+        }
+
+        .ring-pink-200,
+        .ring-pink-300,
+        .ring-pink-400,
+        .ring-pink-500 {
+            --tw-ring-color: rgba(var(--brand-secondary-rgb), 0.55) !important;
+        }
+
+        .from-pink-50,
+        .from-pink-100 {
+            --tw-gradient-from: var(--brand-surface) var(--tw-gradient-from-position) !important;
+            --tw-gradient-to: rgba(var(--brand-secondary-rgb), 0) var(--tw-gradient-to-position) !important;
+            --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+        }
+
+        .to-pink-100,
+        .to-pink-200 {
+            --tw-gradient-to: var(--brand-surface-strong) var(--tw-gradient-to-position) !important;
+        }
+
+        .from-pink-500,
+        .from-pink-600 {
+            --tw-gradient-from: var(--brand-primary) var(--tw-gradient-from-position) !important;
+            --tw-gradient-to: rgba(var(--brand-primary-rgb), 0) var(--tw-gradient-to-position) !important;
+            --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+        }
+
+        .to-pink-500,
+        .to-pink-600,
+        .to-pink-700 {
+            --tw-gradient-to: var(--brand-secondary) var(--tw-gradient-to-position) !important;
+        }
+
+        .hover\:bg-pink-50:hover,
+        .hover\:bg-pink-100:hover,
+        .hover\:bg-pink-200:hover {
+            background-color: var(--brand-surface-strong) !important;
+        }
+
+        .hover\:bg-pink-500:hover,
+        .hover\:bg-pink-600:hover,
+        .hover\:bg-pink-700:hover {
+            background-color: var(--brand-secondary) !important;
+        }
+
+        .hover\:text-pink-600:hover,
+        .hover\:text-pink-700:hover,
+        .hover\:text-pink-800:hover {
+            color: var(--brand-secondary) !important;
+        }
+
+        .hover\:border-pink-300:hover,
+        .hover\:border-pink-400:hover {
+            border-color: var(--brand-primary) !important;
+        }
+
+        .focus\:ring-pink-500:focus,
+        .focus\:ring-pink-400:focus,
+        .focus\:ring-pink-300:focus {
+            --tw-ring-color: rgba(var(--brand-primary-rgb), 0.45) !important;
+        }
+
+        .focus\:border-pink-500:focus,
+        .focus\:border-pink-400:focus {
+            border-color: var(--brand-primary) !important;
+        }
+    </style>
 </head>
 <body>
     <div id="root"></div>
@@ -63,7 +174,7 @@
     <!-- Scripts (rutas relativas) -->
     <script src="utils/supabase-config.js"></script>
     <script src="utils/hero-backgrounds.js?v=20260522-fondos-lashes-peluqueria"></script>
-    <script src="utils/config-negocio.js"></script>
+    <script src="utils/config-negocio.js?v=20260526-tema-global"></script>
     <script src="utils/storage.js"></script>
     <script src="utils/api.js"></script>
     <script src="utils/timeLogic.js"></script>
@@ -79,22 +190,22 @@
     <script src="components/Header.js" type="text/babel"></script>
     <script src="components/ServiceSelection.js" type="text/babel"></script>
     <script src="components/ServiceSelectionTabs.js" type="text/babel"></script>
-    <script src="components/ServiceSelectionCategorias.js?v=20260515-categorias-normalizadas" type="text/babel"></script>
+    <script src="components/ServiceSelectionCategorias.js?v=20260526-tema-global" type="text/babel"></script>
     <script src="components/ProfesionalSelector.js" type="text/babel"></script>
     <script src="components/MultiProfesionalSelector.js" type="text/babel"></script>
-    <script src="components/Calendar.js?v=20260521-inicios-permitidos" type="text/babel"></script>
-    <script src="components/TimeSlots.js?v=20260521-inicios-permitidos" type="text/babel"></script>
-    <script src="components/MultiTimeSlots.js?v=20260521-inicios-permitidos" type="text/babel"></script>
-    <script src="components/BookingForm.js?v=20260521-inicios-permitidos" type="text/babel"></script>
-    <script src="components/Confirmation.js" type="text/babel"></script>
-    <script src="components/WelcomeScreen.js?v=20260526-colores-welcome" type="text/babel"></script>
+    <script src="components/Calendar.js?v=20260526-tema-global" type="text/babel"></script>
+    <script src="components/TimeSlots.js?v=20260526-tema-global" type="text/babel"></script>
+    <script src="components/MultiTimeSlots.js?v=20260526-tema-global" type="text/babel"></script>
+    <script src="components/BookingForm.js?v=20260526-tema-global" type="text/babel"></script>
+    <script src="components/Confirmation.js?v=20260526-tema-global" type="text/babel"></script>
+    <script src="components/WelcomeScreen.js?v=20260526-tema-global" type="text/babel"></script>
     <script src="components/WhatsAppButton.js" type="text/babel"></script>
-    <script src="components/ClientAuthScreen.js?v=20260526-sin-sticker-unas" type="text/babel"></script>
-    <script src="components/MyBookings.js" type="text/babel"></script>
+    <script src="components/ClientAuthScreen.js?v=20260526-tema-global" type="text/babel"></script>
+    <script src="components/MyBookings.js?v=20260526-tema-global" type="text/babel"></script>
     <script src="components/InstallButton.js" type="text/babel"></script>
     
     <!-- App de clientes -->
-    <script src="client-app.js?v=20260515-disponibilidad-real" type="text/babel"></script>
+    <script src="client-app.js?v=20260526-tema-global" type="text/babel"></script>
     
     <script>
         // Actualizar título dinámico desde la base de datos

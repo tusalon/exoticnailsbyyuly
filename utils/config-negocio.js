@@ -27,6 +27,36 @@ let configCache = null;
 let ultimaActualizacion = 0;
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutos
 
+function hexToRgbParts(hex, fallback = '236 72 153') {
+    const limpio = String(hex || '').replace('#', '').trim();
+    if (!/^[0-9a-fA-F]{6}$/.test(limpio)) return fallback;
+    const r = parseInt(limpio.slice(0, 2), 16);
+    const g = parseInt(limpio.slice(2, 4), 16);
+    const b = parseInt(limpio.slice(4, 6), 16);
+    return `${r} ${g} ${b}`;
+}
+
+function aplicarTemaNegocio(config = {}) {
+    const primario = config.color_primario || '#ec4899';
+    const secundario = config.color_secundario || '#f9a8d4';
+    const primarioRgb = hexToRgbParts(primario);
+    const secundarioRgb = hexToRgbParts(secundario, '249 168 212');
+    const root = document.documentElement;
+
+    root.style.setProperty('--brand-primary', primario);
+    root.style.setProperty('--brand-secondary', secundario);
+    root.style.setProperty('--brand-primary-rgb', primarioRgb);
+    root.style.setProperty('--brand-secondary-rgb', secundarioRgb);
+    root.style.setProperty('--brand-soft', `rgba(${secundarioRgb.replaceAll(' ', ', ')}, 0.20)`);
+    root.style.setProperty('--brand-surface', `rgba(${secundarioRgb.replaceAll(' ', ', ')}, 0.12)`);
+    root.style.setProperty('--brand-surface-strong', `rgba(${secundarioRgb.replaceAll(' ', ', ')}, 0.28)`);
+
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) themeMeta.setAttribute('content', primario);
+}
+
+window.aplicarTemaNegocio = aplicarTemaNegocio;
+
 /**
  * Obtiene el negocio_id propio de este cliente.
  */
@@ -52,6 +82,7 @@ window.cargarConfiguracionNegocio = async function(forceRefresh = false) {
     // Usar caché si no se fuerza refresco
     if (!forceRefresh && configCache && (Date.now() - ultimaActualizacion) < CACHE_DURATION) {
         console.log('📦 Usando cache de configuración');
+        aplicarTemaNegocio(configCache);
         return configCache;
     }
 
@@ -83,6 +114,7 @@ window.cargarConfiguracionNegocio = async function(forceRefresh = false) {
         ultimaActualizacion = Date.now();
         
         if (configCache) {
+            aplicarTemaNegocio(configCache);
             console.log('✅ Configuración cargada:');
             console.log('   - Nombre:', configCache.nombre);
             console.log('   - Teléfono:', configCache.telefono);
