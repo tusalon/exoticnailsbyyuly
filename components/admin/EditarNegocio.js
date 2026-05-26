@@ -15,6 +15,8 @@ function EditarNegocio() {
         logo_url: '',
         logo_preview: '',
         logo_file: null,
+        color_primario: '#ec4899',
+        color_secundario: '#f9a8d4',
         imagen_fondo_tipo: 'unas',
         mensaje_bienvenida: '',
         mensaje_confirmacion: '',
@@ -63,6 +65,8 @@ function EditarNegocio() {
                     logo_url: configData.logo_url || '',
                     logo_preview: configData.logo_url || '',
                     logo_file: null,
+                    color_primario: configData.color_primario || '#ec4899',
+                    color_secundario: configData.color_secundario || '#f9a8d4',
                     imagen_fondo_tipo: configData.imagen_fondo_tipo || 'unas',
                     mensaje_bienvenida: configData.mensaje_bienvenida || '¡Bienvenido!',
                     mensaje_confirmacion: configData.mensaje_confirmacion || 'Tu turno ha sido reservado',
@@ -182,6 +186,8 @@ function EditarNegocio() {
                 facebook: config.facebook || null,
                 horario_atencion: config.horario_atencion || null,
                 logo_url: logo_url,
+                color_primario: config.color_primario || '#ec4899',
+                color_secundario: config.color_secundario || '#f9a8d4',
                 imagen_fondo_tipo: config.imagen_fondo_tipo || 'unas',
                 // 🆕 INCLUIR CAMPOS DE ANTICIPO
                 requiere_anticipo: config.requiere_anticipo,
@@ -385,6 +391,59 @@ function EditarNegocio() {
                                             <p className="text-xs text-gray-400 mt-1">PNG, JPG hasta 2MB</p>
                                         </div>
                                     )}
+                                </div>
+                            </div>
+
+                            {/* Colores de la app de clientes */}
+                            <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Color principal
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="color"
+                                            value={config.color_primario}
+                                            onChange={(e) => setConfig({...config, color_primario: e.target.value})}
+                                            className="h-11 w-14 rounded border border-gray-300 bg-white"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={config.color_primario}
+                                            onChange={(e) => setConfig({...config, color_primario: e.target.value})}
+                                            className="w-full border rounded-lg px-3 py-2 text-sm"
+                                            placeholder="#ec4899"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Color secundario
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="color"
+                                            value={config.color_secundario}
+                                            onChange={(e) => setConfig({...config, color_secundario: e.target.value})}
+                                            className="h-11 w-14 rounded border border-gray-300 bg-white"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={config.color_secundario}
+                                            onChange={(e) => setConfig({...config, color_secundario: e.target.value})}
+                                            className="w-full border rounded-lg px-3 py-2 text-sm"
+                                            placeholder="#f9a8d4"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2 rounded-xl overflow-hidden border border-gray-200">
+                                    <div
+                                        className="p-4 text-white"
+                                        style={{ background: `linear-gradient(135deg, ${config.color_primario}, ${config.color_secundario})` }}
+                                    >
+                                        <p className="font-semibold">Vista previa de colores</p>
+                                        <p className="text-sm opacity-90">Estos colores se aplican en la bienvenida, botones y detalles principales.</p>
+                                    </div>
                                 </div>
                             </div>
 
