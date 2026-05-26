@@ -4,6 +4,11 @@ function WhatsAppButton() {
     const [telefono, setTelefono] = React.useState('55002272');
     const [nombreNegocio, setNombreNegocio] = React.useState('');
 
+    const telefonoLimpio = String(telefono || '').replace(/\D/g, '');
+    const telefonoWhatsApp = telefonoLimpio.startsWith('53') && telefonoLimpio.length > 8
+        ? telefonoLimpio
+        : `53${telefonoLimpio}`;
+
     React.useEffect(() => {
         window.getTelefonoDuenno().then(tel => {
             setTelefono(tel);
@@ -15,7 +20,7 @@ function WhatsAppButton() {
 
     return (
         <a 
-            href={`https://api.whatsapp.com/send?phone=${telefono}&text=Hola%2C%20quiero%20consultar%20sobre%20turnos`} 
+            href={`https://api.whatsapp.com/send?phone=${telefonoWhatsApp}&text=Hola%2C%20quiero%20consultar%20sobre%20turnos`}
             target="_blank" 
             className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-[#20bd5a] transition-all transform hover:scale-110 group"
             title="Chat en WhatsApp"

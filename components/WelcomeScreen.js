@@ -60,10 +60,13 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
         }
         
         const telefonoLimpio = config.telefono.replace(/\D/g, '');
+        const telefonoWhatsApp = telefonoLimpio.startsWith('53') && telefonoLimpio.length > 8
+            ? telefonoLimpio
+            : `53${telefonoLimpio}`;
         const mensaje = encodeURIComponent(`Hola! Quiero consultar sobre turnos en ${config?.nombre || 'el salón'}`);
         
         // Abrir WhatsApp
-        window.open(`https://wa.me/${telefonoLimpio}?text=${mensaje}`, '_blank');
+        window.open(`https://wa.me/${telefonoWhatsApp}?text=${mensaje}`, '_blank');
     };
 
     const abrirInstagram = () => {
