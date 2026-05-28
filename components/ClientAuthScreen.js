@@ -14,11 +14,13 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     const [profesionalInfo, setProfesionalInfo] = React.useState(null);
     const [profesionalPassword, setProfesionalPassword] = React.useState('');
     const [esAdmin, setEsAdmin] = React.useState(false);
+    const [codigoPaisCliente, setCodigoPaisCliente] = React.useState('53');
 
     React.useEffect(() => {
         const cargarDatos = async () => {
             const configData = await window.cargarConfiguracionNegocio();
             setConfig(configData);
+            setCodigoPaisCliente(window.getCodigoPaisTelefono ? window.getCodigoPaisTelefono(configData) : '53');
             setCargando(false);
 
             const fondo = window.getHeroBackgroundOption
@@ -55,8 +57,8 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     };
 
     const verificarNumero = async (numero) => {
-        const codigoPais = window.getCodigoPaisTelefono ? window.getCodigoPaisTelefono(config) : '53';
-        const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig(config) : { localLength: 8 };
+        const codigoPais = codigoPaisCliente || (window.getCodigoPaisTelefono ? window.getCodigoPaisTelefono(config) : '53');
+        const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig({ codigo_pais: codigoPais }) : { localLength: 8 };
         const numeroLimpio = window.normalizarTelefonoLocal
             ? window.normalizarTelefonoLocal(numero, codigoPais)
             : numero.replace(/\D/g, '');
@@ -169,8 +171,8 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const codigoPais = window.getCodigoPaisTelefono ? window.getCodigoPaisTelefono(config) : '53';
-        const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig(config) : { localLength: 8 };
+        const codigoPais = codigoPaisCliente || (window.getCodigoPaisTelefono ? window.getCodigoPaisTelefono(config) : '53');
+        const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig({ codigo_pais: codigoPais }) : { localLength: 8 };
         const numeroLimpio = window.normalizarTelefonoLocal
             ? window.normalizarTelefonoLocal(whatsapp, codigoPais)
             : whatsapp.replace(/\D/g, '');
@@ -238,7 +240,8 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
 
     const nombreNegocio = config?.nombre || 'Mi Salón';
     const logoUrl = config?.logo_url;
-    const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig(config) : { codigo: '53', bandera: '🇨🇺', ejemplo: '51234567', localLength: 8 };
+    const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig({ codigo_pais: codigoPaisCliente }) : { codigo: '53', bandera: '🇨🇺', ejemplo: '51234567', localLength: 8 };
+    const paisesTelefono = window.PHONE_COUNTRIES || [paisTelefono];
     const fondoPortada = window.getHeroBackgroundOption
         ? window.getHeroBackgroundOption(config?.imagen_fondo_tipo)
         : { image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=2071&auto=format&fit=crop', label: 'Fondo de salon' };
@@ -298,9 +301,23 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                                 Tu WhatsApp
                             </label>
                             <div className="flex">
-                                <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-pink-300/30 bg-black/20 text-pink-300 text-sm">
-                                    {paisTelefono.bandera || ''} +{paisTelefono.codigo}
-                                </span>
+                                <select
+                                    value={codigoPaisCliente}
+                                    onChange={(e) => {
+                                        const nuevoCodigo = e.target.value;
+                                        const local = window.normalizarTelefonoLocal
+                                            ? window.normalizarTelefonoLocal(whatsapp, nuevoCodigo)
+                                            : whatsapp.replace(/\D/g, '');
+                                        setCodigoPaisCliente(nuevoCodigo);
+                                        setWhatsapp(local);
+                                        resetCliente();
+                                    }}
+                                    className="w-32 px-2 py-3 rounded-l-lg border border-r-0 border-pink-300/30 bg-black/40 text-pink-100 text-sm outline-none"
+                                >
+                                    {paisesTelefono.map((pais) => (
+                                        <option key={pais.id} value={pais.codigo}>{pais.bandera} +{pais.codigo}</option>
+                                    ))}
+                                </select>
                                 <input
                                     type="tel"
                                     value={whatsapp}

@@ -30,6 +30,13 @@
         };
     }
 
+    function detectarTelefonoInternacional(digits) {
+        return COUNTRIES
+            .slice()
+            .sort((a, b) => b.codigo.length - a.codigo.length)
+            .find(country => digits.startsWith(country.codigo) && digits.length > country.localLength);
+    }
+
     function getStorageKey() {
         const negocioId = (typeof window.getNegocioId === 'function' && window.getNegocioId()) ||
             window.NEGOCIO_ID_POR_DEFECTO ||
@@ -63,8 +70,12 @@
     }
 
     function normalizarTelefonoInternacional(value, codigoPais = null) {
+        const digits = onlyDigits(value);
+        const telefonoInternacional = detectarTelefonoInternacional(digits);
+        if (telefonoInternacional) return digits;
+
         const country = getCountryByCode(codigoPais || getCodigoPaisTelefono());
-        const local = normalizarTelefonoLocal(value, country.codigo);
+        const local = normalizarTelefonoLocal(digits, country.codigo);
         return local ? `${country.codigo}${local}` : '';
     }
 
