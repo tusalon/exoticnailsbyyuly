@@ -87,6 +87,43 @@ async function getAllBookings() {
     }
 }
 
+async function deleteExpiredPendingBookings(configNegocio = {}) {
+    try {
+        const negocioId = getNegocioId();
+        if (!negocioId) return 0;
+
+        const horasVencimiento = Number(configNegocio?.tiempo_vencimiento || 2);
+        if (!Number.isFinite(horasVencimiento) || horasVencimiento <= 0) return 0;
+
+        const limite = new Date(Date.now() - (horasVencimiento * 60 * 60 * 1000)).toISOString();
+        const url = `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&estado=eq.Pendiente&created_at=lt.${encodeURIComponent(limite)}&select=id`;
+
+        const res = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'apikey': window.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                'Prefer': 'return=representation'
+            }
+        });
+
+        if (!res.ok) {
+            console.error('Error eliminando reservas pendientes vencidas:', await res.text());
+            return 0;
+        }
+
+        const eliminadas = await res.json();
+        if (Array.isArray(eliminadas) && eliminadas.length > 0) {
+            console.log(`Reservas pendientes vencidas eliminadas: ${eliminadas.length}`);
+        }
+
+        return Array.isArray(eliminadas) ? eliminadas.length : 0;
+    } catch (error) {
+        console.error('Error limpiando reservas pendientes vencidas:', error);
+        return 0;
+    }
+}
+
 async function cancelBooking(id) {
     try {
         const negocioId = getNegocioId();
@@ -369,6 +406,12 @@ const indiceToHoraLegible = (indice) => {
     return `${horas.toString().padStart(2, '0')}:${minutos}`;
 };
 
+const minutesToHoraLegible = (minutosTotales) => {
+    const horas = Math.floor(minutosTotales / 60);
+    const minutos = minutosTotales % 60;
+    return `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
+};
+
 // ============================================
 // COMPONENTE PRINCIPAL
 // ============================================
@@ -437,6 +480,7 @@ function AdminApp() {
     const [profesionalesList, setProfesionalesList] = React.useState([]);
     const [profesionalesManualFiltrados, setProfesionalesManualFiltrados] = React.useState([]);
     const [horariosDisponibles, setHorariosDisponibles] = React.useState([]);
+    const [modoHorarioManualCompleto, setModoHorarioManualCompleto] = React.useState(false);
     const [currentDate, setCurrentDate] = React.useState(new Date());
     const [diasLaborales, setDiasLaborales] = React.useState([]);
     const [fechasConHorarios, setFechasConHorarios] = React.useState({});
@@ -734,10 +778,16 @@ function AdminApp() {
     });
 
     const calcularHorariosDisponiblesManual = async (fecha, profesionalId, serviciosSeleccionados) => {
-        if (!fecha || !profesionalId || serviciosSeleccionados.length === 0) return [];
+        if (!fecha || !profesionalId || serviciosSeleccionados.length === 0) {
+            setModoHorarioManualCompleto(false);
+            return [];
+        }
 
         const profesionalObj = profesionalesList.find(p => p.id === parseInt(profesionalId));
-        if (diasCerradosFechas.includes(fecha) || profesionalObj?.fechas_libres?.includes(fecha)) {
+        const adminPuedeForzarHorario = userRole === 'admin';
+        const fechaBloqueada = diasCerradosFechas.includes(fecha) || profesionalObj?.fechas_libres?.includes(fecha);
+        if (fechaBloqueada && !adminPuedeForzarHorario) {
+            setModoHorarioManualCompleto(false);
             return [];
         }
 
@@ -755,16 +805,26 @@ function AdminApp() {
         const diasTrabajo = horarios.dias || [];
         let horasTrabajo = horarios.horariosPorDia?.[diaSemana] || horarios.horas || [];
         const descansosDelDia = horarios.descansosPorDia?.[diaSemana] || [];
+        const diaSinJornada = diasTrabajo.length > 0 && !diasTrabajo.includes(diaSemana);
+        const sinHorasConfiguradas = horasTrabajo.length === 0;
+        const usarHorarioManualCompleto = adminPuedeForzarHorario && (fechaBloqueada || diaSinJornada || sinHorasConfiguradas);
 
-        if (diasTrabajo.length > 0 && !diasTrabajo.includes(diaSemana)) return [];
-        if (horasTrabajo.length === 0) return [];
+        setModoHorarioManualCompleto(usarHorarioManualCompleto);
+
+        if (diaSinJornada && !usarHorarioManualCompleto) return [];
+        if (sinHorasConfiguradas && !usarHorarioManualCompleto) return [];
 
         const primerServicio = serviciosSeleccionados[0];
         let horasTrabajoFiltradas = horasTrabajo;
-        if (primerServicio?.horarios_permitidos?.length) {
+        if (!usarHorarioManualCompleto && primerServicio?.horarios_permitidos?.length) {
             horasTrabajoFiltradas = horasTrabajo.filter(indice => servicioPermiteHorario(primerServicio, indiceToHoraLegible(indice)));
         }
-        const slotsTrabajo = horasTrabajoFiltradas.map(indice => indiceToHoraLegible(indice));
+        const slotsTrabajo = usarHorarioManualCompleto
+            ? Array.from(
+                { length: Math.floor((24 * 60) / Math.max(15, Number(configGlobal?.intervalo_entre_turnos || 30))) },
+                (_, index) => minutesToHoraLegible(index * Math.max(15, Number(configGlobal?.intervalo_entre_turnos || 30)))
+            )
+            : horasTrabajoFiltradas.map(indice => indiceToHoraLegible(indice));
 
         const negocioId = typeof getNegocioId === "function" ? getNegocioId() : (window.getNegocioIdFromConfig ? window.getNegocioIdFromConfig() : localStorage.getItem("negocioId"));
         const response = await fetch(
@@ -792,9 +852,10 @@ function AdminApp() {
             const slotEnd = slotStart + duracionTotal;
             const fechaHoraSlot = new Date(year, month - 1, day, horas, minutos, 0);
 
+            if (usarHorarioManualCompleto && slotEnd > 24 * 60) return false;
             if (respetarLimitesAntelacion && fechaHoraSlot < minFechaPermitida) return false;
 
-            if (slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) {
+            if (!usarHorarioManualCompleto && slotTieneDescanso(slotStart, slotEnd, descansosDelDia)) {
                 return false;
             }
 
@@ -816,12 +877,16 @@ function AdminApp() {
         const cargarHorarios = async () => {
             if (!nuevaReservaData.profesional_id || !nuevaReservaData.fecha || !nuevaReservaData.servicio) {
                 setHorariosDisponibles([]);
+                setModoHorarioManualCompleto(false);
                 return;
             }
 
             try {
                 const serviciosSeleccionados = getServiciosManualSeleccionados();
-                if (serviciosSeleccionados.length === 0) return;
+                if (serviciosSeleccionados.length === 0) {
+                    setModoHorarioManualCompleto(false);
+                    return;
+                }
                 const disponibles = await calcularHorariosDisponiblesManual(
                     nuevaReservaData.fecha,
                     nuevaReservaData.profesional_id,
@@ -833,6 +898,7 @@ function AdminApp() {
             } catch (error) {
                 console.error('Error cargando horarios:', error);
                 setHorariosDisponibles([]);
+                setModoHorarioManualCompleto(false);
             }
         };
 
@@ -1254,12 +1320,16 @@ function AdminApp() {
         
         const fechaStr = formatDate(date);
         
-        if (diasCerradosFechas.includes(fechaStr)) {
-            return false;
-        }
-        
         const hoy = getCurrentLocalDate();
         if (fechaStr < hoy) {
+            return false;
+        }
+
+        if (userRole === 'admin') {
+            return true;
+        }
+
+        if (diasCerradosFechas.includes(fechaStr)) {
             return false;
         }
         
@@ -2054,6 +2124,8 @@ function AdminApp() {
                 data = await window.getReservasPorProfesional?.(profesional.id, false) || [];
             } else {
                 console.log('Llamando getAllBookings...');
+                const configActual = config || (window.cargarConfiguracionNegocio ? await window.cargarConfiguracionNegocio(true) : {});
+                await deleteExpiredPendingBookings(configActual);
                 data = await getAllBookings();
             }
             
@@ -3247,14 +3319,17 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                                         const selected = nuevaReservaData.fecha === fechaStr;
                                                         const esCerrado = diasCerradosFechas.includes(fechaStr);
                                                         const esPasado = fechaStr < getCurrentLocalDate();
+                                                        const adminPuedeForzarFecha = userRole === 'admin';
+                                                        const fechaDeshabilitada = esPasado || (!adminPuedeForzarFecha && (!available || esCerrado));
                                                         
                                                         let className = "h-10 w-full rounded-lg text-sm font-medium";
                                                         if (selected) className += " bg-pink-500 text-white shadow-md";
-                                                        else if (!available || esPasado || esCerrado) className += " text-gray-300 cursor-not-allowed bg-gray-50 line-through";
+                                                        else if (fechaDeshabilitada) className += " text-gray-300 cursor-not-allowed bg-gray-50 line-through";
+                                                        else if (adminPuedeForzarFecha && esCerrado) className += " text-amber-700 hover:bg-amber-50 cursor-pointer border border-amber-200";
                                                         else className += " text-gray-700 hover:bg-pink-50 cursor-pointer";
                                                         
                                                         return (
-                                                            <button key={idx} onClick={() => handleDateSelect(date)} disabled={!available || esPasado || esCerrado} className={className} title={esCerrado ? "D√≠a cerrado" : esPasado ? "Fecha pasada" : ""}>
+                                                            <button key={idx} onClick={() => handleDateSelect(date)} disabled={fechaDeshabilitada} className={className} title={esCerrado ? "Dia cerrado, disponible para admin" : esPasado ? "Fecha pasada" : ""}>
                                                                 {date.getDate()}
                                                             </button>
                                                         );
@@ -3267,8 +3342,13 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                 {nuevaReservaData.fecha && (
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Hora de inicio *</label>
+                                        {modoHorarioManualCompleto && horariosDisponibles.length > 0 && (
+                                            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                                                Modo admin: este dia no tiene horario normal para el profesional. Puedes elegir cualquier hora libre del dia, siempre que no choque con otra cita.
+                                            </div>
+                                        )}
                                         {horariosDisponibles.length > 0 ? (
-                                            <div className="grid grid-cols-3 gap-2">
+                                            <div className={`${modoHorarioManualCompleto ? 'max-h-64 overflow-y-auto pr-1' : ''} grid grid-cols-3 gap-2`}>
                                                 {horariosDisponibles.map(hora => (
                                                     <button key={hora} type="button" onClick={() => setNuevaReservaData({...nuevaReservaData, hora_inicio: hora})} className={`py-2 px-3 rounded-lg text-sm font-medium ${nuevaReservaData.hora_inicio === hora ? 'bg-pink-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
                                                         {formatTo12Hour(hora)}

@@ -29,7 +29,7 @@ function EditarNegocio() {
         requiere_anticipo: false,
         tipo_anticipo: 'fijo',
         valor_anticipo: '',
-        mensaje_pago: 'Para confirmar tu turno, realizá el pago del anticipo de ${monto_anticipo} a la siguiente cuenta:\n\nCBU: {cbu}\nAlias: {alias}\nTitular: {titular}\n\nTenés {tiempo_vencimiento} horas para realizar el pago. Si no se confirma el pago en ese tiempo, el turno se cancelará automáticamente.',
+        mensaje_pago: 'Para confirmar tu turno, realizá el pago del anticipo de ${monto_anticipo} a la siguiente cuenta:\n\nCBU: {cbu}\nAlias: {alias}\nTitular: {titular}\n\nTenés {tiempo_vencimiento} horas para realizar el pago. Si no se confirma el pago en ese tiempo, el turno se liberará automáticamente.',
         cbu: '',
         alias: '',
         titular: '',
@@ -89,7 +89,7 @@ function EditarNegocio() {
                     requiere_anticipo: configData.requiere_anticipo || false,
                     tipo_anticipo: configData.tipo_anticipo || 'fijo',
                     valor_anticipo: configData.valor_anticipo || '',
-                    mensaje_pago: configData.mensaje_pago || 'Para confirmar tu turno, realizá el pago del anticipo de ${monto_anticipo} a la siguiente cuenta:\n\nCBU: {cbu}\nAlias: {alias}\nTitular: {titular}\n\nTenés {tiempo_vencimiento} horas para realizar el pago. Si no se confirma el pago en ese tiempo, el turno se cancelará automáticamente.',
+                    mensaje_pago: configData.mensaje_pago || 'Para confirmar tu turno, realizá el pago del anticipo de ${monto_anticipo} a la siguiente cuenta:\n\nCBU: {cbu}\nAlias: {alias}\nTitular: {titular}\n\nTenés {tiempo_vencimiento} horas para realizar el pago. Si no se confirma el pago en ese tiempo, el turno se liberará automáticamente.',
                     cbu: configData.cbu || '',
                     alias: configData.alias || '',
                     titular: configData.titular || '',
@@ -644,7 +644,7 @@ function EditarNegocio() {
                                                 <option value="24">24 horas</option>
                                                 <option value="48">48 horas</option>
                                             </select>
-                                            <p className="text-xs text-gray-500 mt-1">Si no paga en este tiempo, la reserva se cancela automáticamente</p>
+                                            <p className="text-xs text-gray-500 mt-1">Si no paga en este tiempo, la reserva se elimina y el horario queda libre automaticamente</p>
                                         </div>
 
                                         {/* Datos bancarios */}

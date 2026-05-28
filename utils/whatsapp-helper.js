@@ -257,7 +257,7 @@ ${mensajePagoConfig || `
    ${window.formatearTelefono ? window.formatearTelefono(configNegocio.telefono, configNegocio.codigo_pais) : `+${configNegocio.telefono || '00000000'}`}
 
 ⏳ *Importante:*
-El turno se cancelará automáticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.`}
+El turno se liberará automáticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.`}
 ${lineaCalendario}
 Cuando confirmemos tu pago, tu turno quedará reservado.
 
@@ -490,7 +490,7 @@ ${mensajePagoConfig || `
    ${window.formatearTelefono ? window.formatearTelefono(configNegocio.telefono, configNegocio.codigo_pais) : `+${configNegocio.telefono || '00000000'}`}
 
 ⏳ *Importante:*
-El turno se cancelará automáticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.`}
+El turno se liberará automáticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.`}
 ${lineaCalendario}
 
 ¡Gracias por elegirnos! 💖`;
