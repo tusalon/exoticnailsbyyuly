@@ -173,7 +173,7 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const linea3 = `Servicio: ${bookingData.servicio}`;
         const linea4 = `Profesional: ${bookingData.profesional_nombre}`;
         const linea5 = `Cliente: ${bookingData.cliente_nombre}`;
-        const linea6 = `WhatsApp: +53 ${bookingData.cliente_whatsapp}`;
+        const linea6 = `WhatsApp: ${window.formatearTelefono ? window.formatearTelefono(bookingData.cliente_whatsapp) : `+${bookingData.cliente_whatsapp}`}`;
         const linea7 = ``;
         const linea8 = nombreNegocio;
         

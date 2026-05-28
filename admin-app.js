@@ -444,6 +444,7 @@ function AdminApp() {
     const esProfesionalPanel = userRole === 'profesional';
     const puedeGestionarReservas = esAdminPanel || (esProfesionalPanel && userNivel >= 2);
     const puedeGestionarAvanzado = esAdminPanel || (esProfesionalPanel && userNivel >= 3);
+    const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig(config) : { codigo: '53', ejemplo: '55002272' };
 
     const getServicioManual = (servicioNombre = nuevaReservaData.servicio) => {
         if (!servicioNombre) return null;
@@ -506,12 +507,12 @@ function AdminApp() {
         .trim();
 
     const normalizarTelefonoLocalSeguro = (valor) => {
-        const digitos = String(valor || '').replace(/\D/g, '');
-        if (!digitos) return '';
-        return digitos.startsWith('53') && digitos.length > 8 ? digitos.slice(2) : digitos;
+        if (window.normalizarTelefonoLocal) return window.normalizarTelefonoLocal(valor, config?.codigo_pais);
+        return String(valor || '').replace(/\D/g, '');
     };
 
     const normalizarTelefonoCompletoSeguro = (valor) => {
+        if (window.normalizarTelefonoInternacional) return window.normalizarTelefonoInternacional(valor, config?.codigo_pais);
         const local = normalizarTelefonoLocalSeguro(valor);
         return local ? `53${local}` : '';
     };
@@ -527,7 +528,7 @@ function AdminApp() {
             .filter(cliente => {
                 const nombreOriginal = String(cliente.nombre || '').toLowerCase().trim();
                 const nombreNormalizado = normalizarBusquedaCliente(cliente.nombre);
-                const whatsapp = String(cliente.whatsapp || '').replace(/\D/g, '');
+                const whatsapp = normalizarTelefonoLocalSeguro(cliente.whatsapp);
                 const textoCliente = normalizarBusquedaCliente(Object.values(cliente || {}).join(' '));
                 const coincideNombre =
                     nombreNormalizado.includes(queryTexto) ||
@@ -536,7 +537,7 @@ function AdminApp() {
                 const coincideTexto = queryTexto && textoCliente.includes(queryTexto);
                 return coincideNombre || coincideTelefono || coincideTexto;
             });
-    }, [busquedaClienteManual, clientesRegistrados]);
+    }, [busquedaClienteManual, clientesRegistrados, config?.codigo_pais]);
 
     const seleccionarClienteManual = (cliente) => {
         setNuevaReservaData(prev => ({
@@ -3108,8 +3109,8 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp del Cliente *</label>
                                     <div className="flex">
-                                        <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50">+53</span>
-                                        <input type="tel" value={nuevaReservaData.cliente_whatsapp} onChange={(e) => setNuevaReservaData({...nuevaReservaData, cliente_whatsapp: e.target.value.replace(/\D/g, '')})} className="w-full px-4 py-2 rounded-r-lg border border-gray-300" placeholder="55002272" />
+                                        <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50">+{paisTelefono.codigo}</span>
+                                        <input type="tel" value={nuevaReservaData.cliente_whatsapp} onChange={(e) => setNuevaReservaData({...nuevaReservaData, cliente_whatsapp: normalizarTelefonoLocalSeguro(e.target.value)})} className="w-full px-4 py-2 rounded-r-lg border border-gray-300" placeholder={paisTelefono.ejemplo || '55002272'} />
                                     </div>
                                 </div>
                                 <div>

@@ -19,7 +19,9 @@ function getNegocioId() {
 window.loginProfesional = async function(telefono, password) {
     try {
         const negocioId = getNegocioId();
-        const telefonoLimpio = String(telefono || '').replace(/\D/g, '').replace(/^53(?=\d{8,}$)/, '');
+        const telefonoLimpio = window.normalizarTelefonoLocal
+            ? window.normalizarTelefonoLocal(telefono)
+            : String(telefono || '').replace(/\D/g, '').replace(/^53(?=\d{8,}$)/, '');
         const passwordLimpio = String(password || '').trim();
         if (!negocioId || !telefonoLimpio || !passwordLimpio) {
             return null;
@@ -64,7 +66,9 @@ window.loginProfesional = async function(telefono, password) {
 window.verificarProfesionalPorTelefono = async function(telefono) {
     try {
         const negocioId = getNegocioId();
-        const telefonoLimpio = String(telefono || '').replace(/\D/g, '').replace(/^53(?=\d{8,}$)/, '');
+        const telefonoLimpio = window.normalizarTelefonoLocal
+            ? window.normalizarTelefonoLocal(telefono)
+            : String(telefono || '').replace(/\D/g, '').replace(/^53(?=\d{8,}$)/, '');
         if (!negocioId || !telefonoLimpio) {
             return null;
         }

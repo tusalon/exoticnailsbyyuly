@@ -121,6 +121,7 @@ const handleCancelarReserva = async (id, bookingData) => {
         
         // 🔥 OBTENER TELÉFONO DE LA BD
         const telefonoDuenno = await window.getTelefonoDuenno();
+        const telefonoContacto = window.formatearTelefono ? window.formatearTelefono(telefonoDuenno) : `+${telefonoDuenno}`;
         
         const mensaje = `❌ No puedes cancelar este turno porque faltan menos de ${minCancelacionHoras} hora(s).
             
@@ -128,7 +129,7 @@ const handleCancelarReserva = async (id, bookingData) => {
 
 ⏰ Solo se permiten cancelaciones con al menos ${minCancelacionHoras} hora(s) de anticipación.
 
-Si no puedes asistir, contactanos por WhatsApp al +53 ${telefonoDuenno}`;
+Si no puedes asistir, contactanos por WhatsApp al ${telefonoContacto}`;
         
         alert(mensaje);
         return;

@@ -10,6 +10,7 @@ function EditarNegocio() {
     const [config, setConfig] = React.useState({
         nombre: '',
         telefono: '',
+        codigo_pais: '53',
         email: '',
         direccion: '',
         logo_url: '',
@@ -35,6 +36,15 @@ function EditarNegocio() {
         banco: '',
         tiempo_vencimiento: 2
     });
+    const paisesTelefono = window.PHONE_COUNTRIES || [
+        { id: 'CU', nombre: 'Cuba', codigo: '53', ejemplo: '53066647', localLength: 8 },
+        { id: 'ES', nombre: 'Espana', codigo: '34', ejemplo: '612345678', localLength: 9 },
+        { id: 'MX', nombre: 'Mexico', codigo: '52', ejemplo: '5512345678', localLength: 10 },
+        { id: 'US', nombre: 'USA', codigo: '1', ejemplo: '3055551234', localLength: 10 },
+        { id: 'VE', nombre: 'Venezuela', codigo: '58', ejemplo: '4121234567', localLength: 10 },
+        { id: 'CO', nombre: 'Colombia', codigo: '57', ejemplo: '3001234567', localLength: 10 },
+        { id: 'GY', nombre: 'Guyana', codigo: '592', ejemplo: '6123456', localLength: 7 }
+    ];
 
     // Cargar datos al iniciar
     React.useEffect(() => {
@@ -60,6 +70,7 @@ function EditarNegocio() {
                 setConfig({
                     nombre: configData.nombre || '',
                     telefono: configData.telefono || '',
+                    codigo_pais: window.getCodigoPaisTelefono ? window.getCodigoPaisTelefono(configData) : (configData.codigo_pais || '53'),
                     email: configData.email || '',
                     direccion: configData.direccion || '',
                     logo_url: configData.logo_url || '',
@@ -177,6 +188,7 @@ function EditarNegocio() {
             const datosActualizar = {
                 nombre: config.nombre,
                 telefono: config.telefono,
+                codigo_pais: config.codigo_pais || '53',
                 email: config.email || null,
                 direccion: config.direccion || null,
                 mensaje_bienvenida: config.mensaje_bienvenida,
@@ -204,10 +216,14 @@ function EditarNegocio() {
 
             console.log('📤 Enviando datos completos:', datosActualizar);
             
+            if (window.setCodigoPaisTelefono) {
+                window.setCodigoPaisTelefono(datosActualizar.codigo_pais);
+            }
+
             const url = `${window.SUPABASE_URL}/rest/v1/negocios?id=eq.${negocioId}`;
             console.log('🔗 URL:', url);
             
-            const response = await fetch(url, {
+            let response = await fetch(url, {
                 method: 'PATCH',
                 headers: {
                     'apikey': window.SUPABASE_ANON_KEY,
@@ -221,7 +237,26 @@ function EditarNegocio() {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('❌ Error response:', errorText);
-                throw new Error(`Error HTTP: ${response.status} - ${errorText}`);
+                if (errorText.includes('codigo_pais')) {
+                    const datosCompatibles = { ...datosActualizar };
+                    delete datosCompatibles.codigo_pais;
+                    response = await fetch(url, {
+                        method: 'PATCH',
+                        headers: {
+                            'apikey': window.SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify(datosCompatibles)
+                    });
+                    if (!response.ok) {
+                        const retryText = await response.text();
+                        throw new Error(`Error HTTP: ${response.status} - ${retryText}`);
+                    }
+                } else {
+                    throw new Error(`Error HTTP: ${response.status} - ${errorText}`);
+                }
             }
             
             const data = await response.json();
@@ -263,6 +298,8 @@ function EditarNegocio() {
             </div>
         );
     }
+
+    const paisTelefonoActual = paisesTelefono.find(pais => pais.codigo === config.codigo_pais) || paisesTelefono[0];
 
     return (
         <div className="min-h-screen bg-gray-100 py-8 px-4">
@@ -318,18 +355,39 @@ function EditarNegocio() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Teléfono
                                     </label>
-                                    <div className="flex">
-                                        <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500">
-                                            +53
-                                        </span>
+                                    <div className="flex gap-2">
+                                        <select
+                                            value={config.codigo_pais}
+                                            onChange={(e) => {
+                                                const nuevoCodigo = e.target.value;
+                                                const telefonoLocal = window.normalizarTelefonoLocal
+                                                    ? window.normalizarTelefonoLocal(config.telefono, nuevoCodigo)
+                                                    : config.telefono.replace(/\D/g, '');
+                                                setConfig({...config, codigo_pais: nuevoCodigo, telefono: telefonoLocal});
+                                                if (window.setCodigoPaisTelefono) window.setCodigoPaisTelefono(nuevoCodigo);
+                                            }}
+                                            className="w-36 border rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                        >
+                                            {paisesTelefono.map((pais) => (
+                                                <option key={pais.id} value={pais.codigo}>+{pais.codigo} {pais.nombre}</option>
+                                            ))}
+                                        </select>
                                         <input
                                             type="text"
                                             value={config.telefono}
-                                            onChange={(e) => setConfig({...config, telefono: e.target.value.replace(/\D/g, '')})}
-                                            className="w-full px-4 py-2 rounded-r-lg border border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                                            maxLength="8"
+                                            onChange={(e) => setConfig({
+                                                ...config,
+                                                telefono: window.normalizarTelefonoLocal
+                                                    ? window.normalizarTelefonoLocal(e.target.value, config.codigo_pais)
+                                                    : e.target.value.replace(/\D/g, '')
+                                            })}
+                                            className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                            placeholder={paisTelefonoActual?.ejemplo || '53066647'}
                                         />
                                     </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Se usara como {window.formatearTelefono ? window.formatearTelefono(config.telefono, config.codigo_pais) : `+${config.codigo_pais} ${config.telefono}`}.
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -59,10 +59,9 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
             return;
         }
         
-        const telefonoLimpio = config.telefono.replace(/\D/g, '');
-        const telefonoWhatsApp = telefonoLimpio.startsWith('53') && telefonoLimpio.length > 8
-            ? telefonoLimpio
-            : `53${telefonoLimpio}`;
+        const telefonoWhatsApp = window.normalizarTelefonoInternacional
+            ? window.normalizarTelefonoInternacional(config.telefono, config.codigo_pais)
+            : config.telefono.replace(/\D/g, '');
         const mensaje = encodeURIComponent(`Hola! Quiero consultar sobre turnos en ${config?.nombre || 'el salón'}`);
         
         // Abrir WhatsApp

@@ -277,20 +277,22 @@ function ProfesionalForm({ profesional, onGuardar, onCancelar }) {
                     </label>
                     <div className="flex">
                         <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                            +53
+                            +{window.getPhoneCountryConfig ? window.getPhoneCountryConfig().codigo : '53'}
                         </span>
                         <input
                             type="tel"
                             value={form.telefono}
                             onChange={(e) => {
-                                const value = e.target.value.replace(/\D/g, '');
+                                const value = window.normalizarTelefonoLocal
+                                    ? window.normalizarTelefonoLocal(e.target.value)
+                                    : e.target.value.replace(/\D/g, '');
                                 setForm({...form, telefono: value});
                             }}
                             className="w-full px-4 py-2 rounded-r-lg border border-gray-300"
-                            placeholder="55002272"
+                            placeholder={window.getPhoneCountryConfig ? window.getPhoneCountryConfig().ejemplo : '55002272'}
                         />
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">8 dígitos después del +53</p>
+                    <p className="text-xs text-gray-400 mt-1">Numero local despues del codigo de pais.</p>
                 </div>
                 
                 <div>

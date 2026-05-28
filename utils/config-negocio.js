@@ -114,6 +114,9 @@ window.cargarConfiguracionNegocio = async function(forceRefresh = false) {
         ultimaActualizacion = Date.now();
         
         if (configCache) {
+            if (window.setCodigoPaisTelefono) {
+                window.setCodigoPaisTelefono(configCache.codigo_pais || configCache.codigo_pais_telefono || '53');
+            }
             aplicarTemaNegocio(configCache);
             console.log('✅ Configuración cargada:');
             console.log('   - Nombre:', configCache.nombre);
@@ -153,6 +156,11 @@ window.getNombreNegocio = async function() {
 window.getTelefonoDuenno = async function() {
     const config = await window.cargarConfiguracionNegocio();
     return config?.telefono || '52541431';
+};
+
+window.getCodigoPaisNegocio = async function() {
+    const config = await window.cargarConfiguracionNegocio();
+    return window.getCodigoPaisTelefono ? window.getCodigoPaisTelefono(config) : (config?.codigo_pais || '53');
 };
 
 /**

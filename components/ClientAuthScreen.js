@@ -55,11 +55,14 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     };
 
     const verificarNumero = async (numero) => {
-        const digitos = numero.replace(/\D/g, '');
-        const numeroLimpio = digitos.startsWith('53') && digitos.length > 8 ? digitos.slice(2) : digitos;
+        const codigoPais = window.getCodigoPaisTelefono ? window.getCodigoPaisTelefono(config) : '53';
+        const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig(config) : { localLength: 8 };
+        const numeroLimpio = window.normalizarTelefonoLocal
+            ? window.normalizarTelefonoLocal(numero, codigoPais)
+            : numero.replace(/\D/g, '');
         setWhatsapp(numeroLimpio);
 
-        if (numeroLimpio.length < 8) {
+        if (numeroLimpio.length < Math.min(7, paisTelefono.localLength || 8)) {
             resetCliente();
             return;
         }
@@ -73,10 +76,15 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
         setProfesionalPassword('');
         setEsAdmin(false);
 
-        const numeroCompleto = `53${numeroLimpio}`;
+        const numeroCompleto = window.normalizarTelefonoInternacional
+            ? window.normalizarTelefonoInternacional(numeroLimpio, codigoPais)
+            : `53${numeroLimpio}`;
 
         try {
-            if (numeroLimpio === config?.telefono?.replace(/\D/g, '')) {
+            const telefonoDuennoLocal = window.normalizarTelefonoLocal
+                ? window.normalizarTelefonoLocal(config?.telefono || '', codigoPais)
+                : String(config?.telefono || '').replace(/\D/g, '');
+            if (numeroLimpio === telefonoDuennoLocal) {
                 guardarNegocioEnSesion();
 
                 const loginTime = localStorage.getItem('adminLoginTime');
@@ -161,11 +169,16 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const digitos = whatsapp.replace(/\D/g, '');
-        const numeroLimpio = digitos.startsWith('53') && digitos.length > 8 ? digitos.slice(2) : digitos;
-        const numeroCompleto = `53${numeroLimpio}`;
+        const codigoPais = window.getCodigoPaisTelefono ? window.getCodigoPaisTelefono(config) : '53';
+        const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig(config) : { localLength: 8 };
+        const numeroLimpio = window.normalizarTelefonoLocal
+            ? window.normalizarTelefonoLocal(whatsapp, codigoPais)
+            : whatsapp.replace(/\D/g, '');
+        const numeroCompleto = window.normalizarTelefonoInternacional
+            ? window.normalizarTelefonoInternacional(numeroLimpio, codigoPais)
+            : `53${numeroLimpio}`;
 
-        if (numeroLimpio.length < 8) {
+        if (numeroLimpio.length < Math.min(7, paisTelefono.localLength || 8)) {
             setError('Ingresá un número de WhatsApp válido.');
             return;
         }
@@ -225,6 +238,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
 
     const nombreNegocio = config?.nombre || 'Mi Salón';
     const logoUrl = config?.logo_url;
+    const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig(config) : { codigo: '53', ejemplo: '51234567', localLength: 8 };
     const fondoPortada = window.getHeroBackgroundOption
         ? window.getHeroBackgroundOption(config?.imagen_fondo_tipo)
         : { image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=2071&auto=format&fit=crop', label: 'Fondo de salon' };
@@ -285,14 +299,14 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                             </label>
                             <div className="flex">
                                 <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-pink-300/30 bg-black/20 text-pink-300 text-sm">
-                                    +53
+                                    +{paisTelefono.codigo}
                                 </span>
                                 <input
                                     type="tel"
                                     value={whatsapp}
                                     onChange={(e) => verificarNumero(e.target.value)}
                                     className="w-full px-4 py-3 rounded-r-lg border border-pink-300/30 bg-black/20 text-white placeholder-pink-200/70 focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition"
-                                    placeholder="51234567"
+                                    placeholder={paisTelefono.ejemplo || '51234567'}
                                     required
                                 />
                             </div>

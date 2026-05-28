@@ -4,10 +4,9 @@ function WhatsAppButton() {
     const [telefono, setTelefono] = React.useState('55002272');
     const [nombreNegocio, setNombreNegocio] = React.useState('');
 
-    const telefonoLimpio = String(telefono || '').replace(/\D/g, '');
-    const telefonoWhatsApp = telefonoLimpio.startsWith('53') && telefonoLimpio.length > 8
-        ? telefonoLimpio
-        : `53${telefonoLimpio}`;
+    const telefonoWhatsApp = window.normalizarTelefonoInternacional
+        ? window.normalizarTelefonoInternacional(telefono)
+        : String(telefono || '').replace(/\D/g, '');
 
     React.useEffect(() => {
         window.getTelefonoDuenno().then(tel => {
