@@ -444,7 +444,7 @@ function AdminApp() {
     const esProfesionalPanel = userRole === 'profesional';
     const puedeGestionarReservas = esAdminPanel || (esProfesionalPanel && userNivel >= 2);
     const puedeGestionarAvanzado = esAdminPanel || (esProfesionalPanel && userNivel >= 3);
-    const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig(config) : { codigo: '53', ejemplo: '55002272' };
+    const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig(config) : { codigo: '53', bandera: '🇨🇺', ejemplo: '55002272' };
 
     const getServicioManual = (servicioNombre = nuevaReservaData.servicio) => {
         if (!servicioNombre) return null;
@@ -3109,7 +3109,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp del Cliente *</label>
                                     <div className="flex">
-                                        <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50">+{paisTelefono.codigo}</span>
+                                        <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50">{paisTelefono.bandera || ''} +{paisTelefono.codigo}</span>
                                         <input type="tel" value={nuevaReservaData.cliente_whatsapp} onChange={(e) => setNuevaReservaData({...nuevaReservaData, cliente_whatsapp: normalizarTelefonoLocalSeguro(e.target.value)})} className="w-full px-4 py-2 rounded-r-lg border border-gray-300" placeholder={paisTelefono.ejemplo || '55002272'} />
                                     </div>
                                 </div>

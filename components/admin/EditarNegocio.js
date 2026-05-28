@@ -37,13 +37,13 @@ function EditarNegocio() {
         tiempo_vencimiento: 2
     });
     const paisesTelefono = window.PHONE_COUNTRIES || [
-        { id: 'CU', nombre: 'Cuba', codigo: '53', ejemplo: '53066647', localLength: 8 },
-        { id: 'ES', nombre: 'Espana', codigo: '34', ejemplo: '612345678', localLength: 9 },
-        { id: 'MX', nombre: 'Mexico', codigo: '52', ejemplo: '5512345678', localLength: 10 },
-        { id: 'US', nombre: 'USA', codigo: '1', ejemplo: '3055551234', localLength: 10 },
-        { id: 'VE', nombre: 'Venezuela', codigo: '58', ejemplo: '4121234567', localLength: 10 },
-        { id: 'CO', nombre: 'Colombia', codigo: '57', ejemplo: '3001234567', localLength: 10 },
-        { id: 'GY', nombre: 'Guyana', codigo: '592', ejemplo: '6123456', localLength: 7 }
+        { id: 'CU', nombre: 'Cuba', bandera: '🇨🇺', codigo: '53', ejemplo: '53066647', localLength: 8 },
+        { id: 'ES', nombre: 'Espana', bandera: '🇪🇸', codigo: '34', ejemplo: '612345678', localLength: 9 },
+        { id: 'MX', nombre: 'Mexico', bandera: '🇲🇽', codigo: '52', ejemplo: '5512345678', localLength: 10 },
+        { id: 'US', nombre: 'USA', bandera: '🇺🇸', codigo: '1', ejemplo: '3055551234', localLength: 10 },
+        { id: 'VE', nombre: 'Venezuela', bandera: '🇻🇪', codigo: '58', ejemplo: '4121234567', localLength: 10 },
+        { id: 'CO', nombre: 'Colombia', bandera: '🇨🇴', codigo: '57', ejemplo: '3001234567', localLength: 10 },
+        { id: 'GY', nombre: 'Guyana', bandera: '🇬🇾', codigo: '592', ejemplo: '6123456', localLength: 7 }
     ];
 
     // Cargar datos al iniciar
@@ -369,7 +369,7 @@ function EditarNegocio() {
                                             className="w-36 border rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                                         >
                                             {paisesTelefono.map((pais) => (
-                                                <option key={pais.id} value={pais.codigo}>+{pais.codigo} {pais.nombre}</option>
+                                                <option key={pais.id} value={pais.codigo}>{pais.bandera} +{pais.codigo} {pais.nombre}</option>
                                             ))}
                                         </select>
                                         <input

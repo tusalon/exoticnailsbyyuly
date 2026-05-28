@@ -238,7 +238,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
 
     const nombreNegocio = config?.nombre || 'Mi Salón';
     const logoUrl = config?.logo_url;
-    const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig(config) : { codigo: '53', ejemplo: '51234567', localLength: 8 };
+    const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig(config) : { codigo: '53', bandera: '🇨🇺', ejemplo: '51234567', localLength: 8 };
     const fondoPortada = window.getHeroBackgroundOption
         ? window.getHeroBackgroundOption(config?.imagen_fondo_tipo)
         : { image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=2071&auto=format&fit=crop', label: 'Fondo de salon' };
@@ -299,7 +299,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                             </label>
                             <div className="flex">
                                 <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-pink-300/30 bg-black/20 text-pink-300 text-sm">
-                                    +{paisTelefono.codigo}
+                                    {paisTelefono.bandera || ''} +{paisTelefono.codigo}
                                 </span>
                                 <input
                                     type="tel"
