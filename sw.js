@@ -1,6 +1,6 @@
 // sw.js - Service Worker para Exotic Nails by Yuly
 
-const CACHE_NAME = 'exoticnailsbyyuly-v39';
+const CACHE_NAME = 'exoticnailsbyyuly-v40';
 const urlsToCache = [
   '/exoticnailsbyyuly/',
   '/exoticnailsbyyuly/index.html',
@@ -17,7 +17,14 @@ const urlsToCache = [
   '/exoticnailsbyyuly/icons/icon-152x152.png',
   '/exoticnailsbyyuly/icons/icon-192x192.png',
   '/exoticnailsbyyuly/icons/icon-384x384.png',
-  '/exoticnailsbyyuly/icons/icon-512x512.png'
+  '/exoticnailsbyyuly/icons/icon-512x512.png',
+  '/exoticnailsbyyuly/vendor/react.production.min.js',
+  '/exoticnailsbyyuly/vendor/react-dom.production.min.js',
+  '/exoticnailsbyyuly/vendor/babel.min.js',
+  '/exoticnailsbyyuly/vendor/bcrypt.min.js',
+  '/exoticnailsbyyuly/vendor/tailwind-browser.js',
+  '/exoticnailsbyyuly/vendor/lucide/lucide.css',
+  '/exoticnailsbyyuly/vendor/lucide/lucide.woff2'
 ];
 
 // ============================================

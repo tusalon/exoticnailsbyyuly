@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "cap:prepare": "powershell -ExecutionPolicy Bypass -File scripts/prepare-capacitor.ps1",
+    "vendor:sync": "powershell -ExecutionPolicy Bypass -File scripts/sync-vendor-assets.ps1",
     "android:add": "npm run cap:prepare && npx cap add android",
     "android:sync": "npm run cap:prepare && npx cap sync android && npm run android:icons",
     "android:open": "npm run android:sync && npx cap open android",
@@ -25,9 +26,15 @@
   },
   "homepage": "https://github.com/tusalon/exoticnailsbyyuly#readme",
   "devDependencies": {
+    "@babel/standalone": "^7.29.7",
     "@capacitor/android": "^8.3.4",
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",
+    "@tailwindcss/browser": "^4.3.0",
+    "bcryptjs": "^3.0.3",
+    "lucide-static": "^1.17.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "supabase": "^2.76.15"
   }
 }

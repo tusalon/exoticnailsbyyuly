@@ -28,6 +28,7 @@ $directories = @(
     "utils",
     "icons",
     "images",
+    "vendor",
     "trickle"
 )
 

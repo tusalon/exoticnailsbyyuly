@@ -6,10 +6,10 @@
     <title>Acceso al Panel</title>
     
     <!-- Tailwind desde CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="vendor/tailwind-browser.js"></script>
     
     <!-- bcryptjs con asignación explícita -->
-    <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+    <script src="vendor/bcrypt.min.js"></script>
     <script>
         // Forzar la asignación global si es necesario
         window.addEventListener('load', function() {
@@ -32,7 +32,7 @@
         });
     </script>
     
-    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+    <link href="vendor/lucide/lucide.css" rel="stylesheet">
     <style>
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(-10px); }
