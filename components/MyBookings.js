@@ -356,6 +356,7 @@ Si no puedes asistir, contactanos por WhatsApp al ${telefonoContacto}`;
             await window.notificarCancelacion(bookingData);
         }
         
+        await window.notificarListaEsperaTurnoLiberado?.(bookingData);
         alert('✅ Turno cancelado correctamente');
         await cargarReservas();
         
@@ -501,6 +502,7 @@ Ahora: ${fechaNueva} a las ${horaNueva}`;
             const actualizadas = await response.json();
             const bookingActualizado = actualizadas?.[0] || { ...reservaReprogramando, ...payload };
             await notificarReprogramacion(bookingActualizado, reservaReprogramando);
+            await window.notificarListaEsperaTurnoLiberado?.(reservaReprogramando);
             alert('Turno reprogramado correctamente');
             cerrarReprogramacion();
             await cargarReservas();

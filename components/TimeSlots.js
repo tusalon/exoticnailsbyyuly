@@ -1,7 +1,10 @@
 // components/TimeSlots.js - Versión femenina con filtro de horarios permitidos por servicio
 
-function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
+function TimeSlots({ service, date, profesional, cliente, onTimeSelect, selectedTime }) {
     const [slots, setSlots] = React.useState([]);
+    const [occupiedSlots, setOccupiedSlots] = React.useState([]);
+    const [waitlistSlots, setWaitlistSlots] = React.useState({});
+    const [joiningWaitlist, setJoiningWaitlist] = React.useState('');
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState(null);
     const [horariosPorDia, setHorariosPorDia] = React.useState({});
@@ -56,6 +59,8 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
         const [hours, minutes] = timeStr.split(':').map(Number);
         return hours * 60 + minutes;
     };
+
+    const normalizeTimeKey = (value) => String(value || '').slice(0, 5);
 
     const variantesHorarioPermitido = (timeStr) => {
         const partes = String(timeStr || '').trim().split(':');
@@ -180,6 +185,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
         
         if (!diaTrabaja) {
             setSlots([]);
+            setOccupiedSlots([]);
             return;
         }
 
@@ -197,6 +203,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                     console.log(`🚫 Fecha ${date} supera antelación máxima de ${maxAntelacionDias} días`);
                     setError(`Solo se puede reservar con hasta ${maxAntelacionDias} días de antelación`);
                     setSlots([]);
+                    setOccupiedSlots([]);
                     setLoading(false);
                     return;
                 }
@@ -212,6 +219,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                 if (indicesDelDia.length === 0) {
                     console.log(`⚠️ No hay horas configuradas para ${diaSemana}`);
                     setSlots([]);
+                    setOccupiedSlots([]);
                     setLoading(false);
                     return;
                 }
@@ -242,7 +250,16 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                 console.log('📅 Fecha seleccionada:', date, 'es hoy?', esHoy);
                 
                 const bookings = await getBookingsByDateAndProfesional(date, profesional.id);
+                const waitlist = window.getListaEsperaPorFechaProfesional
+                    ? await window.getListaEsperaPorFechaProfesional(date, profesional.id)
+                    : [];
+                const waitlistMap = {};
+                (waitlist || []).forEach(item => {
+                    waitlistMap[normalizeTimeKey(item.hora_inicio)] = item;
+                });
+                setWaitlistSlots(waitlistMap);
                 
+                const occupied = [];
                 let availableSlots = baseSlots.filter(slotStartStr => {
                     const slotStart = timeToMinutes(slotStartStr);
                     const slotEnd = slotStart + service.duracion;
@@ -256,24 +273,31 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                         return false;
                     }
 
-                    const hasConflict = bookings.some(booking => {
+                    const bookingConflict = bookings.find(booking => {
                         const bookingStart = timeToMinutes(booking.hora_inicio);
                         const bookingEnd = timeToMinutes(booking.hora_fin);
                         return (slotStart < bookingEnd) && (slotEnd > bookingStart);
                     });
 
-                    if (!hasConflict) {
+                    if (!bookingConflict) {
                         console.log(`✅ Slot ${slotStartStr} disponible`);
                         return true;
                     } else {
                         console.log(`❌ Slot ${slotStartStr} tiene conflicto - EXCLUIDO`);
+                        occupied.push({
+                            hora: slotStartStr,
+                            hora_fin: bookingConflict.hora_fin,
+                            booking: bookingConflict
+                        });
                         return false;
                     }
                 });
                 
                 availableSlots.sort();
+                occupied.sort((a, b) => timeToMinutes(a.hora) - timeToMinutes(b.hora));
                 console.log(`✅ Slots disponibles para ${profesional.nombre} el ${date}:`, availableSlots);
                 setSlots(availableSlots);
+                setOccupiedSlots(occupied);
             } catch (err) {
                 console.error(err);
                 setError("Error al cargar horarios");
@@ -284,6 +308,44 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
 
         loadSlots();
     }, [service, date, profesional, horariosPorDia, descansosPorDia, diaTrabaja, verificacionCompleta, maxAntelacionDias, minAntelacionHoras]);
+
+    const handleUnirseListaEspera = async (slot) => {
+        if (!cliente?.nombre || !cliente?.whatsapp) {
+            alert('Necesitas ingresar con tu WhatsApp para anotarte en lista de espera.');
+            return;
+        }
+        if (!window.unirseListaEspera) {
+            alert('La lista de espera todavia no esta disponible.');
+            return;
+        }
+
+        setJoiningWaitlist(slot.hora);
+        try {
+            const result = await window.unirseListaEspera({
+                cliente_nombre: cliente.nombre,
+                cliente_whatsapp: cliente.whatsapp,
+                servicio: service.nombre,
+                duracion: service.duracion,
+                profesional_id: profesional.id,
+                profesional_nombre: profesional.nombre,
+                fecha: date,
+                hora_inicio: slot.hora,
+                hora_fin: slot.hora_fin || slot.booking?.hora_fin
+            });
+
+            if (result.success) {
+                setWaitlistSlots(prev => ({ ...prev, [slot.hora]: result.data }));
+                alert('Listo. Quedaste en lista de espera para ese turno.');
+            } else if (result.reason === 'occupied') {
+                alert('Ese turno ya tiene una clienta en lista de espera.');
+                setWaitlistSlots(prev => ({ ...prev, [slot.hora]: result.data || true }));
+            } else {
+                alert('No se pudo anotarte en lista de espera. Intenta de nuevo.');
+            }
+        } finally {
+            setJoiningWaitlist('');
+        }
+    };
 
     if (!service || !date || !profesional) return null;
 
@@ -343,7 +405,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                 </div>
             ) : error ? (
                 <div className="p-4 bg-pink-50 text-pink-600 rounded-lg text-sm border border-pink-200">{error}</div>
-            ) : slots.length === 0 ? (
+            ) : slots.length === 0 && occupiedSlots.length === 0 ? (
                 <div className="text-center p-8 bg-pink-50 rounded-xl border border-pink-200">
                     <div className="text-5xl text-pink-400 mb-3">⏰❌</div>
                     <p className="text-pink-700 font-medium">
@@ -372,6 +434,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                         </div>
                     )}
                     
+                    {slots.length > 0 && (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mt-4">
                         {slots.map(time24h => {
                             const time12h = formatTo12Hour(time24h);
@@ -395,6 +458,39 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                             );
                         })}
                     </div>
+                    )}
+
+                    {occupiedSlots.length > 0 && (
+                        <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                            <div className="mb-3">
+                                <p className="font-semibold text-amber-800">Turnos ocupados con lista de espera</p>
+                                <p className="text-sm text-amber-700">Puedes anotarte en un turno ocupado. Solo se permite una clienta en espera por horario.</p>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {occupiedSlots.map(slot => {
+                                    const yaTieneEspera = Boolean(waitlistSlots[slot.hora]);
+                                    const cargando = joiningWaitlist === slot.hora;
+                                    return (
+                                        <button
+                                            key={slot.hora}
+                                            type="button"
+                                            onClick={() => handleUnirseListaEspera(slot)}
+                                            disabled={yaTieneEspera || cargando}
+                                            className={`py-3 px-2 rounded-lg text-sm font-semibold transition flex flex-col items-center border
+                                                ${yaTieneEspera
+                                                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                                    : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-100'}`}
+                                        >
+                                            <span>{window.formatTo12Hour ? window.formatTo12Hour(slot.hora) : slot.hora}</span>
+                                            <span className="text-xs font-medium mt-1">
+                                                {cargando ? 'Guardando...' : yaTieneEspera ? 'Lista ocupada' : 'Lista de espera'}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                     
                     <p className="text-xs text-pink-400 mt-3 text-center">
                         ⏰ Horarios cada 30 minutos

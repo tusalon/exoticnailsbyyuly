@@ -301,6 +301,7 @@ function ClientApp() {
                                             service={selectedService}
                                             date={selectedDate}
                                             profesional={selectedProfesional}
+                                            cliente={cliente}
                                             onTimeSelect={setSelectedTime}
                                             selectedTime={selectedTime}
                                             horariosPorDia={horariosPorDia}

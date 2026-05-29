@@ -8,6 +8,8 @@ if (typeof window.TABLE_NAME === 'undefined') {
 }
 const TABLE_NAME = window.TABLE_NAME;
 
+const normalizeTimeKey = (value) => String(value || '').slice(0, 5);
+
 // Helper para obtener negocio_id - SIN RECURSIÓN
 function getNegocioId() {
     // Usar la función global de config-negocio.js si existe
@@ -205,6 +207,169 @@ async function updateBookingStatus(id, newStatus) {
     }
 }
 
+async function getListaEsperaPorFechaProfesional(dateStr, profesionalId) {
+    try {
+        const negocioId = getNegocioId();
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/lista_espera?negocio_id=eq.${negocioId}&fecha=eq.${dateStr}&profesional_id=eq.${profesionalId}&estado=neq.cerrada&select=*`,
+            {
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                cache: 'no-store'
+            }
+        );
+
+        if (!response.ok) {
+            console.warn('Lista de espera no disponible:', await response.text());
+            return [];
+        }
+
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error('Error cargando lista de espera:', error);
+        return [];
+    }
+}
+
+async function unirseListaEspera(data) {
+    try {
+        const negocioId = getNegocioId();
+        const existente = await getListaEsperaPorFechaProfesional(data.fecha, data.profesional_id);
+        const ocupado = existente.find(item =>
+            normalizeTimeKey(item.hora_inicio) === normalizeTimeKey(data.hora_inicio) &&
+            String(item.estado || '').toLowerCase() !== 'cerrada'
+        );
+
+        if (ocupado) {
+            return { success: false, reason: 'occupied', data: ocupado };
+        }
+
+        const payload = {
+            negocio_id: negocioId,
+            cliente_nombre: data.cliente_nombre,
+            cliente_whatsapp: data.cliente_whatsapp,
+            servicio: data.servicio,
+            duracion: data.duracion,
+            profesional_id: data.profesional_id,
+            profesional_nombre: data.profesional_nombre,
+            fecha: data.fecha,
+            hora_inicio: data.hora_inicio,
+            hora_fin: data.hora_fin,
+            estado: 'esperando'
+        };
+
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/lista_espera`,
+            {
+                method: 'POST',
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation',
+                    'Cache-Control': 'no-cache'
+                },
+                cache: 'no-store',
+                body: JSON.stringify(payload)
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error creando lista de espera:', errorText);
+            if (errorText.includes('duplicate') || errorText.includes('23505')) {
+                return { success: false, reason: 'occupied' };
+            }
+            throw new Error(errorText);
+        }
+
+        const inserted = await response.json();
+        return { success: true, data: inserted?.[0] || payload };
+    } catch (error) {
+        console.error('Error uniendose a lista de espera:', error);
+        return { success: false, reason: 'error', error };
+    }
+}
+
+async function notificarListaEsperaTurnoLiberado(booking) {
+    try {
+        if (!booking?.fecha || !booking?.hora_inicio || !booking?.profesional_id) return false;
+
+        const negocioId = booking.negocio_id || getNegocioId();
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/lista_espera?negocio_id=eq.${negocioId}&fecha=eq.${booking.fecha}&profesional_id=eq.${booking.profesional_id}&hora_inicio=eq.${normalizeTimeKey(booking.hora_inicio)}&estado=eq.esperando&select=*&order=created_at.asc&limit=1`,
+            {
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                cache: 'no-store'
+            }
+        );
+
+        if (!response.ok) {
+            console.warn('No se pudo consultar lista de espera:', await response.text());
+            return false;
+        }
+
+        const data = await response.json();
+        const espera = data?.[0];
+        if (!espera) return false;
+
+        const fecha = window.formatFechaCompleta ? window.formatFechaCompleta(espera.fecha) : espera.fecha;
+        const hora = window.formatTo12Hour ? window.formatTo12Hour(espera.hora_inicio) : espera.hora_inicio;
+        const mensaje =
+`LISTA DE ESPERA - TURNO LIBERADO
+
+Se libero un turno ocupado:
+Fecha: ${fecha}
+Hora: ${hora}
+Profesional: ${espera.profesional_nombre}
+Servicio: ${espera.servicio}
+
+Clienta en lista de espera:
+Nombre: ${espera.cliente_nombre}
+WhatsApp: ${espera.cliente_whatsapp}`;
+
+        if (window.enviarNotificacionPush) {
+            await window.enviarNotificacionPush('Lista de espera: turno liberado', mensaje, 'bell', 'high');
+        }
+
+        const config = window.cargarConfiguracionNegocio ? await window.cargarConfiguracionNegocio(true) : {};
+        if (window.enviarWhatsApp && config?.telefono) {
+            window.enviarWhatsApp(config.telefono, mensaje);
+        }
+
+        await fetch(
+            `${window.SUPABASE_URL}/rest/v1/lista_espera?negocio_id=eq.${negocioId}&id=eq.${espera.id}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    estado: 'notificada',
+                    fecha_notificacion: new Date().toISOString()
+                })
+            }
+        );
+
+        return true;
+    } catch (error) {
+        console.error('Error notificando lista de espera:', error);
+        return false;
+    }
+}
+
 // Hacer funciones globales
 window.getBookingsByDate = getBookingsByDate;
 window.getBookingsByDateAndProfesional = getBookingsByDateAndProfesional;
@@ -212,5 +377,8 @@ window.getBookingsByDateAndWorker = getBookingsByDateAndProfesional;
 window.createBooking = createBooking;
 window.getAllBookings = getAllBookings;
 window.updateBookingStatus = updateBookingStatus;
+window.getListaEsperaPorFechaProfesional = getListaEsperaPorFechaProfesional;
+window.unirseListaEspera = unirseListaEspera;
+window.notificarListaEsperaTurnoLiberado = notificarListaEsperaTurnoLiberado;
 
 console.log('✅ api.js funciones disponibles');

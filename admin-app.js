@@ -96,7 +96,7 @@ async function deleteExpiredPendingBookings(configNegocio = {}) {
         if (!Number.isFinite(horasVencimiento) || horasVencimiento <= 0) return 0;
 
         const limite = new Date(Date.now() - (horasVencimiento * 60 * 60 * 1000)).toISOString();
-        const url = `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&estado=eq.Pendiente&created_at=lt.${encodeURIComponent(limite)}&select=id`;
+        const url = `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&estado=eq.Pendiente&created_at=lt.${encodeURIComponent(limite)}&select=*`;
 
         const res = await fetch(url, {
             method: 'DELETE',
@@ -115,6 +115,9 @@ async function deleteExpiredPendingBookings(configNegocio = {}) {
         const eliminadas = await res.json();
         if (Array.isArray(eliminadas) && eliminadas.length > 0) {
             console.log(`Reservas pendientes vencidas eliminadas: ${eliminadas.length}`);
+            for (const booking of eliminadas) {
+                await window.notificarListaEsperaTurnoLiberado?.(booking);
+            }
         }
 
         return Array.isArray(eliminadas) ? eliminadas.length : 0;
@@ -124,7 +127,7 @@ async function deleteExpiredPendingBookings(configNegocio = {}) {
     }
 }
 
-async function cancelBooking(id) {
+async function cancelBooking(id, bookingData = null) {
     try {
         const negocioId = getNegocioId();
         if (!negocioId) {
@@ -150,6 +153,10 @@ async function cancelBooking(id) {
         if (!res.ok) {
             console.error('Error al cancelar:', await res.text());
             return false;
+        }
+
+        if (bookingData) {
+            await window.notificarListaEsperaTurnoLiberado?.(bookingData);
         }
         
         return true;
@@ -2570,7 +2577,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
 
             let todoOk = true;
             for (const reserva of reservasGrupo) {
-                const ok = await cancelBooking(reserva.id);
+                const ok = await cancelBooking(reserva.id, reserva);
                 if (!ok) todoOk = false;
             }
 
@@ -2593,7 +2600,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
 
         if (!confirm(`¿Cancelar reserva de ${bookingData.cliente_nombre}?`)) return;
         
-        const ok = await cancelBooking(id);
+        const ok = await cancelBooking(id, bookingData);
         if (ok) {
             console.log('📱 Enviando notificaciones de cancelación por admin...');
             
