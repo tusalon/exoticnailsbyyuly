@@ -1,24 +1,33 @@
 {
-  "name": "plantilla",
+  "name": "exoticnailsbyyuli",
   "version": "1.0.0",
-  "description": "",
+  "description": "APK Android para Exotic Nails by Yuly",
   "main": "admin-app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "cap:prepare": "powershell -ExecutionPolicy Bypass -File scripts/prepare-capacitor.ps1",
+    "android:add": "npm run cap:prepare && npx cap add android",
+    "android:sync": "npm run cap:prepare && npx cap sync android && npm run android:icons",
+    "android:open": "npm run android:sync && npx cap open android",
+    "apk:debug": "npm run android:sync && powershell -ExecutionPolicy Bypass -File scripts/build-apk-debug.ps1",
+    "android:icons": "powershell -ExecutionPolicy Bypass -File scripts/apply-android-icons.ps1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tusalon/Plantilla.git"
+    "url": "git+https://github.com/tusalon/exoticnailsbyyuly.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/tusalon/Plantilla/issues"
+    "url": "https://github.com/tusalon/exoticnailsbyyuly/issues"
   },
-  "homepage": "https://github.com/tusalon/Plantilla#readme",
+  "homepage": "https://github.com/tusalon/exoticnailsbyyuly#readme",
   "devDependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
     "supabase": "^2.76.15"
   }
 }
