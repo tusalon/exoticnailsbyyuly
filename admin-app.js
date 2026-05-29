@@ -441,6 +441,8 @@ function AdminApp() {
     const [agendaDate, setAgendaDate] = React.useState(new Date());
     const [agendaMode, setAgendaMode] = React.useState('dia');
     const [agendaDetalleBooking, setAgendaDetalleBooking] = React.useState(null);
+    const [estadisticasPeriodo, setEstadisticasPeriodo] = React.useState('mes');
+    const [estadisticasFecha, setEstadisticasFecha] = React.useState(getCurrentLocalDate());
     
     const [showClientesRegistrados, setShowClientesRegistrados] = React.useState(false);
     const [clientesRegistrados, setClientesRegistrados] = React.useState([]);
@@ -2932,12 +2934,380 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
         return `${agendaDays[0].toLocaleDateString('es-CU', { day: 'numeric', month: 'short' })} - ${agendaDays[6].toLocaleDateString('es-CU', { day: 'numeric', month: 'short', year: 'numeric' })}`;
     };
 
+    const parseMontoEstadistica = (value) => {
+        const normalized = String(value || '0').replace(',', '.').replace(/[^\d.-]/g, '');
+        const monto = Number(normalized);
+        return Number.isFinite(monto) ? monto : 0;
+    };
+
+    const formatMoneyEstadistica = (value) => {
+        const monto = Number(value || 0);
+        return `$${monto.toLocaleString('es-CU', { maximumFractionDigits: 0 })}`;
+    };
+
+    const getDateFromInput = (value) => {
+        const [year, month, day] = String(value || getCurrentLocalDate()).split('-').map(Number);
+        return new Date(year || new Date().getFullYear(), (month || 1) - 1, day || 1);
+    };
+
+    const getServicioPrecioEstadistica = (nombreServicio) => {
+        return String(nombreServicio || '')
+            .split(' + ')
+            .map(nombre => nombre.trim())
+            .filter(Boolean)
+            .reduce((total, nombre) => {
+                const servicio = serviciosList.find(item => item.nombre === nombre);
+                return total + parseMontoEstadistica(servicio?.precio);
+            }, 0);
+    };
+
+    const getRangoEstadisticas = () => {
+        const base = getDateFromInput(estadisticasFecha);
+        let inicio = new Date(base);
+        let fin = new Date(base);
+        let titulo = '';
+
+        if (estadisticasPeriodo === 'semana') {
+            inicio = startOfWeek(base);
+            fin = addDays(inicio, 6);
+            titulo = `${inicio.toLocaleDateString('es-CU', { day: 'numeric', month: 'short' })} - ${fin.toLocaleDateString('es-CU', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+        } else if (estadisticasPeriodo === 'ano') {
+            inicio = new Date(base.getFullYear(), 0, 1);
+            fin = new Date(base.getFullYear(), 11, 31);
+            titulo = `${base.getFullYear()}`;
+        } else {
+            inicio = new Date(base.getFullYear(), base.getMonth(), 1);
+            fin = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+            titulo = base.toLocaleDateString('es-CU', { month: 'long', year: 'numeric' });
+        }
+
+        return {
+            inicio: formatDate(inicio),
+            fin: formatDate(fin),
+            titulo
+        };
+    };
+
+    const topEstadistica = (mapa, campo = 'total', limite = 5) => {
+        return Object.values(mapa)
+            .sort((a, b) => Number(b[campo] || 0) - Number(a[campo] || 0))
+            .slice(0, limite);
+    };
+
+    const calcularEstadisticas = () => {
+        const rango = getRangoEstadisticas();
+        const reservasPeriodo = bookings.filter(b => b.fecha >= rango.inicio && b.fecha <= rango.fin);
+        const citasVisuales = agruparReservasVisuales(reservasPeriodo);
+        const estados = {
+            Reservado: 0,
+            Pendiente: 0,
+            Completado: 0,
+            Cancelado: 0,
+            Ausente: 0
+        };
+        const porProfesional = {};
+        const porServicio = {};
+        const porDia = {};
+
+        citasVisuales.forEach(cita => {
+            const estado = estados[cita.estado] !== undefined ? cita.estado : 'Reservado';
+            estados[estado] += 1;
+        });
+
+        reservasPeriodo.forEach(reserva => {
+            const estado = estados[reserva.estado] !== undefined ? reserva.estado : 'Reservado';
+            const cobro = parseMontoEstadistica(reserva.monto_cobrado);
+            const estimado = getServicioPrecioEstadistica(reserva.servicio);
+            const profesionalNombre = reserva.profesional_nombre || reserva.trabajador_nombre || 'Sin profesional';
+            const servicioNombre = reserva.servicio || 'Sin servicio';
+            const diaKey = reserva.fecha || 'Sin fecha';
+            const diaLabel = reserva.fecha
+                ? getDateFromInput(reserva.fecha).toLocaleDateString('es-CU', { weekday: 'short', day: 'numeric', month: 'short' })
+                : 'Sin fecha';
+
+            if (!porProfesional[profesionalNombre]) {
+                porProfesional[profesionalNombre] = { nombre: profesionalNombre, total: 0, completadas: 0, canceladas: 0, ausentes: 0, cobro: 0 };
+            }
+            porProfesional[profesionalNombre].total += 1;
+            porProfesional[profesionalNombre].cobro += cobro;
+            if (estado === 'Completado') porProfesional[profesionalNombre].completadas += 1;
+            if (estado === 'Cancelado') porProfesional[profesionalNombre].canceladas += 1;
+            if (estado === 'Ausente') porProfesional[profesionalNombre].ausentes += 1;
+
+            if (!porServicio[servicioNombre]) {
+                porServicio[servicioNombre] = { nombre: servicioNombre, total: 0, completadas: 0, canceladas: 0, cobro: 0, estimado: 0 };
+            }
+            porServicio[servicioNombre].total += 1;
+            porServicio[servicioNombre].cobro += cobro;
+            porServicio[servicioNombre].estimado += estimado;
+            if (estado === 'Completado') porServicio[servicioNombre].completadas += 1;
+            if (estado === 'Cancelado') porServicio[servicioNombre].canceladas += 1;
+
+            if (!porDia[diaKey]) {
+                porDia[diaKey] = { fecha: diaKey, label: diaLabel, total: 0, completadas: 0, canceladas: 0, pendientes: 0, ausentes: 0, cobro: 0 };
+            }
+            porDia[diaKey].total += 1;
+            porDia[diaKey].cobro += cobro;
+            if (estado === 'Completado') porDia[diaKey].completadas += 1;
+            if (estado === 'Cancelado') porDia[diaKey].canceladas += 1;
+            if (estado === 'Pendiente') porDia[diaKey].pendientes += 1;
+            if (estado === 'Ausente') porDia[diaKey].ausentes += 1;
+        });
+
+        const cobroReal = reservasPeriodo.reduce((total, reserva) => total + parseMontoEstadistica(reserva.monto_cobrado), 0);
+        const ingresoEstimado = reservasPeriodo
+            .filter(reserva => reserva.estado !== 'Cancelado' && reserva.estado !== 'Ausente')
+            .reduce((total, reserva) => total + getServicioPrecioEstadistica(reserva.servicio), 0);
+        const citasCompletadas = citasVisuales.filter(cita => cita.estado === 'Completado');
+        const citasSinCobro = citasCompletadas.filter(cita => parseMontoEstadistica(cita.monto_cobrado) <= 0).length;
+        const ticketPromedio = estados.Completado > 0 ? cobroReal / estados.Completado : 0;
+        const totalCitas = citasVisuales.length;
+
+        return {
+            rango,
+            reservasPeriodo,
+            citasVisuales,
+            estados,
+            totalCitas,
+            totalServicios: reservasPeriodo.length,
+            cobroReal,
+            ingresoEstimado,
+            diferenciaCobro: cobroReal - ingresoEstimado,
+            ticketPromedio,
+            citasSinCobro,
+            tasaCompletadas: totalCitas ? Math.round((estados.Completado / totalCitas) * 100) : 0,
+            tasaCanceladas: totalCitas ? Math.round((estados.Cancelado / totalCitas) * 100) : 0,
+            tasaAusentes: totalCitas ? Math.round((estados.Ausente / totalCitas) * 100) : 0,
+            topProfesionales: topEstadistica(porProfesional, 'cobro'),
+            topServicios: topEstadistica(porServicio, 'total'),
+            dias: Object.values(porDia).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
+        };
+    };
+
+    const crearResumenEstadisticasTexto = (stats) => {
+        const lineas = [
+            `Resumen de ${nombreNegocio}`,
+            `Periodo: ${stats.rango.titulo}`,
+            '',
+            `Cobro real: ${formatMoneyEstadistica(stats.cobroReal)}`,
+            `Ingreso estimado: ${formatMoneyEstadistica(stats.ingresoEstimado)}`,
+            `Ticket promedio: ${formatMoneyEstadistica(stats.ticketPromedio)}`,
+            '',
+            `Citas: ${stats.totalCitas}`,
+            `Completadas: ${stats.estados.Completado}`,
+            `Reservadas: ${stats.estados.Reservado}`,
+            `Pendientes: ${stats.estados.Pendiente}`,
+            `Canceladas: ${stats.estados.Cancelado}`,
+            `Ausentes: ${stats.estados.Ausente}`,
+            `Sin cobro registrado: ${stats.citasSinCobro}`
+        ];
+
+        if (stats.topProfesionales.length) {
+            lineas.push('', 'Profesionales destacados:');
+            stats.topProfesionales.slice(0, 3).forEach(item => {
+                lineas.push(`- ${item.nombre}: ${formatMoneyEstadistica(item.cobro)} / ${item.completadas} completadas`);
+            });
+        }
+
+        if (stats.topServicios.length) {
+            lineas.push('', 'Servicios mas pedidos:');
+            stats.topServicios.slice(0, 3).forEach(item => {
+                lineas.push(`- ${item.nombre}: ${item.total}`);
+            });
+        }
+
+        return lineas.join('\n');
+    };
+
+    const copiarResumenEstadisticas = async () => {
+        const texto = crearResumenEstadisticasTexto(calcularEstadisticas());
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(texto);
+                alert('Resumen copiado');
+            } else {
+                window.prompt('Copia el resumen:', texto);
+            }
+        } catch (error) {
+            console.error('Error copiando resumen:', error);
+            window.prompt('Copia el resumen:', texto);
+        }
+    };
+
+    const descargarEstadisticasCSV = () => {
+        const stats = calcularEstadisticas();
+        const escapeCsv = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+        const filas = [
+            ['Fecha', 'Total servicios', 'Completadas', 'Canceladas', 'Pendientes', 'Ausentes', 'Cobro real'],
+            ...stats.dias.map(dia => [dia.fecha, dia.total, dia.completadas, dia.canceladas, dia.pendientes, dia.ausentes, dia.cobro])
+        ];
+        const csv = filas.map(fila => fila.map(escapeCsv).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `estadisticas-${estadisticasPeriodo}-${stats.rango.inicio}-${stats.rango.fin}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    const renderEstadisticas = () => {
+        const stats = calcularEstadisticas();
+        const cards = [
+            { label: 'Cobro real', value: formatMoneyEstadistica(stats.cobroReal), tone: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
+            { label: 'Ingreso estimado', value: formatMoneyEstadistica(stats.ingresoEstimado), tone: 'text-pink-700 bg-pink-50 border-pink-100' },
+            { label: 'Completadas', value: stats.estados.Completado, tone: 'text-blue-700 bg-blue-50 border-blue-100' },
+            { label: 'Canceladas', value: stats.estados.Cancelado, tone: 'text-red-700 bg-red-50 border-red-100' },
+            { label: 'Ausentes', value: stats.estados.Ausente, tone: 'text-slate-700 bg-slate-50 border-slate-100' },
+            { label: 'Sin cobro', value: stats.citasSinCobro, tone: 'text-amber-700 bg-amber-50 border-amber-100' }
+        ];
+
+        return (
+            <div className="space-y-4">
+                <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div>
+                            <p className="text-xs uppercase tracking-wide text-pink-500 font-bold">Estadisticas</p>
+                            <h2 className="text-2xl font-bold text-gray-900">{stats.rango.titulo}</h2>
+                            <p className="text-sm text-gray-500">Desde {stats.rango.inicio} hasta {stats.rango.fin}</p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="inline-flex bg-gray-100 rounded-lg p-1">
+                                {[
+                                    ['semana', 'Semana'],
+                                    ['mes', 'Mes'],
+                                    ['ano', 'Ano']
+                                ].map(([id, label]) => (
+                                    <button key={id} onClick={() => setEstadisticasPeriodo(id)} className={`px-3 py-1.5 rounded-md text-sm font-medium ${estadisticasPeriodo === id ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-600'}`}>
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                            <input type="date" value={estadisticasFecha} onChange={(e) => setEstadisticasFecha(e.target.value)} className="border rounded-lg px-3 py-2 text-sm bg-white" />
+                            <button onClick={copiarResumenEstadisticas} className="px-3 py-2 rounded-lg bg-pink-500 text-white text-sm font-bold hover:bg-pink-600">Copiar resumen</button>
+                            <button onClick={descargarEstadisticasCSV} className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-bold hover:bg-black">CSV</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+                    {cards.map(card => (
+                        <div key={card.label} className={`rounded-xl border p-4 ${card.tone}`}>
+                            <p className="text-xs font-semibold uppercase">{card.label}</p>
+                            <p className="text-2xl font-black mt-1">{card.value}</p>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                        <h3 className="font-bold text-gray-900 mb-4">Resumen de citas</h3>
+                        <div className="space-y-3">
+                            {[
+                                ['Total citas', stats.totalCitas],
+                                ['Servicios vendidos/reservados', stats.totalServicios],
+                                ['Reservadas', stats.estados.Reservado],
+                                ['Pendientes', stats.estados.Pendiente],
+                                ['Completadas', `${stats.estados.Completado} (${stats.tasaCompletadas}%)`],
+                                ['Canceladas', `${stats.estados.Cancelado} (${stats.tasaCanceladas}%)`],
+                                ['Ausentes', `${stats.estados.Ausente} (${stats.tasaAusentes}%)`],
+                                ['Ticket promedio real', formatMoneyEstadistica(stats.ticketPromedio)]
+                            ].map(([label, value]) => (
+                                <div key={label} className="flex justify-between gap-3 text-sm border-b border-gray-100 pb-2 last:border-b-0">
+                                    <span className="text-gray-500">{label}</span>
+                                    <span className="font-bold text-gray-900">{value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                        <h3 className="font-bold text-gray-900 mb-4">Profesionales</h3>
+                        <div className="space-y-3">
+                            {stats.topProfesionales.length === 0 ? <p className="text-sm text-gray-500">No hay datos en este periodo.</p> : stats.topProfesionales.map(item => (
+                                <div key={item.nombre} className="rounded-lg bg-gray-50 border border-gray-100 p-3">
+                                    <div className="flex justify-between gap-3">
+                                        <p className="font-bold text-gray-900 truncate">{item.nombre}</p>
+                                        <p className="font-bold text-emerald-700">{formatMoneyEstadistica(item.cobro)}</p>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">{item.completadas} completadas - {item.canceladas} canceladas - {item.ausentes} ausentes</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                        <h3 className="font-bold text-gray-900 mb-4">Servicios mas pedidos</h3>
+                        <div className="space-y-3">
+                            {stats.topServicios.length === 0 ? <p className="text-sm text-gray-500">No hay datos en este periodo.</p> : stats.topServicios.map(item => (
+                                <div key={item.nombre} className="rounded-lg bg-gray-50 border border-gray-100 p-3">
+                                    <div className="flex justify-between gap-3">
+                                        <p className="font-bold text-gray-900 truncate">{item.nombre}</p>
+                                        <p className="font-bold text-gray-900">{item.total}</p>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">{item.completadas} completadas - {formatMoneyEstadistica(item.cobro)} real</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <h3 className="font-bold text-gray-900">Detalle por dia</h3>
+                        <p className="text-sm text-gray-500">{stats.dias.length} dias con movimiento</p>
+                    </div>
+                    {stats.dias.length === 0 ? (
+                        <p className="text-sm text-gray-500">No hay reservas en este periodo.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm">
+                                <thead>
+                                    <tr className="text-left text-gray-500 border-b">
+                                        <th className="py-2 pr-3">Dia</th>
+                                        <th className="py-2 pr-3">Total</th>
+                                        <th className="py-2 pr-3">Completadas</th>
+                                        <th className="py-2 pr-3">Pendientes</th>
+                                        <th className="py-2 pr-3">Canceladas</th>
+                                        <th className="py-2 pr-3">Ausentes</th>
+                                        <th className="py-2 pr-3">Cobro real</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {stats.dias.map(dia => (
+                                        <tr key={dia.fecha} className="border-b last:border-b-0">
+                                            <td className="py-2 pr-3 font-medium text-gray-900">{dia.label}</td>
+                                            <td className="py-2 pr-3">{dia.total}</td>
+                                            <td className="py-2 pr-3 text-emerald-700 font-semibold">{dia.completadas}</td>
+                                            <td className="py-2 pr-3 text-amber-700 font-semibold">{dia.pendientes}</td>
+                                            <td className="py-2 pr-3 text-red-700 font-semibold">{dia.canceladas}</td>
+                                            <td className="py-2 pr-3 text-slate-700 font-semibold">{dia.ausentes}</td>
+                                            <td className="py-2 pr-3 font-bold">{formatMoneyEstadistica(dia.cobro)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     const getTabsDisponibles = () => {
         const tabs = [];
+        const puedeVerEstadisticas = userRole === 'admin' || (userRole === 'profesional' && userNivel >= 2);
         tabs.push({ id: 'reservas', icono: '📅', label: userRole === 'profesional' ? 'Mis Reservas' : 'Reservas' });
         
         tabs.push({ id: 'agenda', icono: '📋', label: 'Agenda' });
 
+
+        if (puedeVerEstadisticas) {
+            tabs.push({ id: 'estadisticas', icono: 'Stats', label: 'Estadisticas' });
+        }
         if (userRole === 'admin' || (userRole === 'profesional' && userNivel >= 2)) {
             tabs.push({ id: 'configuracion', icono: '⚙️', label: 'Configuración' });
             tabs.push({ id: 'clientes', icono: '👥', label: 'Clientes' });
@@ -3640,6 +4010,10 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                 </div>
 
                 {/* CONTENIDO */}
+                {tabActivo === 'estadisticas' && (
+                    renderEstadisticas()
+                )}
+
                 {tabActivo === 'configuracion' && (
                     <ConfigPanel profesionalId={userRole === 'profesional' ? profesional?.id : null} modoRestringido={userRole === 'profesional' && userNivel === 2} />
                 )}
