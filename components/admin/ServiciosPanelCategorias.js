@@ -20,6 +20,10 @@ function categoriaIcono(categoria) {
     return categoria?.icono || '⭐';
 }
 
+function formatearListaHorasAdmin(horas = []) {
+    return horas.map(hora => window.formatTo12Hour ? window.formatTo12Hour(hora) : hora).join(', ');
+}
+
 function categoriaCoincideServicio(categoria, valorNormalizado) {
     if (!categoria || !valorNormalizado) return false;
     return [categoriaId(categoria), categoria.id, categoria.slug, categoriaNombre(categoria)]
@@ -294,7 +298,7 @@ function ServiciosPanel() {
                                             </button>
                                         </div>
                                         {servicio.descripcion && <p className="text-sm text-gray-500 mt-3 line-clamp-2">{servicio.descripcion}</p>}
-                                        {servicio.horarios_permitidos?.length > 0 && <p className="text-xs text-pink-600 mt-3">🕐 Horarios permitidos: {servicio.horarios_permitidos.join(', ')}</p>}
+                                        {servicio.horarios_permitidos?.length > 0 && <p className="text-xs text-pink-600 mt-3">🕐 Horarios permitidos: {formatearListaHorasAdmin(servicio.horarios_permitidos)}</p>}
                                     </div>
                                     <div className="flex gap-1 shrink-0">
                                         <button onClick={() => setServicioParaAsignar(servicio)} className="w-9 h-9 rounded-lg hover:bg-purple-50 text-purple-600" title="Asignar profesionales">👥</button>

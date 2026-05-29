@@ -7,6 +7,7 @@ function HorariosPorDiaPanel({ profesionalId, profesionalNombre, onGuardar, onCa
     const [diaSeleccionado, setDiaSeleccionado] = React.useState('lunes');
     const [horasDisponibles, setHorasDisponibles] = React.useState([]);
     const [nuevoDescanso, setNuevoDescanso] = React.useState({ inicio: '13:00', fin: '14:00' });
+    const formatearHora = (hora) => window.formatTo12Hour ? window.formatTo12Hour(hora) : hora;
 
     const dias = [
         { id: 'lunes', nombre: 'Lunes' },
@@ -27,7 +28,7 @@ function HorariosPorDiaPanel({ profesionalId, profesionalNombre, onGuardar, onCa
             horas.push({
                 indice: i,
                 legible: `${hora.toString().padStart(2, '0')}:${minutos}`,
-                label: `${hora.toString().padStart(2, '0')}:${minutos}`
+                label: formatearHora(`${hora.toString().padStart(2, '0')}:${minutos}`)
             });
         }
         return horas;
@@ -299,7 +300,7 @@ function HorariosPorDiaPanel({ profesionalId, profesionalNombre, onGuardar, onCa
                             ) : (
                                 (descansosPorDia[diaSeleccionado] || []).map((descanso, index) => (
                                     <div key={`${descanso.inicio}-${descanso.fin}-${index}`} className="flex justify-between items-center bg-white border border-amber-100 rounded-lg px-3 py-2 text-sm">
-                                        <span className="text-gray-700">{descanso.inicio} - {descanso.fin}</span>
+                                        <span className="text-gray-700">{formatearHora(descanso.inicio)} - {formatearHora(descanso.fin)}</span>
                                         <button
                                             type="button"
                                             onClick={() => eliminarDescanso(index)}
@@ -328,7 +329,7 @@ function HorariosPorDiaPanel({ profesionalId, profesionalNombre, onGuardar, onCa
                                             : 'bg-white border border-gray-300 text-gray-700 hover:border-amber-400 hover:bg-amber-50'}
                                     `}
                                 >
-                                    {hora.legible}
+                                    {hora.label}
                                 </button>
                             );
                         })}

@@ -6,6 +6,7 @@ function ServiciosPanel() {
     const [editando, setEditando] = React.useState(null);
     const [cargando, setCargando] = React.useState(true);
     const [servicioParaAsignar, setServicioParaAsignar] = React.useState(null);
+    const formatearListaHoras = (horas = []) => horas.map(hora => window.formatTo12Hour ? window.formatTo12Hour(hora) : hora).join(', ');
 
     React.useEffect(() => {
         cargarServicios();
@@ -142,7 +143,7 @@ function ServiciosPanel() {
                                     )}
                                     {s.horarios_permitidos && s.horarios_permitidos.length > 0 && (
                                         <p className="text-xs text-pink-600 mt-1">
-                                            🕐 Horarios permitidos: {s.horarios_permitidos.join(', ')}
+                                            🕐 Horarios permitidos: {formatearListaHoras(s.horarios_permitidos)}
                                         </p>
                                     )}
                                 </div>
