@@ -448,6 +448,7 @@ function AdminApp() {
     const [clientesRegistrados, setClientesRegistrados] = React.useState([]);
     const [errorClientes, setErrorClientes] = React.useState('');
     const [cargandoClientes, setCargandoClientes] = React.useState(false);
+    const [importandoClientesCsv, setImportandoClientesCsv] = React.useState(false);
     const [clientesBloqueados, setClientesBloqueados] = React.useState([]);
     const [cargandoBloqueados, setCargandoBloqueados] = React.useState(false);
     const [nuevoBloqueo, setNuevoBloqueo] = React.useState({ nombre: '', whatsapp: '', codigo_pais: '53', motivo: '' });
@@ -1430,6 +1431,61 @@ function AdminApp() {
 
     const canvasToBlob = (canvas) => new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.95));
 
+    const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result || '').split(',')[1] || '');
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+
+    const compartirImagenDesdeCanvas = async (canvas, fileName, title, text) => {
+        const blob = await canvasToBlob(canvas);
+        if (!blob) return false;
+
+        const capacitor = window.Capacitor;
+        const plugins = capacitor?.Plugins || {};
+        const Filesystem = plugins.Filesystem;
+        const Share = plugins.Share;
+        const Directory = Filesystem?.Directory || window.Capacitor?.FilesystemDirectory;
+
+        if (Filesystem?.writeFile && Share?.share) {
+            try {
+                const data = await blobToBase64(blob);
+                const saved = await Filesystem.writeFile({
+                    path: fileName,
+                    data,
+                    directory: Directory?.Cache || 'CACHE',
+                    recursive: true
+                });
+                await Share.share({
+                    title,
+                    text,
+                    files: [saved.uri]
+                });
+                return true;
+            } catch (error) {
+                console.warn('No se pudo compartir con Capacitor, usando fallback:', error);
+            }
+        }
+
+        const file = new File([blob], fileName, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+            await navigator.share({ title, text, files: [file] });
+            return true;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        return false;
+    };
+
     const dibujarTextoCentrado = (ctx, texto, x, y, maxWidth, lineHeight) => {
         const palabras = String(texto || '').split(' ');
         const lineas = [];
@@ -1584,29 +1640,13 @@ function AdminApp() {
         try {
             if (!disponibilidadSemanal.length) return;
             const canvas = await generarImagenDisponibilidadSemanal();
-            const blob = await canvasToBlob(canvas);
-            if (!blob) {
-                compartirDisponibilidadSemanalTexto();
-                return;
-            }
-
-            const file = new File([blob], `disponibilidad-${nombreNegocio || 'salon'}.png`, { type: 'image/png' });
-            if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
-                await navigator.share({
-                    title: `Disponibilidad semanal - ${nombreNegocio}`,
-                    text: `Disponibilidad semanal de ${nombreNegocio}`,
-                    files: [file]
-                });
-                return;
-            }
-
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = file.name;
-            link.target = '_blank';
-            link.click();
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
+            const compartido = await compartirImagenDesdeCanvas(
+                canvas,
+                `disponibilidad-${nombreNegocio || 'salon'}.png`,
+                `Disponibilidad semanal - ${nombreNegocio}`,
+                `Disponibilidad semanal de ${nombreNegocio}`
+            );
+            if (!compartido) alert('Imagen generada. Si no se abrio el menu de compartir, revisa Descargas.');
         } catch (error) {
             console.error('Error generando imagen de disponibilidad:', error);
             compartirDisponibilidadSemanalTexto();
@@ -1770,26 +1810,13 @@ function AdminApp() {
     const compartirDisponibilidadMensual = async () => {
         try {
             const canvas = await generarImagenDisponibilidadMensual();
-            const blob = await canvasToBlob(canvas);
-            if (!blob) return;
-
-            const file = new File([blob], `disponibilidad-mensual-${nombreNegocio || 'salon'}.png`, { type: 'image/png' });
-            if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
-                await navigator.share({
-                    title: `Disponibilidad mensual - ${nombreNegocio}`,
-                    text: `Disponibilidad mensual de ${nombreNegocio}`,
-                    files: [file]
-                });
-                return;
-            }
-
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = file.name;
-            link.target = '_blank';
-            link.click();
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
+            const compartido = await compartirImagenDesdeCanvas(
+                canvas,
+                `disponibilidad-mensual-${nombreNegocio || 'salon'}.png`,
+                `Disponibilidad mensual - ${nombreNegocio}`,
+                `Disponibilidad mensual de ${nombreNegocio}`
+            );
+            if (!compartido) alert('Imagen mensual generada. Si no se abrio el menu de compartir, revisa Descargas.');
         } catch (error) {
             console.error('Error generando imagen mensual:', error);
             alert('No se pudo generar la imagen mensual.');
@@ -2013,6 +2040,87 @@ function AdminApp() {
     // ============================================
     // FUNCIONES DE CLIENTES
     // ============================================
+
+    const parseCsvLine = (linea, separador = ',') => {
+        const valores = [];
+        let actual = '';
+        let entreComillas = false;
+        for (let i = 0; i < linea.length; i++) {
+            const char = linea[i];
+            const siguiente = linea[i + 1];
+            if (char === '"' && entreComillas && siguiente === '"') {
+                actual += '"';
+                i++;
+            } else if (char === '"') {
+                entreComillas = !entreComillas;
+            } else if (char === separador && !entreComillas) {
+                valores.push(actual.trim());
+                actual = '';
+            } else {
+                actual += char;
+            }
+        }
+        valores.push(actual.trim());
+        return valores;
+    };
+
+    const parseClientesCsv = (texto) => {
+        const lineas = String(texto || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        if (lineas.length === 0) return [];
+
+        const separador = (lineas[0].match(/;/g) || []).length > (lineas[0].match(/,/g) || []).length ? ';' : ',';
+        const primera = parseCsvLine(lineas[0], separador).map(h => h.toLowerCase().replace(/\s+/g, '_'));
+        const tieneHeader = primera.some(h => ['nombre', 'name', 'whatsapp', 'telefono', 'phone', 'celular'].includes(h));
+        const headers = tieneHeader ? primera : ['nombre', 'whatsapp'];
+        const datos = tieneHeader ? lineas.slice(1) : lineas;
+
+        const idxNombre = Math.max(headers.indexOf('nombre'), headers.indexOf('name'));
+        const idxWhatsapp = ['whatsapp', 'telefono', 'phone', 'celular', 'numero'].map(h => headers.indexOf(h)).find(i => i >= 0);
+
+        return datos.map(linea => {
+            const valores = parseCsvLine(linea, separador);
+            const nombre = valores[idxNombre >= 0 ? idxNombre : 0] || '';
+            const whatsapp = valores[idxWhatsapp >= 0 ? idxWhatsapp : 1] || '';
+            return { nombre: nombre.trim(), whatsapp: whatsapp.trim() };
+        }).filter(cliente => cliente.nombre && cliente.whatsapp);
+    };
+
+    const handleImportarClientesCsv = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+        if (!puedeGestionarReservas && userRole !== 'admin' && userNivel < 3) {
+            alert('No tienes permiso para importar clientes.');
+            return;
+        }
+
+        setImportandoClientesCsv(true);
+        try {
+            const texto = await file.text();
+            const clientes = parseClientesCsv(texto);
+            if (clientes.length === 0) {
+                alert('No se encontraron clientes validos. Usa columnas nombre,whatsapp.');
+                return;
+            }
+
+            let creados = 0;
+            let fallidos = 0;
+            for (const cliente of clientes) {
+                const whatsapp = normalizarTelefonoCompletoSeguro(cliente.whatsapp);
+                const creado = await window.crearCliente?.(cliente.nombre, whatsapp);
+                if (creado) creados++;
+                else fallidos++;
+            }
+
+            await loadClientesRegistrados();
+            alert(`CSV procesado. Clientes creados/actualizados: ${creados}. Fallidos: ${fallidos}.`);
+        } catch (error) {
+            console.error('Error importando CSV de clientes:', error);
+            alert('No se pudo importar el CSV. Revisa el formato.');
+        } finally {
+            setImportandoClientesCsv(false);
+        }
+    };
     
     const loadClientesRegistrados = async () => {
         console.log('Cargando clientes registrados...');
@@ -4031,9 +4139,17 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-5">
                             <h2 className="text-xl font-bold">Clientes Registrados ({clientesRegistrados.length})</h2>
                             <p className="text-sm text-gray-500">Score calculado con el historial de reservas, completadas y canceladas.</p>
-                            <button onClick={() => { setShowClientesRegistrados(!showClientesRegistrados); if (!showClientesRegistrados) { loadClientesRegistrados(); loadClientesBloqueados(); } }} className="px-4 py-2 rounded-lg bg-pink-50 text-pink-600 text-sm font-medium hover:bg-pink-100">
-                                {showClientesRegistrados ? '🙈 Ocultar' : '👁️ Mostrar'}
-                            </button>
+                            <div className="flex flex-wrap gap-2">
+                                {(userRole === 'admin' || userNivel >= 3) && (
+                                    <label className={`px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-bold hover:bg-black cursor-pointer ${importandoClientesCsv ? 'opacity-60 pointer-events-none' : ''}`}>
+                                        {importandoClientesCsv ? 'Importando...' : 'Cargar CSV'}
+                                        <input type="file" accept=".csv,text/csv" onChange={handleImportarClientesCsv} className="hidden" disabled={importandoClientesCsv} />
+                                    </label>
+                                )}
+                                <button onClick={() => { setShowClientesRegistrados(!showClientesRegistrados); if (!showClientesRegistrados) { loadClientesRegistrados(); loadClientesBloqueados(); } }} className="px-4 py-2 rounded-lg bg-pink-50 text-pink-600 text-sm font-medium hover:bg-pink-100">
+                                    {showClientesRegistrados ? 'Ocultar' : 'Mostrar'}
+                                </button>
+                            </div>
                         </div>
                         {showClientesRegistrados && (
                             <div className="space-y-5 max-h-[42rem] overflow-y-auto pr-1">
