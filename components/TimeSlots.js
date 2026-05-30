@@ -259,7 +259,25 @@ function TimeSlots({ service, date, profesional, cliente, onTimeSelect, selected
                 });
                 setWaitlistSlots(waitlistMap);
                 
-                const occupied = [];
+                const occupiedMap = {};
+                const esReservaOcupada = (booking) => {
+                    const estado = String(booking.estado || '').toLowerCase();
+                    return estado !== 'cancelado' && estado !== 'cancelada' && estado !== 'completado' && estado !== 'completada' && estado !== 'ausente';
+                };
+                const agregarTurnoOcupado = (booking) => {
+                    if (!booking?.hora_inicio || !esReservaOcupada(booking)) return;
+                    const hora = normalizeTimeKey(booking.hora_inicio);
+                    const inicioOcupado = timeToMinutes(hora);
+                    if (esHoy && inicioOcupado < minAllowedMinutes) return;
+                    if (!occupiedMap[hora]) {
+                        occupiedMap[hora] = {
+                            hora,
+                            hora_fin: booking.hora_fin,
+                            booking
+                        };
+                    }
+                };
+                bookings.forEach(agregarTurnoOcupado);
                 let availableSlots = baseSlots.filter(slotStartStr => {
                     const slotStart = timeToMinutes(slotStartStr);
                     const slotEnd = slotStart + service.duracion;
@@ -284,18 +302,15 @@ function TimeSlots({ service, date, profesional, cliente, onTimeSelect, selected
                         return true;
                     } else {
                         console.log(`❌ Slot ${slotStartStr} tiene conflicto - EXCLUIDO`);
-                        occupied.push({
-                            hora: slotStartStr,
-                            hora_fin: bookingConflict.hora_fin,
-                            booking: bookingConflict
-                        });
                         return false;
                     }
                 });
                 
                 availableSlots.sort();
+                const occupied = Object.values(occupiedMap);
                 occupied.sort((a, b) => timeToMinutes(a.hora) - timeToMinutes(b.hora));
                 console.log(`✅ Slots disponibles para ${profesional.nombre} el ${date}:`, availableSlots);
+                console.log(`Lista de espera - turnos ocupados para ${profesional.nombre} el ${date}:`, occupied);
                 setSlots(availableSlots);
                 setOccupiedSlots(occupied);
             } catch (err) {
