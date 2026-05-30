@@ -3057,20 +3057,29 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
         const reservas = getAgendaServicios(booking);
         const costoServicios = reservas.reduce((total, reserva) => total + getPrecioServicioAgenda(reserva.servicio), 0);
         const cobroReal = reservas.reduce((total, reserva) => total + Number(reserva.monto_cobrado || 0), 0);
-        const anticipo = booking?.requiere_anticipo || booking?.requiereAnticipo || booking?.anticipo_recibido ? Number(config?.monto_anticipo || 0) : 0;
+        const requiereAnticipo = config?.requiere_anticipo === true || booking?.estado === 'Pendiente' || booking?.requiere_anticipo || booking?.requiereAnticipo || booking?.anticipo_recibido;
+        const valorAnticipo = Number(config?.valor_anticipo ?? config?.monto_anticipo ?? 0);
+        const anticipoCalculado = config?.tipo_anticipo === 'porcentaje'
+            ? Math.round(costoServicios * (valorAnticipo / 100))
+            : valorAnticipo;
+        const anticipo = requiereAnticipo ? anticipoCalculado : 0;
         const totalMostrar = cobroReal > 0 ? cobroReal : costoServicios;
         return {
             costoServicios,
             cobroReal,
             anticipo,
+            requiereAnticipo,
+            tipoAnticipo: config?.tipo_anticipo || 'fijo',
+            valorAnticipo,
             totalMostrar,
             pendiente: Math.max(0, totalMostrar - anticipo)
         };
     };
 
     const getAgendaEstadoPago = (booking) => {
+        const resumen = getAgendaResumenCobro(booking);
         if (booking?.estado === 'Pendiente') return 'Anticipo pendiente';
-        if (booking?.requiere_anticipo || booking?.requiereAnticipo || booking?.anticipo_recibido) return `Anticipo recibido ${formatMoneyEstadistica(Number(config?.monto_anticipo || 0))}`;
+        if (resumen.requiereAnticipo) return `Anticipo requerido ${formatMoneyEstadistica(resumen.anticipo)}`;
         return 'Sin anticipo';
     };
 
@@ -3954,10 +3963,13 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                 <div className="divide-y rounded-xl border bg-white">
                                     <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Cliente</span><span className="text-right text-gray-600">{agendaDetalleBooking.cliente_nombre || 'Sin nombre'} &gt;</span></div>
                                     <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">WhatsApp</span><button onClick={() => window.enviarWhatsApp?.(agendaDetalleBooking.cliente_whatsapp, `Hola ${agendaDetalleBooking.cliente_nombre || ''}`)} className="text-right text-pink-600 font-semibold">+{agendaDetalleBooking.cliente_whatsapp || 'Sin numero'} &gt;</button></div>
+                                    <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Precio del servicio</span><span className="font-bold text-gray-900">{formatMoneyEstadistica(resumen.costoServicios)}</span></div>
+                                    <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Anticipo requerido</span><span className={`font-bold ${resumen.requiereAnticipo ? 'text-amber-700' : 'text-gray-500'}`}>{resumen.requiereAnticipo ? 'Si' : 'No'}</span></div>
+                                    {resumen.requiereAnticipo && <div className="flex items-center justify-between p-4"><div><p className="font-semibold text-gray-800">Monto del anticipo</p><p className="text-sm text-gray-500">{resumen.tipoAnticipo === 'porcentaje' ? `${resumen.valorAnticipo}% del servicio` : 'Monto fijo'}</p></div><span className="font-bold text-amber-700">{formatMoneyEstadistica(resumen.anticipo)}</span></div>}
                                     <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Coste de servicios</span><span className="text-gray-600">{formatMoneyEstadistica(resumen.costoServicios)}</span></div>
                                     <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Descuento</span><span className="text-gray-600">No</span></div>
                                     <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Coste total</span><span className="text-gray-600">{formatMoneyEstadistica(resumen.totalMostrar)}</span></div>
-                                    <div className="flex items-center justify-between p-4"><div><p className="font-semibold text-gray-800">Deposito</p><p className="text-sm text-gray-500">{agendaDetalleBooking.estado === 'Pendiente' ? 'Pendiente de recibir' : 'Registrado si aplica'}</p></div><span className="text-gray-600">{formatMoneyEstadistica(resumen.anticipo)}</span></div>
+                                    <div className="flex items-center justify-between p-4"><div><p className="font-semibold text-gray-800">Deposito</p><p className="text-sm text-gray-500">{resumen.requiereAnticipo ? (agendaDetalleBooking.estado === 'Pendiente' ? 'Pendiente de recibir' : 'Aplica para esta cita') : 'No aplica'}</p></div><span className="text-gray-600">{formatMoneyEstadistica(resumen.anticipo)}</span></div>
                                     <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Total pendiente</span><span className="font-bold text-gray-900">{formatMoneyEstadistica(resumen.pendiente)}</span></div>
                                     <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Cobro real</span><span className="font-bold text-emerald-700">{resumen.cobroReal > 0 ? formatMoneyEstadistica(resumen.cobroReal) : 'Sin registrar'}</span></div>
                                 </div>
