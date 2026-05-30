@@ -2882,10 +2882,11 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
     const agendaPxPerMinute = 1.2;
     const agendaGridHeight = 14 * 60 * agendaPxPerMinute;
     const agendaStatusStyle = {
-        Reservado: 'bg-pink-500 border-pink-600 text-white',
-        Pendiente: 'bg-amber-400 border-amber-500 text-amber-950',
-        Completado: 'bg-emerald-500 border-emerald-600 text-white',
-        Ausente: 'bg-slate-500 border-slate-600 text-white'
+        Reservado: 'bg-cyan-50 border-l-cyan-600 border-cyan-100 text-slate-900',
+        Pendiente: 'bg-amber-50 border-l-amber-500 border-amber-100 text-amber-950',
+        Completado: 'bg-emerald-50 border-l-emerald-600 border-emerald-100 text-emerald-950',
+        Ausente: 'bg-slate-100 border-l-slate-500 border-slate-200 text-slate-800',
+        Cancelado: 'bg-red-50 border-l-red-500 border-red-100 text-red-900'
     };
     const estadoNormalizado = (estado) => String(estado || '').trim().toLowerCase();
     const puedeEditarReserva = (booking) => {
@@ -3040,6 +3041,37 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
             return agendaDate.toLocaleDateString('es-CU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         }
         return `${agendaDays[0].toLocaleDateString('es-CU', { day: 'numeric', month: 'short' })} - ${agendaDays[6].toLocaleDateString('es-CU', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    };
+
+    const getAgendaServicios = (booking) => {
+        const reservasGrupo = booking?._reservasGrupo || [];
+        return reservasGrupo.length > 0 ? reservasGrupo : [booking].filter(Boolean);
+    };
+
+    const getPrecioServicioAgenda = (nombreServicio) => {
+        const servicio = serviciosList.find(item => item.nombre === nombreServicio);
+        return Number(servicio?.precio || 0);
+    };
+
+    const getAgendaResumenCobro = (booking) => {
+        const reservas = getAgendaServicios(booking);
+        const costoServicios = reservas.reduce((total, reserva) => total + getPrecioServicioAgenda(reserva.servicio), 0);
+        const cobroReal = reservas.reduce((total, reserva) => total + Number(reserva.monto_cobrado || 0), 0);
+        const anticipo = booking?.requiere_anticipo || booking?.requiereAnticipo || booking?.anticipo_recibido ? Number(config?.monto_anticipo || 0) : 0;
+        const totalMostrar = cobroReal > 0 ? cobroReal : costoServicios;
+        return {
+            costoServicios,
+            cobroReal,
+            anticipo,
+            totalMostrar,
+            pendiente: Math.max(0, totalMostrar - anticipo)
+        };
+    };
+
+    const getAgendaEstadoPago = (booking) => {
+        if (booking?.estado === 'Pendiente') return 'Anticipo pendiente';
+        if (booking?.requiere_anticipo || booking?.requiereAnticipo || booking?.anticipo_recibido) return `Anticipo recibido ${formatMoneyEstadistica(Number(config?.monto_anticipo || 0))}`;
+        return 'Sin anticipo';
     };
 
     const parseMontoEstadistica = (value) => {
@@ -3736,7 +3768,7 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
                                     )}
                                     {!reservaEditando && serviciosManualSeleccionados.length > 0 && (
                                         <p className="text-xs text-pink-600 mt-2">
-                                            {serviciosManualSeleccionados.length} servicio{serviciosManualSeleccionados.length === 1 ? '' : 's'} Â· {getServiciosManualSeleccionados().reduce((total, s) => total + Number(s.duracion || 60), 0)} min
+                                            {serviciosManualSeleccionados.length} servicio{serviciosManualSeleccionados.length === 1 ? '' : 's'} - {getServiciosManualSeleccionados().reduce((total, s) => total + Number(s.duracion || 60), 0)} min
                                         </p>
                                     )}
                                 </div>
@@ -3876,71 +3908,90 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
                     </div>
                 )}
 
-                {agendaDetalleBooking && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-xl max-w-lg w-full p-5 shadow-xl">
-                            <div className="flex items-start justify-between gap-4 border-b pb-3">
-                                <div>
-                                    <p className="text-xs uppercase tracking-wide text-pink-500 font-bold">Detalle de cita</p>
-                                    <h3 className="text-xl font-bold text-gray-900">{agendaDetalleBooking.cliente_nombre || 'Cliente sin nombre'}</h3>
-                                </div>
-                                <button onClick={() => setAgendaDetalleBooking(null)} className="text-gray-500 hover:text-gray-700 text-2xl leading-none">Ã—</button>
+                {agendaDetalleBooking && (() => {
+                    const resumen = getAgendaResumenCobro(agendaDetalleBooking);
+                    const serviciosDetalle = getAgendaServicios(agendaDetalleBooking);
+                    const horaFinDetalle = agendaDetalleBooking.hora_fin || calculateEndTime(agendaDetalleBooking.hora_inicio, agendaDetalleBooking.duracion || 60);
+                    const duracionDetalle = Math.max(0, timeToMinutes(horaFinDetalle) - timeToMinutes(agendaDetalleBooking.hora_inicio));
+                    const estadoClase = agendaDetalleBooking.estado === 'Pendiente'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : agendaDetalleBooking.estado === 'Completado'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : agendaDetalleBooking.estado === 'Ausente'
+                                ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                : agendaDetalleBooking.estado === 'Cancelado'
+                                    ? 'bg-red-50 text-red-700 border-red-200'
+                                    : 'bg-cyan-50 text-cyan-700 border-cyan-200';
+
+                    return (
+                    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 sm:p-4">
+                        <div className="bg-white w-full sm:max-w-xl max-h-[96vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl shadow-2xl">
+                            <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b px-5 py-4 flex items-center justify-between">
+                                <button onClick={() => setAgendaDetalleBooking(null)} className="w-10 h-10 rounded-full hover:bg-gray-100 text-2xl leading-none">x</button>
+                                <h3 className="text-xl font-bold text-gray-900">Cita</h3>
+                                {puedeEditarReserva(agendaDetalleBooking) ? (
+                                    <button onClick={() => abrirModalReprogramar(agendaDetalleBooking)} className="w-16 h-10 rounded-full hover:bg-gray-100 text-sm font-bold">Editar</button>
+                                ) : <span className="w-10"></span>}
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-4 text-sm">
-                                <div className="rounded-lg bg-gray-50 p-3">
-                                    <p className="text-xs font-bold uppercase text-gray-400">Fecha</p>
-                                    <p className="font-semibold text-gray-900">{agendaDetalleBooking.fecha}</p>
-                                </div>
-                                <div className="rounded-lg bg-gray-50 p-3">
-                                    <p className="text-xs font-bold uppercase text-gray-400">Hora</p>
-                                    <p className="font-semibold text-gray-900">
-                                        {formatTo12Hour(agendaDetalleBooking.hora_inicio)} - {formatTo12Hour(agendaDetalleBooking.hora_fin || calculateEndTime(agendaDetalleBooking.hora_inicio, agendaDetalleBooking.duracion || 60))}
-                                    </p>
-                                </div>
-                                <div className="rounded-lg bg-gray-50 p-3">
-                                    <p className="text-xs font-bold uppercase text-gray-400">Servicio</p>
-                                    <p className="font-semibold text-gray-900">{agendaDetalleBooking.servicio}</p>
-                                </div>
-                                <div className="rounded-lg bg-gray-50 p-3">
-                                    <p className="text-xs font-bold uppercase text-gray-400">Profesional</p>
-                                    <p className="font-semibold text-gray-900">{agendaDetalleBooking.profesional_nombre || agendaDetalleBooking.trabajador_nombre || 'Sin profesional'}</p>
-                                </div>
-                                <div className="rounded-lg bg-gray-50 p-3">
-                                    <p className="text-xs font-bold uppercase text-gray-400">Estado</p>
-                                    <p className="font-semibold text-gray-900">{agendaDetalleBooking.estado || 'Sin estado'}</p>
-                                </div>
-                                <div className="rounded-lg bg-gray-50 p-3">
-                                    <p className="text-xs font-bold uppercase text-gray-400">WhatsApp</p>
-                                    <p className="font-semibold text-gray-900">+{agendaDetalleBooking.cliente_whatsapp || 'Sin numero'}</p>
-                                </div>
-                            </div>
-
-                            {agendaDetalleBooking._grupoVisual && Array.isArray(agendaDetalleBooking._reservasGrupo) && (
-                                <div className="mb-4 rounded-lg border border-pink-100 bg-pink-50 p-3">
-                                    <p className="text-xs font-bold uppercase text-pink-500 mb-2">Servicios del turno</p>
-                                    <div className="space-y-2">
-                                        {agendaDetalleBooking._reservasGrupo.map(item => (
-                                            <div key={item.id} className="flex justify-between gap-3 text-sm">
-                                                <span className="font-semibold text-gray-800">{item.servicio}</span>
-                                                <span className="text-gray-500">{formatTo12Hour(item.hora_inicio)} - {formatTo12Hour(item.hora_fin)}</span>
-                                            </div>
-                                        ))}
+                            <div className="px-5 py-5">
+                                <div className="mb-5">
+                                    <h2 className="text-2xl font-extrabold leading-tight text-gray-950">{agendaDetalleBooking.servicio || 'Servicio'}</h2>
+                                    <p className="mt-2 text-xl font-bold text-gray-900">Total: {formatMoneyEstadistica(resumen.totalMostrar)}</p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${estadoClase}`}>{agendaDetalleBooking.estado || 'Sin estado'}</span>
+                                        <span className="inline-flex rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-bold text-green-700">{getAgendaEstadoPago(agendaDetalleBooking)}</span>
                                     </div>
                                 </div>
-                            )}
 
-                            <div className="flex gap-3">
-                                <button onClick={() => setAgendaDetalleBooking(null)} className="flex-1 px-4 py-2 border rounded-lg">Cerrar</button>
-                                {puedeEditarReserva(agendaDetalleBooking) && (
-                                    <button onClick={() => abrirModalReprogramar(agendaDetalleBooking)} className="flex-1 px-4 py-2 bg-pink-500 text-white rounded-lg font-bold hover:bg-pink-600">
-                                        Editar
-                                    </button>
+                                <div className="mb-5 space-y-1 text-gray-700">
+                                    <p className="font-semibold">{window.formatFechaCompleta ? window.formatFechaCompleta(agendaDetalleBooking.fecha) : agendaDetalleBooking.fecha}</p>
+                                    <p>de {formatTo12Hour(agendaDetalleBooking.hora_inicio)} a {formatTo12Hour(horaFinDetalle)} ({duracionDetalle} min)</p>
+                                    <p className="font-semibold">{agendaDetalleBooking.profesional_nombre || agendaDetalleBooking.trabajador_nombre || 'Sin profesional'}</p>
+                                    {config?.direccion && <p className="text-sm text-gray-500">{config.direccion}</p>}
+                                </div>
+
+                                <div className="divide-y rounded-xl border bg-white">
+                                    <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Cliente</span><span className="text-right text-gray-600">{agendaDetalleBooking.cliente_nombre || 'Sin nombre'} &gt;</span></div>
+                                    <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">WhatsApp</span><button onClick={() => window.enviarWhatsApp?.(agendaDetalleBooking.cliente_whatsapp, `Hola ${agendaDetalleBooking.cliente_nombre || ''}`)} className="text-right text-pink-600 font-semibold">+{agendaDetalleBooking.cliente_whatsapp || 'Sin numero'} &gt;</button></div>
+                                    <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Coste de servicios</span><span className="text-gray-600">{formatMoneyEstadistica(resumen.costoServicios)}</span></div>
+                                    <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Descuento</span><span className="text-gray-600">No</span></div>
+                                    <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Coste total</span><span className="text-gray-600">{formatMoneyEstadistica(resumen.totalMostrar)}</span></div>
+                                    <div className="flex items-center justify-between p-4"><div><p className="font-semibold text-gray-800">Deposito</p><p className="text-sm text-gray-500">{agendaDetalleBooking.estado === 'Pendiente' ? 'Pendiente de recibir' : 'Registrado si aplica'}</p></div><span className="text-gray-600">{formatMoneyEstadistica(resumen.anticipo)}</span></div>
+                                    <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Total pendiente</span><span className="font-bold text-gray-900">{formatMoneyEstadistica(resumen.pendiente)}</span></div>
+                                    <div className="flex items-center justify-between p-4"><span className="font-semibold text-gray-800">Cobro real</span><span className="font-bold text-emerald-700">{resumen.cobroReal > 0 ? formatMoneyEstadistica(resumen.cobroReal) : 'Sin registrar'}</span></div>
+                                </div>
+
+                                {serviciosDetalle.length > 1 && (
+                                    <div className="mt-5 rounded-xl border border-pink-100 bg-pink-50 p-4">
+                                        <p className="text-xs font-bold uppercase text-pink-500 mb-3">Servicios del turno</p>
+                                        <div className="space-y-2">
+                                            {serviciosDetalle.map(item => (
+                                                <div key={item.id} className="flex justify-between gap-3 text-sm">
+                                                    <span className="font-semibold text-gray-800">{item.servicio}</span>
+                                                    <span className="text-gray-500">{formatTo12Hour(item.hora_inicio)} - {formatTo12Hour(item.hora_fin || calculateEndTime(item.hora_inicio, item.duracion || 60))}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 )}
+
+                                <div className="mt-5 rounded-xl border bg-gray-50 p-4">
+                                    <p className="font-bold text-gray-900 mb-3">Acciones</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {agendaDetalleBooking.estado === 'Pendiente' && puedeGestionarReservas && <button onClick={() => confirmarPago(agendaDetalleBooking.id, agendaDetalleBooking)} className="px-3 py-2 rounded-lg bg-green-600 text-white font-bold text-sm">Confirmar pago</button>}
+                                        {puedeEditarReserva(agendaDetalleBooking) && <button onClick={() => abrirModalReprogramar(agendaDetalleBooking)} className="px-3 py-2 rounded-lg bg-pink-500 text-white font-bold text-sm">Editar</button>}
+                                        {turnoYaPaso(agendaDetalleBooking) && agendaDetalleBooking.estado !== 'Ausente' && puedeGestionarReservas && <button onClick={() => marcarAusencia(agendaDetalleBooking)} className="px-3 py-2 rounded-lg bg-slate-700 text-white font-bold text-sm">Ausencia</button>}
+                                        {agendaDetalleBooking.estado === 'Completado' && puedeGestionarReservas && <button onClick={() => abrirModalCobro(agendaDetalleBooking)} className="px-3 py-2 rounded-lg bg-emerald-600 text-white font-bold text-sm">Cobro real</button>}
+                                        {puedeEditarReserva(agendaDetalleBooking) && <button onClick={() => handleCancel(agendaDetalleBooking.id, agendaDetalleBooking)} className="px-3 py-2 rounded-lg bg-red-500 text-white font-bold text-sm">Cancelar</button>}
+                                        {puedeGestionarAvanzado && ['Cancelado', 'Completado', 'Ausente'].includes(agendaDetalleBooking.estado) && <button onClick={() => eliminarReservaHistorial(agendaDetalleBooking)} className="px-3 py-2 rounded-lg bg-gray-900 text-white font-bold text-sm">Eliminar</button>}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                )}
+                    );
+                })()}
 
                 {/* MODAL CALENDARIO DE DISPONIBILIDAD */}
                 {showDisponibilidadModal && (
@@ -4349,12 +4400,12 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
                                         )}
 
                                         {agendaDayLayoutBookings.map(booking => {
-                                            const statusClass = agendaStatusStyle[booking.estado] || 'bg-gray-500 border-gray-600 text-white';
+                                            const statusClass = agendaStatusStyle[booking.estado] || 'bg-gray-50 border-l-gray-500 border-gray-100 text-gray-900';
                                             const isShort = getBookingHeight(booking) < 76;
                                             return (
                                                 <div
                                                     key={booking._grupoVisualId || booking.id}
-                                                    className={`absolute rounded-lg border shadow-sm ${isShort ? 'p-2' : 'p-3'} overflow-hidden cursor-pointer ${statusClass}`}
+                                                    className={`absolute rounded-xl border border-l-4 shadow-sm hover:shadow-md transition ${isShort ? 'p-2' : 'p-3'} overflow-hidden cursor-pointer ${statusClass}`}
                                                     style={getAgendaBookingStyle(booking)}
                                                     onClick={() => abrirDetalleAgenda(booking)}
                                                 >
@@ -4362,10 +4413,10 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
                                                         <div className="min-w-0">
                                                             <p className="text-[11px] font-bold leading-tight opacity-90">{formatTo12Hour(booking.hora_inicio)} - {formatTo12Hour(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60))}</p>
                                                             {!isShort && <p className="text-sm font-bold truncate">{booking.cliente_nombre}</p>}
-                                                            {!isShort && <p className="text-xs truncate opacity-90">{booking._grupoVisual ? `${booking._reservasGrupo.length} servicios Â· ${booking.servicio}` : booking.servicio}</p>}
+                                                            {!isShort && <p className="text-xs truncate opacity-90">{booking._grupoVisual ? `${booking._reservasGrupo.length} servicios - ${booking.servicio}` : booking.servicio}</p>}
                                                             {!isShort && <p className="text-[11px] truncate opacity-80">{booking.profesional_nombre || booking.trabajador_nombre || 'Sin profesional'}</p>}
                                                         </div>
-                                                        <button onClick={(event) => { event.stopPropagation(); abrirDetalleAgenda(booking); }} className="mt-auto w-full rounded-md py-1 text-[11px] bg-white/20 hover:bg-white/30 font-bold">
+                                                        <button onClick={(event) => { event.stopPropagation(); abrirDetalleAgenda(booking); }} className="mt-auto w-full rounded-md py-1 text-[11px] bg-white/80 hover:bg-white text-gray-700 font-bold">
                                                             Detalles
                                                         </button>
                                                     </div>
@@ -4423,12 +4474,12 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
                                                 ))}
 
                                                 {dayLayoutBookings.map(booking => {
-                                                    const statusClass = agendaStatusStyle[booking.estado] || 'bg-gray-500 border-gray-600 text-white';
+                                                    const statusClass = agendaStatusStyle[booking.estado] || 'bg-gray-50 border-l-gray-500 border-gray-100 text-gray-900';
                                                     const isShort = getBookingHeight(booking) < 76;
                                                     return (
                                                         <div
                                                             key={booking._grupoVisualId || booking.id}
-                                                            className={`absolute rounded-lg border shadow-sm p-2 overflow-hidden cursor-pointer ${statusClass}`}
+                                                            className={`absolute rounded-xl border border-l-4 shadow-sm hover:shadow-md transition p-2 overflow-hidden cursor-pointer ${statusClass}`}
                                                             style={getAgendaBookingStyle(booking)}
                                                             title={`${booking.cliente_nombre} - ${booking._grupoVisual ? `${booking._reservasGrupo.length} servicios: ` : ''}${booking.servicio}`}
                                                             onClick={() => abrirDetalleAgenda(booking)}
@@ -4437,10 +4488,10 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
                                                                 <div className="min-w-0">
                                                                     <p className="text-xs font-bold leading-tight">{formatTo12Hour(booking.hora_inicio)} - {formatTo12Hour(booking.hora_fin || calculateEndTime(booking.hora_inicio, booking.duracion || 60))}</p>
                                                                     {!isShort && <p className="font-bold text-sm truncate">{booking.cliente_nombre}</p>}
-                                                                    {!isShort && <p className="text-xs truncate opacity-90">{booking._grupoVisual ? `${booking._reservasGrupo.length} servicios Â· ${booking.servicio}` : booking.servicio}</p>}
+                                                                    {!isShort && <p className="text-xs truncate opacity-90">{booking._grupoVisual ? `${booking._reservasGrupo.length} servicios - ${booking.servicio}` : booking.servicio}</p>}
                                                                     {!isShort && <p className="text-xs truncate opacity-80">{booking.profesional_nombre || booking.trabajador_nombre || 'Sin profesional'}</p>}
                                                                 </div>
-                                                                <button onClick={(event) => { event.stopPropagation(); abrirDetalleAgenda(booking); }} className="mt-auto w-full bg-white/20 hover:bg-white/30 rounded px-2 py-1 text-[11px] font-bold">
+                                                                <button onClick={(event) => { event.stopPropagation(); abrirDetalleAgenda(booking); }} className="mt-auto w-full bg-white/80 hover:bg-white text-gray-700 rounded px-2 py-1 text-[11px] font-bold">
                                                                     Detalles
                                                                 </button>
                                                             </div>
@@ -4571,7 +4622,7 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
                                                         <p className="text-xs font-bold text-pink-700">Cita agrupada: {b._reservasGrupo.length} servicios consecutivos</p>
                                                         {b._reservasGrupo.map(item => (
                                                             <p key={item.id} className="text-xs text-gray-700">
-                                                                {formatTo12Hour(item.hora_inicio)} - {formatTo12Hour(item.hora_fin || calculateEndTime(item.hora_inicio, item.duracion || 60))} Â· {item.servicio} Â· {item.profesional_nombre || item.trabajador_nombre || 'Sin profesional'}
+                                                                {formatTo12Hour(item.hora_inicio)} - {formatTo12Hour(item.hora_fin || calculateEndTime(item.hora_inicio, item.duracion || 60))} - {item.servicio} - {item.profesional_nombre || item.trabajador_nombre || 'Sin profesional'}
                                                             </p>
                                                         ))}
                                                     </div>
