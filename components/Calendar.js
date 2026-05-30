@@ -1,4 +1,4 @@
-﻿// components/Calendar.js - Disponibilidad real por servicio, profesional y reservas
+// components/Calendar.js - Disponibilidad real por servicio, profesional y reservas
 
 function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto, service, onHorariosCargados }) {
     const [currentDate, setCurrentDate] = React.useState(new Date());
@@ -188,7 +188,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
 
     React.useEffect(() => {
         if (!selectedDate || cargandoDisponibilidad || !disponibilidadVerificada) return;
-        // Los dias llenos se mantienen seleccionables para mostrar lista de espera.
+        // Un dia lleno se deja seleccionado para que TimeSlots muestre la lista de espera.
     }, [selectedDate, fechasSinDisponibilidad, cargandoDisponibilidad, disponibilidadVerificada]);
 
     const verificarDisponibilidadMes = async (horarios, descansos = {}, configOverride = null) => {
@@ -331,6 +331,15 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
     const esDiaCerrado = (date) => diasCerrados.includes(formatDate(date));
     const esDiaLibreProfesional = (date) => (fechasLibresProfesional || []).includes(formatDate(date));
     const esDiaSinDisponibilidad = (date) => fechasSinDisponibilidad.includes(formatDate(date));
+    const estaDentroDeAntelacion = (date) => {
+        if (Number(maxAntelacionDias) <= 0) return true;
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const fecha = new Date(date);
+        fecha.setHours(0, 0, 0, 0);
+        const diffDias = Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
+        return diffDias <= Number(maxAntelacionDias);
+    };
 
     const tieneHorariosConfigurados = (date) => {
         const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
@@ -369,7 +378,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
         return (
             <div className="space-y-4 animate-fade-in">
                 <h2 className="text-lg font-semibold text-pink-700 flex items-center gap-2">
-                    <span className="text-2xl">ðŸ“…</span>
+                    <span className="text-2xl">📅</span>
                     3. Selecciona una fecha
                     {profesional && (
                         <span className="text-sm bg-pink-100 text-pink-700 px-3 py-1 rounded-full ml-2">
@@ -388,7 +397,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
     return (
         <div className="space-y-4 animate-fade-in">
             <h2 className="text-lg font-semibold text-pink-700 flex items-center gap-2">
-                <span className="text-2xl">ðŸ“…</span>
+                <span className="text-2xl">📅</span>
                 3. Selecciona una fecha
                 {profesional && (
                     <span className="text-sm bg-pink-100 text-pink-700 px-3 py-1 rounded-full ml-2">
@@ -409,11 +418,11 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
             
             <div className="bg-white/90 backdrop-blur-sm rounded-xl border-2 border-pink-200 shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between p-4 bg-gradient-to-r from-pink-50 to-pink-100 border-b border-pink-200">
-                    <button onClick={prevMonth} className="p-2 hover:bg-white/50 rounded-full transition-colors text-pink-600" title="Mes anterior">â—€</button>
+                    <button onClick={prevMonth} className="p-2 hover:bg-white/50 rounded-full transition-colors text-pink-600" title="Mes anterior">◀</button>
                     <span className="font-bold text-pink-800 text-lg capitalize">
                         {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
                     </span>
-                    <button onClick={nextMonth} className="p-2 hover:bg-white/50 rounded-full transition-colors text-pink-600" title="Mes siguiente">â–¶</button>
+                    <button onClick={nextMonth} className="p-2 hover:bg-white/50 rounded-full transition-colors text-pink-600" title="Mes siguiente">▶</button>
                 </div>
 
                 <div className="p-4">
@@ -435,8 +444,9 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                             const diaLibreProfesional = esDiaLibreProfesional(date);
                             const sinDisponibilidad = esDiaSinDisponibilidad(date);
                             const tieneHorarios = tieneHorariosConfigurados(date);
-                            const puedeListaEspera = disponibilidadVerificada && !cargandoDisponibilidad && !past && profesionalTrabaja && !cerrado && !diaLibreProfesional && sinDisponibilidad && tieneHorarios;
-                            const available = disponibilidadVerificada && !cargandoDisponibilidad && !past && profesionalTrabaja && !cerrado && !diaLibreProfesional && !sinDisponibilidad && tieneHorarios;
+                            const dentroDeAntelacion = estaDentroDeAntelacion(date);
+                            const puedeListaEspera = disponibilidadVerificada && !cargandoDisponibilidad && !past && profesionalTrabaja && !cerrado && !diaLibreProfesional && sinDisponibilidad && tieneHorarios && dentroDeAntelacion;
+                            const available = disponibilidadVerificada && !cargandoDisponibilidad && !past && profesionalTrabaja && !cerrado && !diaLibreProfesional && !sinDisponibilidad && tieneHorarios && dentroDeAntelacion;
                             const selectable = available || puedeListaEspera;
                             
                             let className = "h-10 w-full flex items-center justify-center rounded-lg text-sm font-medium transition-all relative";
@@ -462,10 +472,10 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                             return (
                                 <button key={idx} onClick={() => selectable && onDateSelect(dateStr)} disabled={!selectable} className={className} title={title}>
                                     {date.getDate()}
-                                    {cerrado && <span className="absolute top-0 right-0 text-[10px] text-red-500">Ã—</span>}
-                                    {diaLibreProfesional && !cerrado && <span className="absolute top-0 right-0 text-[10px] text-orange-500">â—‹</span>}
+                                    {cerrado && <span className="absolute top-0 right-0 text-[10px] text-red-500">×</span>}
+                                    {diaLibreProfesional && !cerrado && <span className="absolute top-0 right-0 text-[10px] text-orange-500">○</span>}
                                     {puedeListaEspera && <span className="absolute top-0 right-0 text-[10px] text-amber-500">!</span>}
-                                    {sinDisponibilidad && !puedeListaEspera && !cerrado && !diaLibreProfesional && <span className="absolute top-0 right-0 text-[10px] text-red-500">Ã—</span>}
+                                    {sinDisponibilidad && !puedeListaEspera && !cerrado && !diaLibreProfesional && <span className="absolute top-0 right-0 text-[10px] text-red-500">×</span>}
                                     {available && !selected && <span className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-pink-400 rounded-full"></span>}
                                     {puedeListaEspera && !selected && <span className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-amber-400 rounded-full"></span>}
                                 </button>
@@ -478,7 +488,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
             {profesional && (
                 <div className="text-xs text-pink-600 bg-pink-50 p-3 rounded-lg border border-pink-200">
                     <div className="flex items-center gap-2">
-                        <span className="text-pink-400 text-lg">ðŸ“…</span>
+                        <span className="text-pink-400 text-lg">📅</span>
                         <span>
                             <strong>Dias que trabaja {profesional.nombre}:</strong>{' '}
                             {diasLaborales.length > 0
@@ -488,13 +498,13 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                     </div>
                     {fechasLibresProfesional.length > 0 && (
                         <div className="flex items-center gap-2 mt-2">
-                            <span className="text-orange-500 text-lg">â—‹</span>
+                            <span className="text-orange-500 text-lg">○</span>
                             <span><strong>Dias libres:</strong> {fechasLibresProfesional.length} dia(s) no disponible(s)</span>
                         </div>
                     )}
                     {diasCerrados.length > 0 && (
                         <div className="flex items-center gap-2 mt-2">
-                            <span className="text-red-400 text-lg">Ã—</span>
+                            <span className="text-red-400 text-lg">×</span>
                             <span><strong>Dias cerrados del local:</strong> {diasCerrados.length} dia(s) no disponible(s)</span>
                         </div>
                     )}
@@ -503,4 +513,3 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
         </div>
     );
 }
-
