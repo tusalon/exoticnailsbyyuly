@@ -213,8 +213,8 @@ function ServicioForm({ servicio, onGuardar, onCancelar }) {
         }
 
         const duracionNum = parseInt(form.duracion);
-        if (isNaN(duracionNum) || duracionNum < 15) {
-            alert('La duración debe ser al menos 15 minutos');
+        if (isNaN(duracionNum) || duracionNum < 3) {
+            alert('La duración debe ser al menos 3 minutos');
             return;
         }
 

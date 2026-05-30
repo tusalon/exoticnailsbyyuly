@@ -452,7 +452,7 @@ function ServicioFormCategorias({ servicio, categorias, onGuardar, onCancelar })
         const duracion = parseInt(form.duracion, 10);
         const precio = parseFloat(form.precio);
         if (!form.nombre.trim()) return alert('El nombre del servicio es obligatorio');
-        if (isNaN(duracion) || duracion < 15) return alert('La duración debe ser al menos 15 minutos');
+        if (isNaN(duracion) || duracion < 3) return alert('La duración debe ser al menos 3 minutos');
         if (isNaN(precio) || precio < 0) return alert('El precio debe ser válido');
 
         let horarios = [];
