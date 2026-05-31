@@ -52,7 +52,13 @@ jobs:
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force -Path apk-output
-          Copy-Item android/app/build/outputs/apk/debug/app-debug.apk apk-output/exoticnailsbyyuli-debug.apk
+          $apk = Get-ChildItem -Path android/app/build/outputs/apk -Recurse -Filter "*.apk" | Select-Object -First 1
+          if (-not $apk) {
+            Get-ChildItem -Path android/app/build -Recurse | Select-Object FullName
+            throw "No se encontro ningun APK generado"
+          }
+          Write-Host "APK encontrado: $($apk.FullName)"
+          Copy-Item $apk.FullName apk-output/exoticnailsbyyuli-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
