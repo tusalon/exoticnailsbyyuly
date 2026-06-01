@@ -1,6 +1,6 @@
 // utils/push-notifications.js - Web Push opcional para RservasRoma.
 
-console.log('🔔 push-notifications.js cargado');
+console.log('push-notifications.js cargado');
 
 window.RSERVAS_PUSH_PUBLIC_KEY = window.RSERVAS_PUSH_PUBLIC_KEY || 'CONFIGURAR_VAPID_PUBLIC_KEY';
 window.RSERVAS_PUSH_FUNCTION = window.RSERVAS_PUSH_FUNCTION || 'enviar-web-push';
@@ -35,6 +35,85 @@ function getRolPush(defaultRole = 'cliente') {
     if (localStorage.getItem('profesionalAuth')) return 'profesional';
     return defaultRole;
 }
+
+function pedirPermisoNotificacionesPush() {
+    if (!('Notification' in window)) return Promise.resolve('unsupported');
+    if (Notification.permission === 'granted' || Notification.permission === 'denied') {
+        return Promise.resolve(Notification.permission);
+    }
+
+    // Chrome moderno devuelve Promise; navegadores viejos usan callback.
+    if (Notification.requestPermission.length === 0) {
+        return Notification.requestPermission();
+    }
+
+    return new Promise((resolve) => {
+        Notification.requestPermission(resolve);
+    });
+}
+
+function getDiagnosticoPushRservas() {
+    const hasNotification = 'Notification' in window;
+    const hasServiceWorker = 'serviceWorker' in navigator;
+
+    return {
+        url: window.location.href,
+        protocol: window.location.protocol,
+        secureContext: Boolean(window.isSecureContext),
+        notificationApi: hasNotification,
+        notificationPermission: hasNotification ? Notification.permission : 'no disponible',
+        pushManager: 'PushManager' in window,
+        serviceWorker: hasServiceWorker,
+        serviceWorkerController: hasServiceWorker ? Boolean(navigator.serviceWorker.controller) : false,
+        vapidConfigured: pushKeyConfigurada(),
+        standalone: Boolean(
+            window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
+        ) || Boolean(window.navigator.standalone),
+        userAgent: navigator.userAgent || ''
+    };
+}
+
+function formatearDiagnosticoPush(diagnostico, error = null) {
+    const lineas = [
+        'Diagnostico de notificaciones:',
+        `Permiso: ${diagnostico.notificationPermission}`,
+        `Contexto seguro: ${diagnostico.secureContext ? 'si' : 'no'}`,
+        `Notification API: ${diagnostico.notificationApi ? 'si' : 'no'}`,
+        `PushManager: ${diagnostico.pushManager ? 'si' : 'no'}`,
+        `Service Worker: ${diagnostico.serviceWorker ? 'si' : 'no'}`,
+        `Service Worker activo: ${diagnostico.serviceWorkerController ? 'si' : 'no'}`,
+        `Llave VAPID: ${diagnostico.vapidConfigured ? 'configurada' : 'sin configurar'}`,
+        `Modo app instalada: ${diagnostico.standalone ? 'si' : 'no'}`
+    ];
+
+    if (error) {
+        lineas.push(`Error: ${error.message || error}`);
+    }
+
+    if (diagnostico.notificationPermission === 'denied') {
+        lineas.push('');
+        lineas.push('Chrome tiene bloqueado el permiso. En Android revisa:');
+        lineas.push('1. Ajustes del telefono > Apps > Chrome > Notificaciones.');
+        lineas.push('2. Chrome > Configuracion > Configuracion de sitios > Notificaciones.');
+        lineas.push('3. Si no aparece tusalon.github.io, activa que los sitios puedan pedir permiso y vuelve a tocar el boton.');
+    } else if (diagnostico.notificationPermission === 'default') {
+        lineas.push('');
+        lineas.push('El permiso quedo sin aceptar. Vuelve a tocar el boton y acepta el aviso del navegador.');
+    }
+
+    return lineas.join('\n');
+}
+
+window.diagnosticarPushRservasRoma = function(error = null, mostrarAlerta = true) {
+    const diagnostico = getDiagnosticoPushRservas();
+    console.table(diagnostico);
+
+    if (mostrarAlerta) {
+        alert(formatearDiagnosticoPush(diagnostico, error));
+    }
+
+    return diagnostico;
+};
 
 async function getRegistroServiceWorkerPush() {
     if (!('serviceWorker' in navigator)) return null;
@@ -96,13 +175,13 @@ window.solicitarPushRservasRoma = async function(options = {}) {
     }
 
     if (!('Notification' in window) || !('PushManager' in window) || !('serviceWorker' in navigator)) {
-        alert('Este dispositivo o navegador no permite notificaciones push web.');
+        window.diagnosticarPushRservasRoma();
         return false;
     }
 
-    const permission = await Notification.requestPermission();
+    const permission = await pedirPermisoNotificacionesPush();
     if (permission !== 'granted') {
-        alert('No se activaron las notificaciones. Puedes permitirlas luego desde los ajustes del navegador.');
+        window.diagnosticarPushRservasRoma();
         return false;
     }
 
@@ -171,7 +250,7 @@ function instalarBotonPushAdmin() {
     const button = document.createElement('button');
     button.id = 'rservas-push-button';
     button.type = 'button';
-    button.textContent = 'Activar notificaciones';
+    button.textContent = Notification.permission === 'denied' ? 'Push bloqueado' : 'Activar notificaciones';
     button.style.cssText = [
         'position:fixed',
         'left:16px',
@@ -190,12 +269,19 @@ function instalarBotonPushAdmin() {
     button.addEventListener('click', async () => {
         button.disabled = true;
         button.textContent = 'Activando...';
-        const ok = await window.solicitarPushRservasRoma({ defaultRole: 'admin' }).catch(() => false);
-        if (ok) button.remove();
-        else {
-            button.disabled = false;
-            button.textContent = 'Activar notificaciones';
+        const ok = await window.solicitarPushRservasRoma({ defaultRole: 'admin' }).catch((error) => {
+            console.error('Error activando Web Push:', error);
+            window.diagnosticarPushRservasRoma(error);
+            return false;
+        });
+
+        if (ok) {
+            button.remove();
+            return;
         }
+
+        button.disabled = false;
+        button.textContent = Notification.permission === 'denied' ? 'Push bloqueado' : 'Activar notificaciones';
     });
 
     document.body.appendChild(button);
