@@ -179,7 +179,7 @@ window.solicitarPushRservasRoma = async function(options = {}) {
         return false;
     }
 
-    const permission = await pedirPermisoNotificacionesPush();
+    const permission = options.permission || await pedirPermisoNotificacionesPush();
     if (permission !== 'granted') {
         window.diagnosticarPushRservasRoma();
         return false;
@@ -266,22 +266,29 @@ function instalarBotonPushAdmin() {
         'cursor:pointer'
     ].join(';');
 
-    button.addEventListener('click', async () => {
+    button.addEventListener('click', () => {
+        // En Chrome Android conviene pedir el permiso como primera accion exacta del toque.
+        const permissionPromise = pedirPermisoNotificacionesPush();
         button.disabled = true;
         button.textContent = 'Activando...';
-        const ok = await window.solicitarPushRservasRoma({ defaultRole: 'admin' }).catch((error) => {
-            console.error('Error activando Web Push:', error);
-            window.diagnosticarPushRservasRoma(error);
-            return false;
-        });
 
-        if (ok) {
-            button.remove();
-            return;
-        }
+        permissionPromise
+            .then((permission) => window.solicitarPushRservasRoma({ defaultRole: 'admin', permission }))
+            .then((ok) => {
+                if (ok) {
+                    button.remove();
+                    return;
+                }
 
-        button.disabled = false;
-        button.textContent = Notification.permission === 'denied' ? 'Push bloqueado' : 'Activar notificaciones';
+                button.disabled = false;
+                button.textContent = Notification.permission === 'denied' ? 'Push bloqueado' : 'Activar notificaciones';
+            })
+            .catch((error) => {
+                console.error('Error activando Web Push:', error);
+                window.diagnosticarPushRservasRoma(error);
+                button.disabled = false;
+                button.textContent = Notification.permission === 'denied' ? 'Push bloqueado' : 'Activar notificaciones';
+            });
     });
 
     document.body.appendChild(button);
