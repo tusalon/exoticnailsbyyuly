@@ -41,6 +41,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Restore Firebase config
+        shell: powershell
+        env:
+          ANDROID_GOOGLE_SERVICES_JSON: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
+        run: |
+          if ($env:ANDROID_GOOGLE_SERVICES_JSON) {
+            $env:ANDROID_GOOGLE_SERVICES_JSON | Set-Content -Path android/app/google-services.json -Encoding UTF8
+            Write-Host "google-services.json restaurado desde GitHub Secrets"
+          } else {
+            Write-Host "ANDROID_GOOGLE_SERVICES_JSON no configurado; la APK compila sin Firebase push nativo"
+          }
+
       - name: Sync Capacitor Android
         run: npm run android:sync
 

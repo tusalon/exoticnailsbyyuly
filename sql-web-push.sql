@@ -1,5 +1,13 @@
 -- Web Push opcional para RservasRoma.
--- Guarda suscripciones por dispositivo sin afectar ntfy ni WhatsApp.
+-- Guarda suscripciones web y tokens nativos APK por dispositivo sin afectar ntfy ni WhatsApp.
+--
+-- Para APK Android con Firebase, agrega tambien estos secretos en Supabase Edge Functions:
+-- FIREBASE_PROJECT_ID
+-- FIREBASE_CLIENT_EMAIL
+-- FIREBASE_PRIVATE_KEY
+--
+-- En GitHub Actions agrega el secreto ANDROID_GOOGLE_SERVICES_JSON con el contenido completo
+-- del archivo android/app/google-services.json de Firebase.
 
 create table if not exists public.push_suscripciones (
     id uuid primary key default gen_random_uuid(),
