@@ -194,6 +194,15 @@ window.enviarNotificacionPush = async function(titulo, mensaje, etiquetas = 'bel
 
         if (response.ok) {
             console.log('✅ Push enviado correctamente');
+            if (window.enviarWebPushRservasRoma) {
+                window.enviarWebPushRservasRoma({
+                    title: safeTitle,
+                    body: mensaje,
+                    role: 'admin',
+                    tags: safeTags,
+                    data: { priority: safePriority }
+                }).catch(error => console.warn('Web Push opcional no enviado:', error));
+            }
             return true;
         }
 
