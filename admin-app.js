@@ -2556,10 +2556,7 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
             const negocioId = getNegocioId();
             const reservasGrupo = cobroEditando?._reservasGrupo || [];
             const reservas = reservasGrupo.length > 0 ? reservasGrupo : [cobroEditando];
-            const precios = reservas.map(reserva => {
-                const servicio = serviciosList.find(item => item.nombre === reserva.servicio);
-                return Number(servicio?.precio || 0);
-            });
+            const precios = reservas.map(reserva => getPrecioServicioAgenda(reserva.servicio));
             const totalPrecios = precios.reduce((total, precio) => total + precio, 0);
             let acumulado = 0;
 
@@ -3043,14 +3040,53 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
         return `${agendaDays[0].toLocaleDateString('es-CU', { day: 'numeric', month: 'short' })} - ${agendaDays[6].toLocaleDateString('es-CU', { day: 'numeric', month: 'short', year: 'numeric' })}`;
     };
 
+    const normalizarServicioAgenda = (value) => {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+    };
+
+    const limpiarNombreServicioAgenda = (value) => {
+        return String(value || '')
+            .replace(/\s*:\s*[^|+]+$/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    };
+
+    const extraerNombresServicioAgenda = (value) => {
+        return String(value || '')
+            .split(/\s+\|\s+|\s+\+\s+/)
+            .map(limpiarNombreServicioAgenda)
+            .filter(Boolean);
+    };
+
+    const buscarServicioAgenda = (nombreServicio) => {
+        const nombreLimpio = limpiarNombreServicioAgenda(nombreServicio);
+        const normalizado = normalizarServicioAgenda(nombreLimpio);
+        if (!normalizado) return null;
+
+        const exacto = serviciosList.find(item => normalizarServicioAgenda(item.nombre) === normalizado);
+        if (exacto) return exacto;
+
+        return serviciosList.find(item => {
+            const nombreCatalogo = normalizarServicioAgenda(item.nombre);
+            return nombreCatalogo.length > 4 && (normalizado.includes(nombreCatalogo) || nombreCatalogo.includes(normalizado));
+        }) || null;
+    };
+
     const getAgendaServicios = (booking) => {
         const reservasGrupo = booking?._reservasGrupo || [];
         return reservasGrupo.length > 0 ? reservasGrupo : [booking].filter(Boolean);
     };
 
     const getPrecioServicioAgenda = (nombreServicio) => {
-        const servicio = serviciosList.find(item => item.nombre === nombreServicio);
-        return Number(servicio?.precio || 0);
+        return extraerNombresServicioAgenda(nombreServicio).reduce((total, nombre) => {
+            const servicio = buscarServicioAgenda(nombre);
+            return total + Number(servicio?.precio || 0);
+        }, 0);
     };
 
     const getAgendaResumenCobro = (booking) => {
@@ -3100,14 +3136,10 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
     };
 
     const getServicioPrecioEstadistica = (nombreServicio) => {
-        return String(nombreServicio || '')
-            .split(' + ')
-            .map(nombre => nombre.trim())
-            .filter(Boolean)
-            .reduce((total, nombre) => {
-                const servicio = serviciosList.find(item => item.nombre === nombre);
-                return total + parseMontoEstadistica(servicio?.precio);
-            }, 0);
+        return extraerNombresServicioAgenda(nombreServicio).reduce((total, nombre) => {
+            const servicio = buscarServicioAgenda(nombre);
+            return total + parseMontoEstadistica(servicio?.precio);
+        }, 0);
     };
 
     const getRangoEstadisticas = () => {
