@@ -62,9 +62,18 @@
             --brand-secondary: #f9a8d4;
             --brand-primary-rgb: 236 72 153;
             --brand-secondary-rgb: 249 168 212;
+            --brand-primary-original: #ec4899;
+            --brand-secondary-original: #f9a8d4;
             --brand-soft: rgba(249, 168, 212, 0.20);
             --brand-surface: rgba(249, 168, 212, 0.12);
             --brand-surface-strong: rgba(249, 168, 212, 0.28);
+        }
+
+        html,
+        body,
+        #root {
+            min-height: 100%;
+            margin: 0;
         }
 
         .text-pink-300,
@@ -91,6 +100,7 @@
         .bg-pink-600,
         .bg-pink-700 {
             background-color: var(--brand-primary) !important;
+            color: #fff !important;
         }
 
         .border-pink-100,
@@ -143,6 +153,7 @@
         .hover\:bg-pink-600:hover,
         .hover\:bg-pink-700:hover {
             background-color: var(--brand-secondary) !important;
+            color: #111827 !important;
         }
 
         .hover\:text-pink-600:hover,
@@ -174,7 +185,7 @@
     <!-- Scripts (rutas relativas) -->
     <script src="utils/supabase-config.js"></script>
     <script src="utils/hero-backgrounds.js?v=20260522-fondos-lashes-peluqueria"></script>
-    <script src="utils/config-negocio.js?v=20260528-internacional"></script>
+    <script src="utils/config-negocio.js?v=20260602-contraste"></script>
     <script src="utils/phone-utils.js?v=20260528-cliente-pais"></script>
     <script src="utils/storage.js"></script>
     <script src="utils/api.js?v=20260529-lista-espera"></script>
@@ -186,7 +197,7 @@
     <script src="utils/profesionales.js"></script>
     <script src="utils/whatsapp-helper.js?v=20260528-internacional"></script>
     <script src="utils/push-config.js?v=20260601-web-push"></script>
-    <script src="utils/push-notifications.js?v=20260601-web-push"></script>
+    <script src="utils/push-notifications.js?v=20260602-oculto"></script>
      <script src="utils/dias-cerrados.js"></script>
 
     <!-- Componentes -->
@@ -199,7 +210,7 @@
     <script src="components/Calendar.js?v=20260530-lista-espera-dia-lleno-fix2" type="text/babel"></script>
     <script src="components/TimeSlots.js?v=20260530-lista-espera-dia-lleno-fix2" type="text/babel"></script>
     <script src="components/MultiTimeSlots.js?v=20260526-tema-global" type="text/babel"></script>
-    <script src="components/BookingForm.js?v=20260528-internacional" type="text/babel"></script>
+    <script src="components/BookingForm.js?v=20260602-contraste-boton" type="text/babel"></script>
     <script src="components/Confirmation.js?v=20260528-internacional" type="text/babel"></script>
     <script src="components/WelcomeScreen.js?v=20260528-internacional" type="text/babel"></script>
     <script src="components/WhatsAppButton.js?v=20260528-internacional" type="text/babel"></script>

@@ -459,7 +459,7 @@ END:VCALENDAR`;
     // ============================================
     return (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4 animate-fade-in">
-            <div className="bg-white/95 backdrop-blur-md w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl space-y-6 border-2 border-pink-300">
+            <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl space-y-6 border-2 border-pink-300">
                 <div className="flex justify-between items-center border-b border-pink-200 pb-4">
                     <h3 className="text-xl font-bold text-pink-800 flex items-center gap-2">
                         <span></span>
@@ -514,7 +514,15 @@ END:VCALENDAR`;
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-3.5 rounded-xl font-bold hover:from-pink-600 hover:to-pink-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-lg"
+                            className="w-full text-white py-3.5 rounded-xl font-bold transition-colors disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-lg"
+                            style={{
+                                background: submitting
+                                    ? 'linear-gradient(135deg, #5b21b6, #7c3aed)'
+                                    : 'linear-gradient(135deg, #5b21b6, var(--brand-primary, #7c3aed))',
+                                color: '#fff',
+                                border: '1px solid rgba(91, 33, 182, 0.35)',
+                                opacity: 1
+                            }}
                         >
                             {submitting ? (
                                 <>
