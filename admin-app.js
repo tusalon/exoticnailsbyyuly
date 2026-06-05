@@ -423,14 +423,15 @@ const minutesToHoraLegible = (minutosTotales) => {
 // COMPONENTE PRINCIPAL
 // ============================================
 function AdminApp() {
+    const profesionalInicial = window.getProfesionalAutenticado?.() || null;
     const [bookings, setBookings] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
     const [filterDate, setFilterDate] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('activas');
     
-    const [userRole, setUserRole] = React.useState('admin');
-    const [userNivel, setUserNivel] = React.useState(3);
-    const [profesional, setProfesional] = React.useState(null);
+    const [userRole, setUserRole] = React.useState(profesionalInicial ? 'profesional' : 'admin');
+    const [userNivel, setUserNivel] = React.useState(profesionalInicial?.nivel || 3);
+    const [profesional, setProfesional] = React.useState(profesionalInicial);
     const [nombreNegocio, setNombreNegocio] = React.useState('Mi Negocio');
     const [logoNegocio, setLogoNegocio] = React.useState(null);
     
@@ -499,6 +500,32 @@ function AdminApp() {
     const esProfesionalPanel = userRole === 'profesional';
     const puedeGestionarReservas = esAdminPanel || (esProfesionalPanel && userNivel >= 2);
     const puedeGestionarAvanzado = esAdminPanel || (esProfesionalPanel && userNivel >= 3);
+    const normalizarTextoProfesional = (value) => String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+    const esReservaDelProfesional = (booking, profesionalActual = profesional) => {
+        if (!profesionalActual) return true;
+
+        const profesionalIdReserva = booking?.profesional_id ?? booking?.trabajador_id ?? booking?.barbero_id;
+        if (profesionalIdReserva !== undefined && profesionalIdReserva !== null && String(profesionalIdReserva) !== '') {
+            return Number(profesionalIdReserva) === Number(profesionalActual.id);
+        }
+
+        const nombreReserva = normalizarTextoProfesional(
+            booking?.profesional_nombre || booking?.trabajador_nombre || booking?.barbero_nombre
+        );
+        const nombreProfesional = normalizarTextoProfesional(profesionalActual.nombre);
+
+        if (!nombreReserva || !nombreProfesional) return false;
+        return nombreReserva === nombreProfesional || nombreReserva.includes(nombreProfesional);
+    };
+    const filtrarReservasDelProfesional = (reservas, profesionalActual = profesional) => {
+        if (!esProfesionalPanel || !profesionalActual) return Array.isArray(reservas) ? reservas : [];
+        return (Array.isArray(reservas) ? reservas : []).filter(reserva => esReservaDelProfesional(reserva, profesionalActual));
+    };
     const codigoPaisNegocio = window.getCodigoPaisTelefono ? window.getCodigoPaisTelefono(config) : '53';
     const codigoPaisClienteManual = nuevaReservaData.cliente_codigo_pais || codigoPaisNegocio;
     const paisTelefono = window.getPhoneCountryConfig ? window.getPhoneCountryConfig({ codigo_pais: codigoPaisClienteManual }) : { codigo: '53', bandera: 'ðŸ‡¨ðŸ‡º', ejemplo: '55002272' };
@@ -2249,6 +2276,7 @@ function AdminApp() {
             console.log('Datos recibidos en fetchBookings:', data?.length || 0);
             
             if (Array.isArray(data)) {
+                data = filtrarReservasDelProfesional(data);
                 data.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.hora_inicio.localeCompare(b.hora_inicio));
                 
                 await marcarTurnosCompletados();
@@ -2258,6 +2286,8 @@ function AdminApp() {
                 } else {
                     data = await getAllBookings();
                 }
+
+                data = filtrarReservasDelProfesional(data);
                 
                 console.log('RESERVAS CARGADAS:', data.length);
                 console.log('Rango de fechas:', {
@@ -2744,11 +2774,12 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
     // FILTROS
     // ============================================
     const getFilteredBookings = () => {
-        console.log('Aplicando filtros a', bookings.length, 'reservas');
+        const bookingsVisibles = filtrarReservasDelProfesional(bookings);
+        console.log('Aplicando filtros a', bookingsVisibles.length, 'reservas');
         
         let filtradas = filterDate
-            ? bookings.filter(b => b.fecha === filterDate)
-            : [...bookings];
+            ? bookingsVisibles.filter(b => b.fecha === filterDate)
+            : [...bookingsVisibles];
         
         console.log('Despues filtro fecha:', filtradas.length);
         
@@ -2772,11 +2803,12 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
         return resultado;
     };
 
-    const activasCount = bookings.filter(b => b.estado === 'Reservado').length;
-    const pendientesCount = bookings.filter(b => b.estado === 'Pendiente').length;
-    const completadasCount = bookings.filter(b => b.estado === 'Completado').length;
-    const ausentesCount = bookings.filter(b => b.estado === 'Ausente').length;
-    const canceladasCount = bookings.filter(b => b.estado === 'Cancelado').length;
+    const bookingsVisiblesPorRol = filtrarReservasDelProfesional(bookings);
+    const activasCount = bookingsVisiblesPorRol.filter(b => b.estado === 'Reservado').length;
+    const pendientesCount = bookingsVisiblesPorRol.filter(b => b.estado === 'Pendiente').length;
+    const completadasCount = bookingsVisiblesPorRol.filter(b => b.estado === 'Completado').length;
+    const ausentesCount = bookingsVisiblesPorRol.filter(b => b.estado === 'Ausente').length;
+    const canceladasCount = bookingsVisiblesPorRol.filter(b => b.estado === 'Cancelado').length;
     const filteredBookings = getFilteredBookings();
 
     const construirResumenGrupoVisual = (grupo) => {
@@ -2867,7 +2899,7 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
     const agendaDays = Array.from({ length: 7 }, (_, index) => addDays(agendaWeekStart, index));
     const agendaStartStr = formatDate(agendaDays[0]);
     const agendaEndStr = formatDate(agendaDays[6]);
-    const agendaBookings = agruparReservasVisuales(bookings
+    const agendaBookings = agruparReservasVisuales(bookingsVisiblesPorRol
         .filter(b => b.fecha >= agendaStartStr && b.fecha <= agendaEndStr && b.estado !== 'Cancelado')
         .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.hora_inicio.localeCompare(b.hora_inicio)));
     const agendaDateStr = formatDate(agendaDate);
@@ -2889,7 +2921,7 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
     const puedeEditarReserva = (booking) => {
         const estado = estadoNormalizado(booking.estado);
         if (!puedeGestionarReservas) return false;
-        if (userRole === 'profesional' && profesional && Number(booking.profesional_id) !== Number(profesional.id)) return false;
+        if (userRole === 'profesional' && profesional && !esReservaDelProfesional(booking)) return false;
         return estado !== 'cancelado' && estado !== 'cancelada' && estado !== 'completado' && estado !== 'completada' && estado !== 'ausente';
     };
 
