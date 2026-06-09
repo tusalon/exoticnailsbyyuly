@@ -76,6 +76,148 @@
             margin: 0;
         }
 
+        html {
+            min-height: -webkit-fill-available;
+        }
+
+        body {
+            min-height: 100svh;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .client-auth-screen,
+        .client-welcome-screen {
+            position: relative;
+            min-height: 100vh;
+            min-height: 100svh;
+            width: 100%;
+            overflow-x: hidden;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        @supports (-webkit-touch-callout: none) {
+            .client-auth-screen,
+            .client-welcome-screen {
+                min-height: -webkit-fill-available;
+            }
+        }
+
+        .client-auth-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+        }
+
+        .client-auth-background,
+        .client-welcome-background {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            background: #111827;
+        }
+
+        .client-auth-background-image,
+        .client-welcome-background-image {
+            display: block;
+            width: 100%;
+            height: 100%;
+            min-height: 100svh;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        .client-auth-overlay,
+        .client-welcome-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.46);
+        }
+
+        .client-auth-back,
+        .client-welcome-back {
+            position: fixed;
+            top: max(16px, env(safe-area-inset-top));
+            left: max(16px, env(safe-area-inset-left));
+            z-index: 20;
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+        }
+
+        .client-auth-content,
+        .client-welcome-content {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+        }
+
+        .client-auth-content {
+            max-width: 448px;
+            margin: 0 auto;
+        }
+
+        .client-auth-card,
+        .client-welcome-card {
+            box-sizing: border-box;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.22);
+            border: 1px solid rgba(var(--brand-secondary-rgb), 0.42);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+            -webkit-backdrop-filter: blur(2px);
+            backdrop-filter: blur(2px);
+        }
+
+        .client-auth-card {
+            padding: 28px;
+            border-radius: 20px;
+        }
+
+        .client-auth-card img,
+        .client-welcome-card img {
+            max-width: 100%;
+        }
+
+        .client-auth-card input,
+        .client-auth-card select,
+        .client-auth-card button {
+            font: inherit;
+            min-height: 48px;
+        }
+
+        .client-auth-card input,
+        .client-auth-card select {
+            box-sizing: border-box;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.34);
+        }
+
+        .client-welcome-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            min-height: 100svh;
+            padding: max(64px, calc(env(safe-area-inset-top) + 32px)) 16px max(32px, env(safe-area-inset-bottom));
+            box-sizing: border-box;
+        }
+
+        .client-welcome-card {
+            max-width: 672px;
+            margin: 0 auto;
+            padding: 28px;
+            border-radius: 28px;
+        }
+
+        @media (max-width: 480px) {
+            .client-auth-card,
+            .client-welcome-card {
+                padding: 24px 18px;
+                border-radius: 20px;
+            }
+        }
+
         .text-pink-300,
         .text-pink-400,
         .text-pink-500,
@@ -212,9 +354,9 @@
     <script src="components/MultiTimeSlots.js?v=20260526-tema-global" type="text/babel"></script>
     <script src="components/BookingForm.js?v=20260602-contraste-boton" type="text/babel"></script>
     <script src="components/Confirmation.js?v=20260528-internacional" type="text/babel"></script>
-    <script src="components/WelcomeScreen.js?v=20260528-internacional" type="text/babel"></script>
+    <script src="components/WelcomeScreen.js?v=20260609-ios-layout-fix" type="text/babel"></script>
     <script src="components/WhatsAppButton.js?v=20260528-internacional" type="text/babel"></script>
-    <script src="components/ClientAuthScreen.js?v=20260528-cliente-pais" type="text/babel"></script>
+    <script src="components/ClientAuthScreen.js?v=20260609-ios-layout-fix" type="text/babel"></script>
     <script src="components/MyBookings.js?v=20260529-reprogramar" type="text/babel"></script>
     <script src="components/InstallButton.js" type="text/babel"></script>
     

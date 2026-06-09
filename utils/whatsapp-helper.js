@@ -70,6 +70,51 @@ async function calcularMontoAnticipo(configNegocio, servicioNombre) {
     return Math.round(precioServicio * porcentaje);
 }
 
+async function calcularTotalReserva(booking) {
+    if (!booking) return 0;
+
+    const valoresDirectos = [
+        booking.total_pagar,
+        booking.total,
+        booking.precio_final,
+        booking.precio_original,
+        booking.monto_total
+    ];
+
+    for (const valor of valoresDirectos) {
+        const numero = parseFloat(valor);
+        if (Number.isFinite(numero) && numero > 0) return numero;
+    }
+
+    let precioServicio = 0;
+    if (window.salonServicios) {
+        const servicios = await window.salonServicios.getAll(true);
+        const nombres = String(booking.servicio || '').split(' + ').map(nombre => nombre.trim()).filter(Boolean);
+        const serviciosEncontrados = servicios.filter(s => nombres.includes(s.nombre));
+
+        if (serviciosEncontrados.length > 0) {
+            precioServicio = serviciosEncontrados.reduce((total, servicio) => total + (parseFloat(servicio.precio) || 0), 0);
+        } else {
+            const servicio = servicios.find(s => s.nombre === booking.servicio);
+            if (servicio) precioServicio = parseFloat(servicio.precio) || 0;
+        }
+    }
+
+    return precioServicio;
+}
+
+function formatearMontoReserva(monto, moneda = 'CUP') {
+    const numero = parseFloat(monto);
+    if (!Number.isFinite(numero) || numero <= 0) return '';
+    const limpio = numero % 1 === 0 ? numero.toFixed(0) : numero.toFixed(2);
+    return `${limpio} ${moneda}`;
+}
+
+function generarLineaTotalReserva(totalReserva) {
+    const totalFormateado = formatearMontoReserva(totalReserva);
+    return totalFormateado ? `\n💵 *Total a pagar:* ${totalFormateado}` : '';
+}
+
 function getFechaHora(booking) {
     const fechaConDia = window.formatFechaCompleta ? window.formatFechaCompleta(booking.fecha) : booking.fecha;
     const horaFormateada = window.formatTo12Hour ? window.formatTo12Hour(booking.hora_inicio) : booking.hora_inicio;
@@ -101,6 +146,7 @@ function aplicarPlantillaPago(configNegocio, booking, datos) {
         alias: configNegocio?.alias || 'No configurado',
         titular: configNegocio?.titular || configNegocio?.nombre || 'No configurado',
         tiempo_vencimiento: configNegocio?.tiempo_vencimiento || 2,
+        total_pagar: datos.totalPagar || '',
         nombre_negocio: configNegocio?.nombre || 'Mi Salón',
         cliente: booking?.cliente_nombre || '',
         servicio: booking?.servicio || '',
@@ -233,12 +279,16 @@ window.enviarMensajePago = async function(booking, configNegocio) {
         }
 
         const montoAnticipo = await calcularMontoAnticipo(configNegocio, booking.servicio);
+        const totalReserva = await calcularTotalReserva(booking);
+        const lineaTotalReserva = generarLineaTotalReserva(totalReserva);
+        const totalPagar = formatearMontoReserva(totalReserva);
         const { fechaConDia, horaFormateada } = getFechaHora(booking);
         const profesional = getProfesional(booking);
         const lineaCalendario = generarLineaCalendarioCliente(booking);
         const lineaDireccion = generarLineaDireccion(configNegocio);
         const mensajePagoConfig = aplicarPlantillaPago(configNegocio, booking, {
             montoAnticipo,
+            totalPagar,
             fechaConDia,
             horaFormateada,
             profesional
@@ -253,6 +303,7 @@ window.enviarMensajePago = async function(booking, configNegocio) {
 ⏰ *Hora:* ${horaFormateada}
 💅 *Servicio:* ${booking.servicio}
 👩‍🎨 *Profesional:* ${profesional}
+${lineaTotalReserva}
 ${lineaDireccion}
 
 ${mensajePagoConfig || `
@@ -295,6 +346,8 @@ window.enviarConfirmacionReserva = async function(booking, configNegocio) {
         }
 
         const { fechaConDia, horaFormateada } = getFechaHora(booking);
+        const totalReserva = await calcularTotalReserva(booking);
+        const lineaTotalReserva = generarLineaTotalReserva(totalReserva);
         const lineaCalendario = generarLineaCalendarioCliente(booking);
         const lineaDireccion = generarLineaDireccion(configNegocio);
 
@@ -307,6 +360,7 @@ Hola *${booking.cliente_nombre}*, tu turno ha sido agendado.
 ⏰ *Hora:* ${horaFormateada}
 💅 *Servicio:* ${booking.servicio}
 👩‍🎨 *Profesional:* ${getProfesional(booking)}
+${lineaTotalReserva}
 ${lineaDireccion}
 ${lineaCalendario}
 ¡Te esperamos! ❤️`;
@@ -333,6 +387,8 @@ window.enviarConfirmacionPago = async function(booking, configNegocio) {
         }
 
         const { fechaConDia, horaFormateada } = getFechaHora(booking);
+        const totalReserva = await calcularTotalReserva(booking);
+        const lineaTotalReserva = generarLineaTotalReserva(totalReserva);
         const nombreNegocio = configNegocio?.nombre || 'Mi Salón';
         const lineaCalendario = generarLineaCalendarioCliente(booking);
         const lineaDireccion = generarLineaDireccion(configNegocio);
@@ -346,6 +402,7 @@ Hola *${booking.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
 ⏰ *Hora:* ${horaFormateada}
 💅 *Servicio:* ${booking.servicio}
 👩‍🎨 *Profesional:* ${getProfesional(booking)}
+${lineaTotalReserva}
 ${lineaDireccion}
 
 ✅ *Pago recibido correctamente*
@@ -411,6 +468,8 @@ window.notificarNuevaReserva = async function(booking) {
 
         const config = await getConfigNegocio();
         const { fechaConDia, horaFormateada } = getFechaHora(booking);
+        const totalReserva = await calcularTotalReserva(booking);
+        const lineaTotalReserva = generarLineaTotalReserva(totalReserva);
         const profesional = getProfesional(booking);
         const lineaCalendario = generarLineaCalendarioCliente(booking);
         const lineaDireccion = generarLineaDireccion(config);
@@ -424,6 +483,7 @@ window.notificarNuevaReserva = async function(booking) {
 📅 *Fecha:* ${fechaConDia}
 ⏰ *Hora:* ${horaFormateada}
 👩‍🎨 *Profesional:* ${profesional}
+${lineaTotalReserva}
 ${lineaDireccion}
 ${lineaCalendario}
 
@@ -464,12 +524,16 @@ window.notificarReservaPendiente = async function(booking) {
 
         const configNegocio = await window.cargarConfiguracionNegocio();
         const montoAnticipo = await calcularMontoAnticipo(configNegocio, booking.servicio);
+        const totalReserva = await calcularTotalReserva(booking);
+        const lineaTotalReserva = generarLineaTotalReserva(totalReserva);
+        const totalPagar = formatearMontoReserva(totalReserva);
         const { fechaConDia, horaFormateada } = getFechaHora(booking);
         const profesional = getProfesional(booking);
         const lineaCalendario = generarLineaCalendarioCliente(booking);
         const lineaDireccion = generarLineaDireccion(configNegocio);
         const mensajePagoConfig = aplicarPlantillaPago(configNegocio, booking, {
             montoAnticipo,
+            totalPagar,
             fechaConDia,
             horaFormateada,
             profesional
@@ -486,6 +550,7 @@ window.notificarReservaPendiente = async function(booking) {
 👩‍🎨 *Profesional:* ${profesional}
 *Cliente:* ${booking.cliente_nombre}
 *WhatsApp:* ${booking.cliente_whatsapp}
+${lineaTotalReserva}
 ${lineaDireccion}
 
 ${mensajePagoConfig || `

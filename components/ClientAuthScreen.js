@@ -251,28 +251,28 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                     especialidad.includes('belleza') ? '🌸' : '💖';
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-            <div className="absolute inset-0 z-0">
+        <div className="client-auth-screen min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+            <div className="client-auth-background absolute inset-0 z-0">
                 <img
                     src={fondoPortada.image}
                     alt="Fondo de salón"
-                    className="w-full h-full object-cover"
+                    className="client-auth-background-image w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-black/40"></div>
+                <div className="client-auth-overlay absolute inset-0 bg-black/40"></div>
             </div>
 
             {onGoBack && (
                 <button
                     onClick={onGoBack}
-                    className="absolute top-4 left-4 z-20 w-10 h-10 bg-pink-500/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-pink-600 transition-colors border border-pink-300"
+                    className="client-auth-back absolute top-4 left-4 z-20 w-10 h-10 bg-pink-500/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-pink-600 transition-colors border border-pink-300"
                     title="Volver"
                 >
                     <i className="icon-arrow-left text-white text-xl"></i>
                 </button>
             )}
 
-            <div className="relative z-10 max-w-md w-full mx-auto">
-                <div className="bg-black/15 backdrop-blur-[1px] p-8 rounded-2xl shadow-2xl border border-pink-300/25">
+            <div className="client-auth-content relative z-10 max-w-md w-full mx-auto">
+                <div className="client-auth-card bg-black/15 backdrop-blur-[1px] p-8 rounded-2xl shadow-2xl border border-pink-300/25">
                     <div className="text-center mb-6">
                         {logoUrl ? (
                             <img
