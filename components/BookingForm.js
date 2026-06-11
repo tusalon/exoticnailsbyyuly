@@ -514,12 +514,13 @@ END:VCALENDAR`;
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="w-full text-white py-3.5 rounded-xl font-bold transition-colors disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-lg"
+                            className="w-full py-3.5 rounded-xl font-bold transition-colors disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-lg"
                             style={{
                                 background: submitting
                                     ? 'linear-gradient(135deg, #5b21b6, #7c3aed)'
-                                    : 'linear-gradient(135deg, #5b21b6, var(--brand-primary, #7c3aed))',
+                                    : 'linear-gradient(135deg, #5b21b6, #db2777)',
                                 color: '#fff',
+                                WebkitTextFillColor: '#fff',
                                 border: '1px solid rgba(91, 33, 182, 0.35)',
                                 opacity: 1
                             }}
