@@ -4651,9 +4651,20 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                         )}
 
                         <div className="bg-white p-4 rounded-xl shadow-sm space-y-3">
-                            <div className="flex flex-wrap gap-3 items-center">
-                                <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="border rounded-lg px-3 py-2 text-sm" />
-                                {filterDate && <button onClick={() => setFilterDate('')} className="text-pink-500 text-sm">Limpiar filtro</button>}
+                            <div className="space-y-2">
+                                <p className="text-xs uppercase tracking-wide text-gray-500 font-bold">Filtrar por día</p>
+                                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-center">
+                                    <input
+                                        type="date"
+                                        value={filterDate}
+                                        onChange={(e) => setFilterDate(e.target.value)}
+                                        className="col-span-2 sm:col-span-1 border border-gray-300 bg-white text-gray-900 rounded-lg px-3 py-2 text-sm font-semibold shadow-sm min-h-[42px]"
+                                        style={{ colorScheme: 'light' }}
+                                    />
+                                    <button onClick={() => setFilterDate(getCurrentLocalDate())} className={`px-3 py-2 rounded-lg text-sm font-bold border ${filterDate === getCurrentLocalDate() ? 'bg-pink-500 text-white border-pink-500' : 'bg-gray-100 text-gray-800 border-gray-200'}`}>Hoy</button>
+                                    <button onClick={() => setFilterDate(formatDate(addDays(new Date(), 1)))} className={`px-3 py-2 rounded-lg text-sm font-bold border ${filterDate === formatDate(addDays(new Date(), 1)) ? 'bg-pink-500 text-white border-pink-500' : 'bg-gray-100 text-gray-800 border-gray-200'}`}>Mañana</button>
+                                    <button onClick={() => setFilterDate('')} className={`px-3 py-2 rounded-lg text-sm font-bold border ${!filterDate ? 'bg-gray-900 text-white border-gray-900' : 'bg-gray-100 text-gray-800 border-gray-200'}`}>Todas</button>
+                                </div>
                             </div>
 
                             <div className="flex flex-wrap gap-2 items-center">
