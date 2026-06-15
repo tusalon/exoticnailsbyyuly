@@ -41,6 +41,7 @@ function EditarNegocio() {
         { id: 'ES', nombre: 'Espana', bandera: '🇪🇸', codigo: '34', ejemplo: '612345678', localLength: 9 },
         { id: 'MX', nombre: 'Mexico', bandera: '🇲🇽', codigo: '52', ejemplo: '5512345678', localLength: 10 },
         { id: 'US', nombre: 'USA', bandera: '🇺🇸', codigo: '1', ejemplo: '3055551234', localLength: 10 },
+        { id: 'RU', nombre: 'Rusia', bandera: '\uD83C\uDDF7\uD83C\uDDFA', codigo: '7', ejemplo: '9123456789', localLength: 10 },
         { id: 'VE', nombre: 'Venezuela', bandera: '🇻🇪', codigo: '58', ejemplo: '4121234567', localLength: 10 },
         { id: 'CO', nombre: 'Colombia', bandera: '🇨🇴', codigo: '57', ejemplo: '3001234567', localLength: 10 },
         { id: 'GY', nombre: 'Guyana', bandera: '🇬🇾', codigo: '592', ejemplo: '6123456', localLength: 7 }
