@@ -454,6 +454,7 @@ function AdminApp() {
     const [cargandoBloqueados, setCargandoBloqueados] = React.useState(false);
     const [nuevoBloqueo, setNuevoBloqueo] = React.useState({ nombre: '', whatsapp: '', codigo_pais: '53', motivo: '' });
     const [busquedaClienteManual, setBusquedaClienteManual] = React.useState('');
+    const [clienteDetalle, setClienteDetalle] = React.useState(null);
 
     const [showNuevaReservaModal, setShowNuevaReservaModal] = React.useState(false);
     const [creandoReservaManual, setCreandoReservaManual] = React.useState(false);
@@ -3020,9 +3021,18 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
 
     const normalizePhone = normalizarTelefonoLocalSeguro;
 
+    const getReservasCliente = (cliente) => {
+        const phone = normalizePhone(cliente?.whatsapp);
+        if (!phone) return [];
+
+        return bookings
+            .filter(b => normalizePhone(b.cliente_whatsapp) === phone)
+            .sort((a, b) => `${b.fecha || ''} ${b.hora_inicio || ''}`.localeCompare(`${a.fecha || ''} ${a.hora_inicio || ''}`));
+    };
+
     const getClienteScore = (cliente) => {
         const phone = normalizePhone(cliente.whatsapp);
-        const reservasCliente = bookings.filter(b => normalizePhone(b.cliente_whatsapp) === phone);
+        const reservasCliente = getReservasCliente(cliente);
         const total = reservasCliente.length;
         const completadas = reservasCliente.filter(b => b.estado === 'Completado').length;
         const canceladas = reservasCliente.filter(b => b.estado === 'Cancelado').length;
@@ -4322,12 +4332,25 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                 {cargandoClientes ? <p className="text-center text-pink-500">Cargando clientes...</p> : clientesRegistrados.length === 0 ? <p className="text-center text-gray-500">No hay clientes registrados</p> :
                                     clientesRegistrados.map((cliente, idx) => {
                                         const score = getClienteScore(cliente);
+                                        const reservasCliente = getReservasCliente(cliente);
                                         const ultimaCita = score.ultima
                                             ? `${window.formatFechaCompleta ? window.formatFechaCompleta(score.ultima.fecha) : score.ultima.fecha} ${formatTo12Hour(score.ultima.hora_inicio)}`
                                             : 'Sin citas';
 
                                         return (
-                                            <div key={idx} className="p-4 bg-gray-50 border border-gray-100 rounded-xl">
+                                            <div
+                                                key={idx}
+                                                role="button"
+                                                tabIndex="0"
+                                                onClick={() => setClienteDetalle({ cliente, reservas: reservasCliente, score })}
+                                                onKeyDown={(event) => {
+                                                    if (event.key === 'Enter' || event.key === ' ') {
+                                                        event.preventDefault();
+                                                        setClienteDetalle({ cliente, reservas: reservasCliente, score });
+                                                    }
+                                                }}
+                                                className="p-4 bg-gray-50 border border-gray-100 rounded-xl cursor-pointer hover:border-pink-200 hover:bg-pink-50/30 transition"
+                                            >
                                                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                                                     <div className="min-w-0">
                                                         <div className="flex flex-wrap items-center gap-2">
@@ -4337,14 +4360,15 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                                         </div>
                                                         <p className="text-sm text-gray-500 mt-1">+{cliente.whatsapp}</p>
                                                         <p className="text-xs text-gray-500 mt-1">Ultima cita: {ultimaCita}</p>
+                                                        <p className="text-xs font-semibold text-pink-600 mt-2">Tocar para ver todos sus turnos</p>
                                                     </div>
 
                                                     {(userRole === 'admin' || userNivel >= 3) && (
                                                         <div className="flex flex-wrap gap-2">
-                                                            <button onClick={() => handleBloquearCliente(cliente)} className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-black">
+                                                            <button onClick={(event) => { event.stopPropagation(); handleBloquearCliente(cliente); }} className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-black">
                                                                 Bloquear
                                                             </button>
-                                                            <button onClick={() => handleEliminarCliente(cliente.whatsapp)} className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600">
+                                                            <button onClick={(event) => { event.stopPropagation(); handleEliminarCliente(cliente.whatsapp); }} className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600">
                                                                 Quitar
                                                             </button>
                                                         </div>
@@ -4388,6 +4412,72 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                     })}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {clienteDetalle && (
+                    <div className="fixed inset-0 bg-black/50 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setClienteDetalle(null)}>
+                        <div className="bg-white w-full sm:max-w-2xl max-h-[88vh] rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden" onClick={(event) => event.stopPropagation()}>
+                            <div className="p-5 border-b bg-gradient-to-r from-white to-pink-50 flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                    <p className="text-xs font-bold uppercase text-pink-500 tracking-wide">Historial del cliente</p>
+                                    <h3 className="text-2xl font-bold text-gray-900 truncate">{clienteDetalle.cliente.nombre || 'Cliente'}</h3>
+                                    <p className="text-sm text-gray-500">+{clienteDetalle.cliente.whatsapp}</p>
+                                    <div className="flex flex-wrap gap-2 mt-3">
+                                        <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${clienteDetalle.score.tone}`}>{clienteDetalle.score.label}</span>
+                                        <span className="px-2.5 py-1 rounded-full bg-white border text-xs font-semibold text-gray-700">Score {clienteDetalle.score.score}/100</span>
+                                        <span className="px-2.5 py-1 rounded-full bg-pink-50 text-pink-700 border border-pink-100 text-xs font-semibold">{clienteDetalle.reservas.length} turnos</span>
+                                    </div>
+                                </div>
+                                <button onClick={() => setClienteDetalle(null)} className="w-10 h-10 rounded-full bg-white border text-gray-500 hover:text-gray-900 hover:bg-gray-50 text-xl leading-none">√ó</button>
+                            </div>
+
+                            <div className="p-5 overflow-y-auto max-h-[68vh] space-y-3">
+                                {clienteDetalle.reservas.length === 0 ? (
+                                    <div className="text-center py-10 bg-gray-50 rounded-xl border border-gray-100">
+                                        <p className="text-gray-500">Este cliente a√∫n no tiene turnos registrados.</p>
+                                    </div>
+                                ) : (
+                                    clienteDetalle.reservas.map((reserva, index) => {
+                                        const estado = reserva.estado || 'Reservado';
+                                        const estadoClass = agendaStatusStyle[estado] || 'bg-gray-50 border-l-gray-400 border-gray-100 text-gray-900';
+                                        const fecha = window.formatFechaCompleta ? window.formatFechaCompleta(reserva.fecha) : reserva.fecha;
+                                        const horaInicio = formatTo12Hour(reserva.hora_inicio);
+                                        const horaFin = reserva.hora_fin ? formatTo12Hour(reserva.hora_fin) : '';
+                                        const cobro = Number(reserva.monto_cobrado || 0);
+
+                                        return (
+                                            <div key={reserva.id || index} className={`rounded-xl border border-l-4 p-4 ${estadoClass}`}>
+                                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-bold">{fecha}</p>
+                                                        <p className="text-lg font-extrabold">{horaInicio}{horaFin ? ` - ${horaFin}` : ''}</p>
+                                                        <p className="font-semibold mt-2">{reserva.servicio || 'Servicio sin nombre'}</p>
+                                                        <p className="text-sm opacity-80">Profesional: {reserva.profesional_nombre || 'No asignado'}</p>
+                                                    </div>
+                                                    <span className="self-start px-3 py-1 rounded-full bg-white/80 border text-xs font-bold">{estado}</span>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 text-sm">
+                                                    <div className="bg-white/70 rounded-lg p-2 border">
+                                                        <p className="text-xs opacity-70">WhatsApp</p>
+                                                        <p className="font-semibold">+{reserva.cliente_whatsapp || clienteDetalle.cliente.whatsapp}</p>
+                                                    </div>
+                                                    <div className="bg-white/70 rounded-lg p-2 border">
+                                                        <p className="text-xs opacity-70">Cobro real</p>
+                                                        <p className="font-semibold">{cobro > 0 ? `$${cobro}` : 'Sin registrar'}</p>
+                                                    </div>
+                                                    <div className="bg-white/70 rounded-lg p-2 border">
+                                                        <p className="text-xs opacity-70">ID cita</p>
+                                                        <p className="font-semibold truncate">{reserva.id || '-'}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
 
