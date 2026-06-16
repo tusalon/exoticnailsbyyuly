@@ -87,6 +87,11 @@
             return digits;
         }
 
+        if (codigoExplicito) {
+            const otroPais = detectarTelefonoInternacional(digits);
+            if (otroPais && otroPais.codigo !== country.codigo) return digits;
+        }
+
         const local = normalizarTelefonoLocal(digits, country.codigo);
         return local ? `${country.codigo}${local}` : '';
     }
@@ -100,6 +105,7 @@
     window.PHONE_COUNTRIES = COUNTRIES;
     window.DEFAULT_PHONE_COUNTRY_CODE = DEFAULT_COUNTRY_CODE;
     window.onlyPhoneDigits = onlyDigits;
+    window.detectarPaisTelefono = (value) => detectarTelefonoInternacional(onlyDigits(value));
     window.getPhoneCountryConfig = (config = null) => getCountryByCode(getCodigoPaisTelefono(config));
     window.getCodigoPaisTelefono = getCodigoPaisTelefono;
     window.setCodigoPaisTelefono = setCodigoPaisTelefono;
