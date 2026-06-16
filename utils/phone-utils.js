@@ -62,8 +62,11 @@
         const digits = onlyDigits(value);
         if (!digits) return '';
 
+        const codigoExplicito = codigoPais !== null && codigoPais !== undefined && String(codigoPais).trim() !== '';
         const country = getCountryByCode(codigoPais || getCodigoPaisTelefono());
-        if (digits.startsWith(country.codigo) && digits.length > country.localLength) {
+        const longitudInternacionalEsperada = country.codigo.length + country.localLength;
+
+        if (!codigoExplicito && digits.startsWith(country.codigo) && digits.length >= longitudInternacionalEsperada) {
             return digits.slice(country.codigo.length);
         }
 
@@ -72,10 +75,18 @@
 
     function normalizarTelefonoInternacional(value, codigoPais = null) {
         const digits = onlyDigits(value);
-        const telefonoInternacional = detectarTelefonoInternacional(digits);
-        if (telefonoInternacional) return digits;
+        const codigoExplicito = codigoPais !== null && codigoPais !== undefined && String(codigoPais).trim() !== '';
+
+        if (!codigoExplicito) {
+            const telefonoInternacional = detectarTelefonoInternacional(digits);
+            if (telefonoInternacional) return digits;
+        }
 
         const country = getCountryByCode(codigoPais || getCodigoPaisTelefono());
+        if (codigoExplicito && digits.startsWith(country.codigo) && digits.length > country.localLength) {
+            return digits;
+        }
+
         const local = normalizarTelefonoLocal(digits, country.codigo);
         return local ? `${country.codigo}${local}` : '';
     }
