@@ -34,7 +34,9 @@ function EditarNegocio() {
         alias: '',
         titular: '',
         banco: '',
-        tiempo_vencimiento: 2
+        tiempo_vencimiento: 2,
+        whatsapp_moneda: 'CUP',
+        whatsapp_mostrar_costos: true
     });
     const paisesTelefono = window.PHONE_COUNTRIES || [
         { id: 'CU', nombre: 'Cuba', bandera: '🇨🇺', codigo: '53', ejemplo: '53066647', localLength: 8 },
@@ -95,7 +97,9 @@ function EditarNegocio() {
                     alias: configData.alias || '',
                     titular: configData.titular || '',
                     banco: configData.banco || '',
-                    tiempo_vencimiento: configData.tiempo_vencimiento || 2
+                    tiempo_vencimiento: configData.tiempo_vencimiento || 2,
+                    whatsapp_moneda: ['CUP', 'USD'].includes(String(configData.whatsapp_moneda || '').toUpperCase()) ? String(configData.whatsapp_moneda).toUpperCase() : 'CUP',
+                    whatsapp_mostrar_costos: configData.whatsapp_mostrar_costos !== false
                 });
             }
         } catch (error) {
@@ -212,6 +216,8 @@ function EditarNegocio() {
                 titular: config.titular || null,
                 banco: config.banco || null,
                 tiempo_vencimiento: config.tiempo_vencimiento ? parseInt(config.tiempo_vencimiento) : 2,
+                whatsapp_moneda: ['CUP', 'USD'].includes(String(config.whatsapp_moneda || '').toUpperCase()) ? String(config.whatsapp_moneda).toUpperCase() : 'CUP',
+                whatsapp_mostrar_costos: config.whatsapp_mostrar_costos !== false,
                 updated_at: new Date().toISOString()
             };
 
@@ -238,9 +244,13 @@ function EditarNegocio() {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('❌ Error response:', errorText);
-                if (errorText.includes('codigo_pais')) {
+                if (errorText.includes('codigo_pais') || errorText.includes('whatsapp_moneda') || errorText.includes('whatsapp_mostrar_costos')) {
                     const datosCompatibles = { ...datosActualizar };
-                    delete datosCompatibles.codigo_pais;
+                    if (errorText.includes('codigo_pais')) delete datosCompatibles.codigo_pais;
+                    if (errorText.includes('whatsapp_moneda') || errorText.includes('whatsapp_mostrar_costos')) {
+                        delete datosCompatibles.whatsapp_moneda;
+                        delete datosCompatibles.whatsapp_mostrar_costos;
+                    }
                     response = await fetch(url, {
                         method: 'PATCH',
                         headers: {
@@ -773,6 +783,41 @@ function EditarNegocio() {
                                     <p className="text-xs text-gray-400 mt-1">
                                         Variables: {'{cliente}'}, {'{nombre_negocio}'}, {'{servicio}'}, {'{fecha}'}, {'{hora}'}, {'{profesional}'}.
                                     </p>
+                                </div>
+                                <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+                                    <div className="flex items-start justify-between gap-4 mb-4">
+                                        <div>
+                                            <h3 className="font-semibold text-gray-900">Costos en WhatsApp</h3>
+                                            <p className="text-xs text-gray-600 mt-1">
+                                                Define si los mensajes de reserva muestran importes y en que moneda se escriben.
+                                            </p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                            <input
+                                                type="checkbox"
+                                                checked={config.whatsapp_mostrar_costos !== false}
+                                                onChange={(e) => setConfig({...config, whatsapp_mostrar_costos: e.target.checked})}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                                        </label>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Moneda para mensajes
+                                        </label>
+                                        <select
+                                            value={config.whatsapp_moneda || 'CUP'}
+                                            onChange={(e) => setConfig({...config, whatsapp_moneda: e.target.value})}
+                                            className="w-full border border-amber-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                        >
+                                            <option value="CUP">CUP - Pesos cubanos</option>
+                                            <option value="USD">USD - Dolares</option>
+                                        </select>
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            Si desactivas los costos, se ocultan los totales de los mensajes generados por WhatsApp.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

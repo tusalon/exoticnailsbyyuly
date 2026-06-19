@@ -96,6 +96,18 @@ function aplicarTemaNegocio(config = {}) {
 
 window.aplicarTemaNegocio = aplicarTemaNegocio;
 
+function normalizarPreferenciasWhatsApp(config = {}) {
+    const moneda = String(config.whatsapp_moneda || 'CUP').toUpperCase();
+    return {
+        moneda: ['CUP', 'USD'].includes(moneda) ? moneda : 'CUP',
+        mostrarCostos: config.whatsapp_mostrar_costos !== false
+    };
+}
+
+window.getPreferenciasWhatsAppNegocio = function(config = null) {
+    return normalizarPreferenciasWhatsApp(config || configCache || {});
+};
+
 /**
  * Obtiene el negocio_id propio de este cliente.
  */
@@ -153,6 +165,9 @@ window.cargarConfiguracionNegocio = async function(forceRefresh = false) {
         ultimaActualizacion = Date.now();
         
         if (configCache) {
+            const preferenciasWhatsApp = normalizarPreferenciasWhatsApp(configCache);
+            configCache.whatsapp_moneda = preferenciasWhatsApp.moneda;
+            configCache.whatsapp_mostrar_costos = preferenciasWhatsApp.mostrarCostos;
             if (window.setCodigoPaisTelefono) {
                 window.setCodigoPaisTelefono(configCache.codigo_pais || configCache.codigo_pais_telefono || '53');
             }
