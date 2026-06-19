@@ -1,6 +1,6 @@
 // sw.js - Service Worker para Exotic Nails by Yuly
 
-const CACHE_NAME = 'exoticnailsbyyuly-v58';
+const CACHE_NAME = 'exoticnailsbyyuly-v59';
 const urlsToCache = [
   '/exoticnailsbyyuly/',
   '/exoticnailsbyyuly/index.html',
@@ -25,6 +25,7 @@ const urlsToCache = [
   '/exoticnailsbyyuly/vendor/tailwind-browser.js',
   '/exoticnailsbyyuly/vendor/lucide/lucide.css',
   '/exoticnailsbyyuly/vendor/lucide/lucide.woff2',
+  '/exoticnailsbyyuly/utils/legacy-ios-fallback.css?v=20260619-ios15',
   '/exoticnailsbyyuly/utils/push-config.js',
   '/exoticnailsbyyuly/utils/push-notifications.js'
 ];
