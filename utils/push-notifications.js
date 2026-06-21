@@ -124,6 +124,7 @@ async function getRegistroServiceWorkerPush() {
 
 async function guardarSuscripcionPush(subscription, role) {
     const negocioId = getNegocioIdPush();
+    console.log('[Push] guardarSuscripcionPush - negocioId:', negocioId, 'role:', role);
     if (!negocioId) throw new Error('No hay negocio_id para guardar la suscripcion push.');
 
     const payload = {
@@ -136,6 +137,9 @@ async function guardarSuscripcionPush(subscription, role) {
         updated_at: new Date().toISOString()
     };
 
+    console.log('[Push] endpoint:', subscription.endpoint?.substring(0, 60));
+    console.log('[Push] SUPABASE_URL:', window.SUPABASE_URL);
+
     const response = await fetch(`${window.SUPABASE_URL}/rest/v1/push_suscripciones`, {
         method: 'POST',
         headers: {
@@ -147,11 +151,14 @@ async function guardarSuscripcionPush(subscription, role) {
         body: JSON.stringify(payload)
     });
 
+    console.log('[Push] respuesta HTTP:', response.status);
     if (!response.ok) {
         const errorText = await response.text();
+        console.error('[Push] error guardando:', errorText);
         throw new Error(`No se pudo guardar la suscripcion push: ${errorText}`);
     }
 
+    console.log('[Push] suscripcion guardada OK');
     localStorage.setItem('rservasPushActivo', 'true');
     localStorage.setItem('rservasPushRole', role);
     return true;
@@ -192,17 +199,21 @@ window.solicitarPushRservasRoma = async function(options = {}) {
     }
 
     try {
+        console.log('[Push] VAPID key:', window.RSERVAS_PUSH_PUBLIC_KEY?.substring(0, 20));
         let subscription = await registration.pushManager.getSubscription();
+        console.log('[Push] suscripcion existente:', subscription ? 'SI' : 'NO');
         if (!subscription) {
+            console.log('[Push] creando nueva suscripcion...');
             subscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(window.RSERVAS_PUSH_PUBLIC_KEY)
             });
+            console.log('[Push] suscripcion creada:', subscription.endpoint?.substring(0, 60));
         }
         await guardarSuscripcionPush(subscription.toJSON ? subscription.toJSON() : subscription, role);
         return { ok: true };
     } catch (err) {
-        console.warn('Push: error suscribiendo:', err.message);
+        console.error('[Push] error:', err.name, err.message);
         return { ok: false, error: err.message };
     }
 };
