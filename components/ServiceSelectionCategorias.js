@@ -59,6 +59,7 @@ function ServiceSelection({ onSelect, selectedService }) {
     const datosCargadosRef = React.useRef(false);
     const [categoriaActiva, setCategoriaActiva] = React.useState('todos');
     const [serviciosSeleccionados, setServiciosSeleccionados] = React.useState([]);
+    const [busqueda, setBusqueda] = React.useState('');
 
     React.useEffect(() => {
         cargarDatos();
@@ -105,10 +106,16 @@ function ServiceSelection({ onSelect, selectedService }) {
         }
     }, [categoriasVisibles, categoriaActiva]);
 
+    const normalizar = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
     const serviciosFiltrados = React.useMemo(() => {
-        if (categoriaActiva === 'todos') return services;
-        return services.filter(servicio => inferirCategoriaCliente(servicio, categorias) === categoriaActiva);
-    }, [services, categorias, categoriaActiva]);
+        let lista = categoriaActiva === 'todos' ? services : services.filter(s => inferirCategoriaCliente(s, categorias) === categoriaActiva);
+        if (busqueda.trim()) {
+            const q = normalizar(busqueda);
+            lista = lista.filter(s => normalizar(s.nombre).includes(q) || normalizar(s.descripcion).includes(q));
+        }
+        return lista;
+    }, [services, categorias, categoriaActiva, busqueda]);
 
     const totalSeleccion = React.useMemo(() => {
         return serviciosSeleccionados.reduce((total, servicio) => ({
@@ -182,6 +189,22 @@ function ServiceSelection({ onSelect, selectedService }) {
                 </div>
             ) : (
                 <>
+                    {services.length > 5 && (
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={busqueda}
+                                onChange={e => { setBusqueda(e.target.value); setCategoriaActiva('todos'); }}
+                                placeholder="Buscar servicio..."
+                                className="w-full px-4 py-2 pl-9 rounded-xl border border-pink-200 bg-white/80 text-pink-800 placeholder-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400 text-sm"
+                            />
+                            <span className="absolute left-3 top-2.5 text-pink-400 text-sm">🔍</span>
+                            {busqueda && (
+                                <button onClick={() => setBusqueda('')} className="absolute right-3 top-2.5 text-pink-400 text-sm hover:text-pink-600">✕</button>
+                            )}
+                        </div>
+                    )}
+
                     <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                         {categoriasVisibles.map(categoria => {
                             const id = catId(categoria);
@@ -199,6 +222,12 @@ function ServiceSelection({ onSelect, selectedService }) {
                             );
                         })}
                     </div>
+
+                    {busqueda && serviciosFiltrados.length === 0 && (
+                        <div className="text-center py-6 text-pink-400 text-sm">
+                            No hay servicios que coincidan con "{busqueda}"
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 gap-3">
                         {serviciosFiltrados.map(service => {

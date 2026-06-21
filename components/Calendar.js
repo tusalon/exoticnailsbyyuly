@@ -191,6 +191,8 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
         // Un dia lleno se deja seleccionado para que TimeSlots muestre la lista de espera.
     }, [selectedDate, fechasSinDisponibilidad, cargandoDisponibilidad, disponibilidadVerificada]);
 
+    const peticionMesRef = React.useRef(0);
+
     const verificarDisponibilidadMes = async (horarios, descansos = {}, configOverride = null) => {
         if (!service || !profesional) {
             setFechasSinDisponibilidad([]);
@@ -198,6 +200,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
             return;
         }
 
+        const miPeticion = ++peticionMesRef.current;
         setCargandoDisponibilidad(true);
         setDisponibilidadVerificada(false);
         
@@ -305,14 +308,17 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                 }
             }
             
+            // Descartar resultado si llegó una petición más reciente
+            if (peticionMesRef.current !== miPeticion) return;
             setFechasSinDisponibilidad(sinDisponibilidad);
             setDisponibilidadVerificada(true);
         } catch (error) {
             console.error('Error verificando disponibilidad real del mes:', error);
+            if (peticionMesRef.current !== miPeticion) return;
             setFechasSinDisponibilidad([]);
             setDisponibilidadVerificada(true);
         } finally {
-            setCargandoDisponibilidad(false);
+            if (peticionMesRef.current === miPeticion) setCargandoDisponibilidad(false);
         }
     };
 

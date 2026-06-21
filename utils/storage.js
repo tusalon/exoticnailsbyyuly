@@ -1,5 +1,27 @@
 // utils/storage.js - Imagenes de servicios en Cloudinary
 
+// Polyfill localStorage para modo privado en iOS (donde lanza SecurityError)
+(function() {
+    try {
+        localStorage.setItem('__ls_test__', '1');
+        localStorage.removeItem('__ls_test__');
+    } catch (e) {
+        const mem = {};
+        Object.defineProperty(window, 'localStorage', {
+            value: {
+                getItem:    (k) => Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null,
+                setItem:    (k, v) => { mem[String(k)] = String(v); },
+                removeItem: (k) => { delete mem[k]; },
+                clear:      () => { Object.keys(mem).forEach(k => delete mem[k]); },
+                key:        (i) => Object.keys(mem)[i] || null,
+                get length() { return Object.keys(mem).length; }
+            },
+            writable: false, configurable: true
+        });
+        console.warn('localStorage no disponible (modo privado) — usando memoria temporal');
+    }
+})();
+
 console.log('storage.js cargado (Cloudinary)');
 
 const CLOUDINARY_MAX_ORIGINAL_MB = 8;
