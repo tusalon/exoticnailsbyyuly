@@ -170,150 +170,110 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
                 </button>
             )}
 
-            {/* Contenido scrolleable */}
-            <div className="client-welcome-content relative z-10 min-h-screen flex flex-col items-center justify-center py-14 px-4">
+            {/* Contenido — altura fija, todo visible sin scroll */}
+            <div className="client-welcome-content relative z-10 flex flex-col items-center justify-center px-4"
+                style={{ minHeight: '100svh', paddingTop: 'max(56px, env(safe-area-inset-top))', paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
                 <div
-                    className="client-welcome-card w-full max-w-2xl bg-black/15 backdrop-blur-[1px] p-6 sm:p-10 rounded-3xl shadow-2xl border my-auto"
+                    className="client-welcome-card w-full max-w-sm bg-black/15 backdrop-blur-[1px] p-4 rounded-2xl shadow-2xl border"
                     style={{
                         borderColor: hexToRgba(colorSecundario, 0.42),
-                        boxShadow: `0 24px 70px ${hexToRgba(colorPrimario, 0.22)}`
+                        boxShadow: `0 16px 48px ${hexToRgba(colorPrimario, 0.22)}`
                     }}
                 >
-                    <div className="text-center space-y-6">
+                    <div className="text-center space-y-3">
+
                         {/* Logo o sticker */}
                         {config?.logo_url ? (
-                            <img 
-                                src={config.logo_url} 
-                                alt={config.nombre} 
-                                className="w-20 h-20 sm:w-24 sm:h-24 object-contain mx-auto rounded-2xl shadow-2xl ring-4"
-                                style={{ '--tw-ring-color': hexToRgba(colorSecundario, 0.45) }}
-                            />
+                            <img src={config.logo_url} alt={config.nombre}
+                                className="w-14 h-14 object-contain mx-auto rounded-xl shadow-lg ring-2"
+                                style={{ '--tw-ring-color': hexToRgba(colorSecundario, 0.45) }} />
                         ) : (
-                            <div 
-                                className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl mx-auto flex items-center justify-center shadow-2xl ring-4"
-                                style={{
-                                    background: `linear-gradient(135deg, ${colorPrimario}, ${colorSecundario})`,
-                                    '--tw-ring-color': hexToRgba(colorSecundario, 0.45)
-                                }}
-                            >
-                                <span className="text-4xl sm:text-5xl">{sticker}</span>
+                            <div className="w-14 h-14 rounded-xl mx-auto flex items-center justify-center shadow-lg ring-2"
+                                style={{ background: `linear-gradient(135deg, ${colorPrimario}, ${colorSecundario})`, '--tw-ring-color': hexToRgba(colorSecundario, 0.45) }}>
+                                <span className="text-3xl">{sticker}</span>
                             </div>
                         )}
-                        
-                        {/* 🔥 TÍTULO CORREGIDO - SIN DESBORDAMIENTO */}
-                        <div className="space-y-2">
-                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white leading-tight drop-shadow-lg">
-                                Bienvenida a
-                            </h1>
-                            <div
-                                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold break-words px-2"
-                                style={{
-                                    color: colorSecundario,
-                                    textShadow: `0 2px 20px ${hexToRgba(colorPrimario, 0.45)}`
-                                }}
-                            >
+
+                        {/* Título */}
+                        <div>
+                            <p className="text-sm font-medium text-white/80">Bienvenida a</p>
+                            <div className="text-xl font-bold break-words leading-tight"
+                                style={{ color: colorSecundario, textShadow: `0 2px 12px ${hexToRgba(colorPrimario, 0.45)}` }}>
                                 {config?.nombre || 'Mi Salón'}
                             </div>
                         </div>
-                        
+
+                        {/* Nombre cliente */}
                         {cliente && (
-                            <p className="text-white/90 text-base sm:text-lg bg-black/20 inline-block px-4 py-1 rounded-full">
+                            <p className="text-white/90 text-sm bg-black/20 inline-block px-3 py-0.5 rounded-full">
                                 ✨ {cliente.nombre} ✨
                             </p>
                         )}
-                        
-                        <p className="text-white/90 text-base sm:text-lg md:text-xl max-w-lg mx-auto px-2">
+
+                        {/* Mensaje bienvenida — máximo 3 líneas */}
+                        <p className="text-white/80 text-sm max-w-xs mx-auto leading-snug"
+                            style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                             {config?.mensaje_bienvenida || '¡Bienvenida a nuestro salón!'}
                         </p>
 
-                        {/* BOTONES DE REDES SOCIALES */}
+                        {/* Redes sociales */}
                         {tieneRedes && (
-                            <div className="flex justify-center gap-3 sm:gap-4 pt-4 flex-wrap">
+                            <div className="flex justify-center gap-3">
                                 {tieneWhatsApp && (
-                                    <button
-                                        onClick={abrirWhatsApp}
-                                        className="w-12 h-12 sm:w-14 sm:h-14 bg-[#25D366] rounded-full flex items-center justify-center hover:scale-[1.03] transition-all duration-300 transform hover:shadow-lg border border-white/35 group relative"
-                                        title="Contactar por WhatsApp"
-                                    >
-                                        <i className="icon-message-circle text-white text-xl sm:text-2xl"></i>
-                                        <span className="absolute -top-8 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
-                                            WhatsApp
-                                        </span>
+                                    <button onClick={abrirWhatsApp} title="WhatsApp"
+                                        className="w-10 h-10 bg-[#25D366] rounded-full flex items-center justify-center border border-white/30 hover:scale-105 transition-transform">
+                                        <i className="icon-message-circle text-white text-lg"></i>
                                     </button>
                                 )}
-                                
                                 {tieneInstagram && (
-                                    <button
-                                        onClick={abrirInstagram}
-                                        className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-full flex items-center justify-center hover:scale-[1.03] transition-all duration-300 transform hover:shadow-lg border border-white/35 group relative"
-                                        title="Instagram"
-                                    >
-                                        <i className="icon-instagram text-white text-xl sm:text-2xl"></i>
-                                        <span className="absolute -top-8 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
-                                            Instagram
-                                        </span>
+                                    <button onClick={abrirInstagram} title="Instagram"
+                                        className="w-10 h-10 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-full flex items-center justify-center border border-white/30 hover:scale-105 transition-transform">
+                                        <i className="icon-instagram text-white text-lg"></i>
                                     </button>
                                 )}
-                                
                                 {tieneFacebook && (
-                                    <button
-                                        onClick={abrirFacebook}
-                                        className="w-12 h-12 sm:w-14 sm:h-14 bg-[#1877F2] rounded-full flex items-center justify-center hover:scale-[1.03] transition-all duration-300 transform hover:shadow-lg border border-white/35 group relative"
-                                        title="Facebook"
-                                    >
-                                        <i className="icon-facebook text-white text-xl sm:text-2xl"></i>
-                                        <span className="absolute -top-8 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
-                                            Facebook
-                                        </span>
+                                    <button onClick={abrirFacebook} title="Facebook"
+                                        className="w-10 h-10 bg-[#1877F2] rounded-full flex items-center justify-center border border-white/30 hover:scale-105 transition-transform">
+                                        <i className="icon-facebook text-white text-lg"></i>
                                     </button>
                                 )}
                             </div>
                         )}
 
-                        {/* Botón de notificaciones */}
+                        {/* Botón notificaciones */}
                         {pushEstado !== 'unsupported' && pushEstado !== 'denied' && (
-                            <div className="pt-2">
-                                {pushEstado === 'granted' ? (
-                                    <p className="text-white/70 text-sm flex items-center justify-center gap-1">
-                                        🔔 Recordatorios activados
-                                    </p>
-                                ) : (
-                                    <button onClick={activarNotificaciones} disabled={activandoPush}
-                                        className="text-white/80 text-sm border border-white/30 rounded-full px-4 py-2 hover:bg-white/10 transition flex items-center gap-2 mx-auto disabled:opacity-50">
-                                        🔔 {activandoPush ? 'Activando...' : 'Activar recordatorios de turnos'}
-                                    </button>
-                                )}
-                            </div>
+                            pushEstado === 'granted' ? (
+                                <p className="text-white/60 text-xs flex items-center justify-center gap-1">🔔 Recordatorios activados</p>
+                            ) : (
+                                <button onClick={activarNotificaciones} disabled={activandoPush}
+                                    className="text-white/80 text-xs border border-white/30 rounded-full px-4 py-1.5 hover:bg-white/10 transition flex items-center gap-1.5 mx-auto disabled:opacity-50">
+                                    🔔 {activandoPush ? 'Activando...' : 'Activar recordatorios'}
+                                </button>
+                            )
                         )}
 
-                        <div className="pt-4 sm:pt-6">
-                            <button
-                                onClick={onStart}
-                                className="text-white text-base sm:text-lg font-bold py-3 sm:py-4 px-8 sm:px-10 rounded-full shadow-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl active:scale-[0.99] flex items-center justify-center gap-2 mx-auto border w-full sm:w-auto"
-                                style={{
-                                    background: `linear-gradient(135deg, ${colorPrimario}, ${colorSecundario})`,
-                                    borderColor: hexToRgba(colorSecundario, 0.7),
-                                    boxShadow: `0 18px 42px ${hexToRgba(colorPrimario, 0.35)}`
-                                }}
-                            >
-                                <span className="text-lg sm:text-xl">💖</span>
-                                <span>Reservar Turno</span>
-                                <span className="text-lg sm:text-xl">✨</span>
-                            </button>
-                        </div>
+                        {/* Botón principal */}
+                        <button onClick={onStart}
+                            className="w-full text-white font-bold py-3 rounded-full shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 border"
+                            style={{
+                                background: `linear-gradient(135deg, ${colorPrimario}, ${colorSecundario})`,
+                                borderColor: hexToRgba(colorSecundario, 0.7),
+                                boxShadow: `0 10px 28px ${hexToRgba(colorPrimario, 0.35)}`
+                            }}>
+                            <span>💖</span>
+                            <span>Reservar Turno</span>
+                            <span>✨</span>
+                        </button>
 
-                        {/* Horario de atención si está configurado */}
+                        {/* Horario */}
                         {config?.horario_atencion && (
-                            <div className="text-xs sm:text-sm text-white/80 bg-black/20 p-3 rounded-lg mt-4">
-                                <span className="font-semibold">🕐 Horario:</span> {config.horario_atencion}
-                            </div>
+                            <p className="text-xs text-white/70">
+                                🕐 {config.horario_atencion}
+                            </p>
                         )}
                     </div>
                 </div>
             </div>
-
-            {/* Sticker flotante decorativo */}
-            <div className="fixed top-20 right-4 text-3xl sm:text-4xl opacity-30 -rotate-12 select-none pointer-events-none">🌸</div>
         </div>
     );
 }
