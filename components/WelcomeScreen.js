@@ -41,11 +41,22 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
                     .then(res => {
                         if (res?.ok) {
                             setPushMensaje('');
-                        } else if (res?.error === 'sw_not_ready') {
-                            setPushMensaje('Activa la app desde pantalla de inicio para recibir avisos');
+                        } else {
+                            const msg = res?.error || 'error';
+                            console.warn('Push resultado:', msg);
+                            if (msg === 'sw_not_ready') {
+                                setPushMensaje('Instala la app en tu pantalla de inicio para recibir avisos');
+                            } else if (msg.includes('applicationServerKey') || msg.includes('VAPID') || msg.includes('key')) {
+                                setPushMensaje('Recarga la app y vuelve a intentarlo');
+                            } else {
+                                setPushMensaje('No se pudo activar: ' + msg.substring(0, 60));
+                            }
                         }
                     })
-                    .catch(() => {})
+                    .catch(err => {
+                        console.warn('Push error:', err);
+                        setPushMensaje('Error: ' + String(err).substring(0, 60));
+                    })
                     .finally(() => setActivandoPush(false));
             }).catch(() => setActivandoPush(false));
         }
