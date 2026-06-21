@@ -3,21 +3,32 @@
 function Confirmation({ booking, onReset }) {
     const [telefonoDuenno, setTelefonoDuenno] = React.useState('55002272');
     const [nombreNegocio, setNombreNegocio] = React.useState('Negocio de Prueba');
+    const [estrellas, setEstrellas] = React.useState(0);
+    const [valoracionEnviada, setValoracionEnviada] = React.useState(false);
+    const [hoverEstrella, setHoverEstrella] = React.useState(0);
 
     React.useEffect(() => {
-        // Cargar datos del negocio
         const cargarDatos = async () => {
             try {
                 const tel = await window.getTelefonoDuenno();
                 const nombre = await window.getNombreNegocio();
                 setTelefonoDuenno(tel);
                 setNombreNegocio(nombre);
-            } catch (error) {
-                console.error('Error cargando datos:', error);
-            }
+            } catch (error) {}
         };
         cargarDatos();
+        // Ver si ya valoró esta reserva
+        if (booking?.id) {
+            const ya = localStorage.getItem(`val_${booking.id}`);
+            if (ya) { setEstrellas(parseInt(ya)); setValoracionEnviada(true); }
+        }
     }, []);
+
+    const enviarValoracion = (n) => {
+        setEstrellas(n);
+        setValoracionEnviada(true);
+        if (booking?.id) localStorage.setItem(`val_${booking.id}`, String(n));
+    };
 
     // ⚡ ELIMINADO: useEffect con setTimeout que causaba problemas en iOS
     // Ahora el WhatsApp se envía en BookingForm.js inmediatamente
@@ -90,6 +101,42 @@ function Confirmation({ booking, onReset }) {
                         <p className="text-xs text-pink-600">✅ Notificaciones enviadas</p>
                     </div>
                 </div>
+            </div>
+
+            {/* Valoración */}
+            <div className="w-full max-w-sm mb-4 bg-white/90 backdrop-blur-sm p-5 rounded-2xl border-2 border-pink-200 shadow-sm text-center">
+                {!valoracionEnviada ? (
+                    <>
+                        <p className="font-semibold text-pink-800 mb-1">¿Cómo fue tu experiencia?</p>
+                        <p className="text-xs text-pink-500 mb-3">Tu opinión nos ayuda a mejorar</p>
+                        <div className="flex justify-center gap-2">
+                            {[1,2,3,4,5].map(n => (
+                                <button key={n}
+                                    onClick={() => enviarValoracion(n)}
+                                    onMouseEnter={() => setHoverEstrella(n)}
+                                    onMouseLeave={() => setHoverEstrella(0)}
+                                    className="text-3xl transition-transform hover:scale-110 active:scale-95"
+                                    style={{ filter: (hoverEstrella || estrellas) >= n ? 'none' : 'grayscale(1) opacity(0.4)' }}>
+                                    ⭐
+                                </button>
+                            ))}
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex flex-col items-center gap-1">
+                        <div className="flex gap-1 text-2xl mb-1">
+                            {[1,2,3,4,5].map(n => (
+                                <span key={n} style={{ filter: estrellas >= n ? 'none' : 'grayscale(1) opacity(0.3)' }}>⭐</span>
+                            ))}
+                        </div>
+                        <p className="font-semibold text-pink-700">
+                            {estrellas >= 5 ? '¡Gracias, eso nos encanta!' :
+                             estrellas >= 4 ? '¡Gracias por tu valoración!' :
+                             estrellas >= 3 ? 'Gracias, seguiremos mejorando.' :
+                             'Gracias, tomaremos nota para mejorar.'}
+                        </p>
+                    </div>
+                )}
             </div>
 
             <div className="flex flex-col gap-3 w-full max-w-xs">

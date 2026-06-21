@@ -4,7 +4,7 @@ function MyBookings({ cliente, onVolver }) {
     const [bookings, setBookings] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
     const [cancelando, setCancelando] = React.useState(false);
-    const [filtro, setFiltro] = React.useState('activas');
+    const [filtro, setFiltro] = React.useState('proximas');
     const [mensajeError, setMensajeError] = React.useState('');
     const [negocioId, setNegocioId] = React.useState(null);
     const [minCancelacionHoras, setMinCancelacionHoras] = React.useState(1);
@@ -312,12 +312,19 @@ function MyBookings({ cliente, onVolver }) {
         }
     };
 
+    const hoy = new Date().toISOString().slice(0, 10);
+    const esPasado = (b) => b.fecha < hoy || b.estado === 'Completado' || b.estado === 'Ausente';
+    const esProximo = (b) => !esPasado(b) && b.estado !== 'Cancelado';
+
     const reservasFiltradas = bookings.filter(b =>
-        filtro === 'activas' ? b.estado !== 'Cancelado' :
+        filtro === 'proximas'   ? esProximo(b) :
+        filtro === 'historial'  ? esPasado(b) :
         filtro === 'canceladas' ? b.estado === 'Cancelado' : true
     );
-    const activasCount = bookings.filter(b => b.estado !== 'Cancelado').length;
+    const proximasCount   = bookings.filter(esProximo).length;
+    const historialCount  = bookings.filter(esPasado).length;
     const canceladasCount = bookings.filter(b => b.estado === 'Cancelado').length;
+    const activasCount    = proximasCount;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-pink-50 to-pink-100 pb-20">
@@ -388,7 +395,11 @@ function MyBookings({ cliente, onVolver }) {
                 )}
 
                 <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                    {[['activas', `Activas (${activasCount})`], ['canceladas', `Canceladas (${canceladasCount})`], ['todas', `Todas (${bookings.length})`]].map(([key, label]) => (
+                    {[
+                        ['proximas',   `Próximas (${proximasCount})`],
+                        ['historial',  `Historial (${historialCount})`],
+                        ['canceladas', `Canceladas (${canceladasCount})`],
+                    ].map(([key, label]) => (
                         <button key={key} onClick={() => setFiltro(key)}
                             className={`px-4 py-2 rounded-full text-sm font-medium transition whitespace-nowrap
                                 ${filtro === key ? 'bg-pink-500 text-white shadow-md' : 'bg-pink-100 text-pink-700 hover:bg-pink-200'}`}>
@@ -397,6 +408,16 @@ function MyBookings({ cliente, onVolver }) {
                     ))}
                 </div>
 
+                {filtro === 'historial' && historialCount > 0 && (
+                    <div className="bg-pink-50 border border-pink-200 rounded-xl p-4 mb-4 flex items-center gap-3">
+                        <span className="text-3xl">💅</span>
+                        <div>
+                            <p className="font-semibold text-pink-800">{historialCount} visita{historialCount !== 1 ? 's' : ''} en total</p>
+                            <p className="text-xs text-pink-500">Gracias por elegirnos siempre</p>
+                        </div>
+                    </div>
+                )}
+
                 {loading ? (
                     <div className="text-center py-12">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto"></div>
@@ -404,9 +425,15 @@ function MyBookings({ cliente, onVolver }) {
                     </div>
                 ) : reservasFiltradas.length === 0 ? (
                     <div className="text-center py-12 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-pink-200">
-                        <div className="text-6xl mb-4">📅✨</div>
-                        <p className="text-pink-600 mb-2">No tienes reservas {filtro !== 'todas' ? filtro : ''}</p>
-                        <button onClick={onVolver} className="text-pink-500 font-medium hover:underline">Reservar un turno</button>
+                        <div className="text-6xl mb-4">{filtro === 'historial' ? '📖' : '📅'}</div>
+                        <p className="text-pink-600 mb-2">
+                            {filtro === 'proximas' ? 'No tienes turnos próximos' :
+                             filtro === 'historial' ? 'Aún no tienes visitas pasadas' :
+                             'No tienes turnos cancelados'}
+                        </p>
+                        {filtro === 'proximas' && (
+                            <button onClick={onVolver} className="text-pink-500 font-medium hover:underline">Reservar un turno</button>
+                        )}
                     </div>
                 ) : (
                     <div className="space-y-4">

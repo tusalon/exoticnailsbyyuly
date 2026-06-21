@@ -4,6 +4,26 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
     const [config, setConfig] = React.useState(null);
     const [cargando, setCargando] = React.useState(true);
     const [imagenCargada, setImagenCargada] = React.useState(false);
+    const [pushEstado, setPushEstado] = React.useState('');
+    const [activandoPush, setActivandoPush] = React.useState(false);
+
+    React.useEffect(() => {
+        if ('Notification' in window) setPushEstado(Notification.permission);
+        else setPushEstado('unsupported');
+    }, []);
+
+    const activarNotificaciones = async () => {
+        setActivandoPush(true);
+        try {
+            if (typeof window.solicitarPushRservasRoma === 'function') {
+                await window.solicitarPushRservasRoma({ rol: 'cliente' });
+            } else {
+                await Notification.requestPermission();
+            }
+            if ('Notification' in window) setPushEstado(Notification.permission);
+        } catch {}
+        setActivandoPush(false);
+    };
 
     React.useEffect(() => {
         const cargarDatos = async () => {
@@ -250,8 +270,24 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
                             </div>
                         )}
 
+                        {/* Botón de notificaciones */}
+                        {pushEstado !== 'unsupported' && pushEstado !== 'denied' && (
+                            <div className="pt-2">
+                                {pushEstado === 'granted' ? (
+                                    <p className="text-white/70 text-sm flex items-center justify-center gap-1">
+                                        🔔 Recordatorios activados
+                                    </p>
+                                ) : (
+                                    <button onClick={activarNotificaciones} disabled={activandoPush}
+                                        className="text-white/80 text-sm border border-white/30 rounded-full px-4 py-2 hover:bg-white/10 transition flex items-center gap-2 mx-auto disabled:opacity-50">
+                                        🔔 {activandoPush ? 'Activando...' : 'Activar recordatorios de turnos'}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
                         <div className="pt-4 sm:pt-6">
-                            <button 
+                            <button
                                 onClick={onStart}
                                 className="text-white text-base sm:text-lg font-bold py-3 sm:py-4 px-8 sm:px-10 rounded-full shadow-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl active:scale-[0.99] flex items-center justify-center gap-2 mx-auto border w-full sm:w-auto"
                                 style={{
