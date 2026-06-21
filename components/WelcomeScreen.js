@@ -13,15 +13,20 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
     }, []);
 
     const activarNotificaciones = async () => {
+        if (!('Notification' in window)) {
+            setPushEstado('unsupported');
+            return;
+        }
         setActivandoPush(true);
         try {
-            if (typeof window.solicitarPushRservasRoma === 'function') {
-                await window.solicitarPushRservasRoma({ rol: 'cliente' });
-            } else {
-                await Notification.requestPermission();
+            const permiso = await Notification.requestPermission();
+            setPushEstado(permiso);
+            if (permiso === 'granted' && typeof window.solicitarPushRservasRoma === 'function') {
+                window.solicitarPushRservasRoma({ rol: 'cliente' }).catch(() => {});
             }
-            if ('Notification' in window) setPushEstado(Notification.permission);
-        } catch {}
+        } catch {
+            setPushEstado(Notification.permission);
+        }
         setActivandoPush(false);
     };
 
@@ -210,9 +215,8 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
                             </p>
                         )}
 
-                        {/* Mensaje bienvenida — máximo 3 líneas */}
-                        <p className="text-white/80 text-sm max-w-xs mx-auto leading-snug"
-                            style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                        {/* Mensaje bienvenida */}
+                        <p className="text-white/80 text-xs max-w-xs mx-auto leading-snug">
                             {config?.mensaje_bienvenida || '¡Bienvenida a nuestro salón!'}
                         </p>
 
