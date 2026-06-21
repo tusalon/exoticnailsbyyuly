@@ -16,25 +16,45 @@
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
     
-    <!-- Script para service worker (VERSIÓN DINÁMICA) -->
+    <!-- Service Worker + detección de actualizaciones -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // Detectar la ruta base automáticamente
                 const pathSegments = window.location.pathname.split('/');
                 const basePath = pathSegments.length > 2 ? '/' + pathSegments[1] : '';
-                const swPath = basePath ? `${basePath}/sw.js` : '/sw.js';
-                
-                console.log('🔄 🔄 Registrando Service Worker en:', swPath);
-                
-                navigator.serviceWorker.register(swPath)
-                    .then(registration => {
-                        console.log('✅ ✅ Service Worker registrado:', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('❌ ❌ Error registrando Service Worker:', error);
+                const swPath = basePath ? basePath + '/sw.js' : '/sw.js';
+
+                navigator.serviceWorker.register(swPath).then(registration => {
+                    // Hay un SW nuevo esperando — mostrar toast
+                    const swEsperando = registration.waiting;
+                    if (swEsperando) mostrarToastActualizacion(swEsperando);
+
+                    registration.addEventListener('updatefound', () => {
+                        const nuevoSW = registration.installing;
+                        nuevoSW.addEventListener('statechange', () => {
+                            if (nuevoSW.state === 'installed' && navigator.serviceWorker.controller) {
+                                mostrarToastActualizacion(nuevoSW);
+                            }
+                        });
                     });
+                }).catch(() => {});
+
+                // Cuando el SW activa la nueva versión, recargar la página
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    window.location.reload();
+                });
             });
+        }
+
+        function mostrarToastActualizacion(sw) {
+            var toast = document.getElementById('toast-update');
+            if (!toast) return;
+            toast.style.transform = 'translateY(0)';
+            toast.style.opacity = '1';
+            document.getElementById('btn-actualizar').onclick = function() {
+                toast.style.opacity = '0';
+                sw.postMessage({ type: 'SKIP_WAITING' });
+            };
         }
     </script>
     
@@ -345,6 +365,26 @@
     </style>
 </head>
 <body>
+
+    <!-- Toast de actualización -->
+    <div id="toast-update" style="
+        position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(120px);
+        background:#1a0a2e; border:1px solid #a855f7; border-radius:14px;
+        padding:14px 18px; display:flex; align-items:center; gap:12px;
+        z-index:99999; box-shadow:0 8px 32px rgba(0,0,0,0.4);
+        opacity:0; transition:transform 0.35s ease, opacity 0.35s ease;
+        min-width:260px; max-width:90vw;
+    ">
+        <span style="font-size:20px">✨</span>
+        <span style="color:#e2e2f0; font-size:14px; font-family:system-ui,sans-serif; flex:1">
+            Hay una versión nueva disponible
+        </span>
+        <button id="btn-actualizar" style="
+            background:#a855f7; color:#fff; border:none; border-radius:8px;
+            padding:7px 14px; font-size:13px; font-weight:600;
+            cursor:pointer; white-space:nowrap; font-family:system-ui,sans-serif;
+        ">Actualizar</button>
+    </div>
 
     <!-- Pantalla de carga — aparece antes de cualquier JS -->
     <div id="splash">
