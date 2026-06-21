@@ -16,87 +16,45 @@
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
     
-    <!-- Service Worker + detección de actualizaciones -->
+    <!-- Script para service worker (VERSIÓN DINÁMICA) -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
+                // Detectar la ruta base automáticamente
                 const pathSegments = window.location.pathname.split('/');
                 const basePath = pathSegments.length > 2 ? '/' + pathSegments[1] : '';
-                const swPath = basePath ? basePath + '/sw.js' : '/sw.js';
-
-                navigator.serviceWorker.register(swPath).then(registration => {
-                    // Hay un SW nuevo esperando — mostrar toast
-                    const swEsperando = registration.waiting;
-                    if (swEsperando) mostrarToastActualizacion(swEsperando);
-
-                    registration.addEventListener('updatefound', () => {
-                        const nuevoSW = registration.installing;
-                        nuevoSW.addEventListener('statechange', () => {
-                            if (nuevoSW.state === 'installed' && navigator.serviceWorker.controller) {
-                                mostrarToastActualizacion(nuevoSW);
-                            }
-                        });
+                const swPath = basePath ? `${basePath}/sw.js` : '/sw.js';
+                
+                console.log('🔄 🔄 Registrando Service Worker en:', swPath);
+                
+                navigator.serviceWorker.register(swPath)
+                    .then(registration => {
+                        console.log('✅ ✅ Service Worker registrado:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('❌ ❌ Error registrando Service Worker:', error);
                     });
-                }).catch(() => {});
-
-                // Cuando el SW activa la nueva versión, recargar la página
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    window.location.reload();
-                });
             });
-        }
-
-        function mostrarToastActualizacion(sw) {
-            var toast = document.getElementById('toast-update');
-            if (!toast) return;
-            toast.style.transform = 'translateY(0)';
-            toast.style.opacity = '1';
-            document.getElementById('btn-actualizar').onclick = function() {
-                toast.style.opacity = '0';
-                sw.postMessage({ type: 'SKIP_WAITING' });
-            };
         }
     </script>
     
+    <!-- Scripts externos -->
+    <script src="vendor/react.production.min.js"></script>
+    <script src="vendor/react-dom.production.min.js"></script>
+    <script src="vendor/babel.min.js"></script>
+    <script src="vendor/tailwind-browser.js"></script>
     <link href="vendor/lucide/lucide.css" rel="stylesheet">
     <link href="utils/legacy-ios-fallback.css?v=20260619-ios15" rel="stylesheet">
-
-    <style>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .animate-fade-in {
+                animation: fadeIn 0.5s ease-out forwards;
+            }
+        }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-
-        #splash {
-            position: fixed; inset: 0; z-index: 9999;
-            background: linear-gradient(135deg, #1a0a2e 0%, #0f0818 100%);
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            gap: 20px; transition: opacity 0.4s ease;
-        }
-        #splash.oculto { opacity: 0; pointer-events: none; }
-        #splash-icon {
-            width: 72px; height: 72px; border-radius: 18px;
-            background: #ec4899;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 36px;
-        }
-        #splash-nombre {
-            color: #fff; font-size: 1.3rem; font-weight: 600;
-            font-family: system-ui, sans-serif; text-align: center;
-            padding: 0 24px;
-        }
-        #splash-sub {
-            color: #f9a8d4; font-size: 0.85rem;
-            font-family: system-ui, sans-serif;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        #splash-spinner {
-            width: 28px; height: 28px; border-radius: 50%;
-            border: 3px solid rgba(249,168,212,0.25);
-            border-top-color: #ec4899;
-            animation: spin 0.8s linear infinite;
         }
     </style>
     <style>
@@ -365,42 +323,7 @@
     </style>
 </head>
 <body>
-
-    <!-- Toast de actualización -->
-    <div id="toast-update" style="
-        position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(120px);
-        background:#1a0a2e; border:1px solid #a855f7; border-radius:14px;
-        padding:14px 18px; display:flex; align-items:center; gap:12px;
-        z-index:99999; box-shadow:0 8px 32px rgba(0,0,0,0.4);
-        opacity:0; transition:transform 0.35s ease, opacity 0.35s ease;
-        min-width:260px; max-width:90vw;
-    ">
-        <span style="font-size:20px">✨</span>
-        <span style="color:#e2e2f0; font-size:14px; font-family:system-ui,sans-serif; flex:1">
-            Hay una versión nueva disponible
-        </span>
-        <button id="btn-actualizar" style="
-            background:#a855f7; color:#fff; border:none; border-radius:8px;
-            padding:7px 14px; font-size:13px; font-weight:600;
-            cursor:pointer; white-space:nowrap; font-family:system-ui,sans-serif;
-        ">Actualizar</button>
-    </div>
-
-    <!-- Pantalla de carga — aparece antes de cualquier JS -->
-    <div id="splash">
-        <div id="splash-icon">💅</div>
-        <div id="splash-nombre">Cargando tu salón...</div>
-        <div id="splash-sub">Un momento por favor</div>
-        <div id="splash-spinner"></div>
-    </div>
-
     <div id="root"></div>
-
-    <!-- Vendors — al final para no bloquear el splash -->
-    <script src="vendor/react.production.min.js"></script>
-    <script src="vendor/react-dom.production.min.js"></script>
-    <script src="vendor/babel.min.js"></script>
-    <script src="vendor/tailwind-browser.js"></script>
 
     <!-- Scripts (rutas relativas) -->
     <script src="utils/supabase-config.js"></script>
@@ -442,25 +365,18 @@
     <script src="client-app.js?v=20260529-lista-espera" type="text/babel"></script>
     
     <script>
+        // Actualizar título dinámico desde la base de datos
         (async function() {
             try {
                 const nombre = await window.getNombreNegocio();
                 if (nombre) {
-                    document.title = nombre + ' - Reserva de Turnos';
-                    document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute('content', nombre.split(' ')[0] || 'Salón');
-                    const el = document.getElementById('splash-nombre');
-                    if (el) el.textContent = nombre;
+                    document.title = `${nombre} - Reserva de Turnos`;
+                    document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute('content', nombre.split(' ')[0] || 'Exotic');
                 }
-            } catch (e) {}
+            } catch (error) {
+                console.error('Error cargando título:', error);
+            }
         })();
-
-        // Ocultar splash cuando React monta el primer componente
-        window.__ocultarSplash = function() {
-            var s = document.getElementById('splash');
-            if (!s) return;
-            s.classList.add('oculto');
-            setTimeout(function() { s.remove(); }, 450);
-        };
     </script>
 
 </body>
