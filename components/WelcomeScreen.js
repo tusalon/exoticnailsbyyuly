@@ -171,7 +171,7 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
             )}
 
             {/* Contenido scrolleable */}
-            <div className="client-welcome-content relative z-10 min-h-screen flex items-center justify-center py-10 px-4">
+            <div className="client-welcome-content relative z-10 min-h-screen flex flex-col items-center justify-center py-14 px-4">
                 <div
                     className="client-welcome-card w-full max-w-2xl bg-black/15 backdrop-blur-[1px] p-6 sm:p-10 rounded-3xl shadow-2xl border my-auto"
                     style={{
