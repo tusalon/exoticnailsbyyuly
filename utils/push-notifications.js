@@ -167,41 +167,44 @@ window.pushRservasDisponible = function() {
 };
 
 window.solicitarPushRservasRoma = async function(options = {}) {
-    const role = options.role || getRolPush(options.defaultRole || 'cliente');
+    const role = options.role || options.rol || getRolPush(options.defaultRole || 'cliente');
 
     if (!pushKeyConfigurada()) {
-        alert('Web Push todavia no esta configurado. Falta poner la llave publica VAPID.');
-        return false;
+        console.warn('Push: falta clave VAPID pública');
+        return { ok: false, error: 'vapid_key_missing' };
     }
 
     if (!('Notification' in window) || !('PushManager' in window) || !('serviceWorker' in navigator)) {
-        window.diagnosticarPushRservasRoma();
-        return false;
+        console.warn('Push: navegador no compatible');
+        return { ok: false, error: 'not_supported' };
     }
 
     const permission = options.permission || await pedirPermisoNotificacionesPush();
     if (permission !== 'granted') {
-        window.diagnosticarPushRservasRoma();
-        return false;
+        console.warn('Push: permiso no concedido:', permission);
+        return { ok: false, error: 'permission_' + permission };
     }
 
     const registration = await getRegistroServiceWorkerPush();
     if (!registration) {
-        alert('No se encontro el Service Worker para activar notificaciones.');
-        return false;
+        console.warn('Push: Service Worker no disponible');
+        return { ok: false, error: 'sw_not_ready' };
     }
 
-    let subscription = await registration.pushManager.getSubscription();
-    if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(window.RSERVAS_PUSH_PUBLIC_KEY)
-        });
+    try {
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(window.RSERVAS_PUSH_PUBLIC_KEY)
+            });
+        }
+        await guardarSuscripcionPush(subscription.toJSON ? subscription.toJSON() : subscription, role);
+        return { ok: true };
+    } catch (err) {
+        console.warn('Push: error suscribiendo:', err.message);
+        return { ok: false, error: err.message };
     }
-
-    await guardarSuscripcionPush(subscription.toJSON ? subscription.toJSON() : subscription, role);
-    alert('Notificaciones push activadas para este dispositivo.');
-    return true;
 };
 
 window.enviarWebPushRservasRoma = async function({ title, body, url = '', role = 'admin', tags = 'bell', data = {} } = {}) {

@@ -6,28 +6,49 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
     const [imagenCargada, setImagenCargada] = React.useState(false);
     const [pushEstado, setPushEstado] = React.useState('');
     const [activandoPush, setActivandoPush] = React.useState(false);
+    const [pushMensaje, setPushMensaje] = React.useState('');
 
     React.useEffect(() => {
-        if ('Notification' in window) setPushEstado(Notification.permission);
-        else setPushEstado('unsupported');
+        if (!('Notification' in window)) { setPushEstado('unsupported'); return; }
+        setPushEstado(Notification.permission);
     }, []);
 
-    const activarNotificaciones = async () => {
-        if (!('Notification' in window)) {
-            setPushEstado('unsupported');
-            return;
-        }
+    const activarNotificaciones = () => {
+        if (!('Notification' in window)) { setPushEstado('unsupported'); return; }
         setActivandoPush(true);
-        try {
-            const permiso = await Notification.requestPermission();
-            setPushEstado(permiso);
-            if (permiso === 'granted' && typeof window.solicitarPushRservasRoma === 'function') {
-                window.solicitarPushRservasRoma({ rol: 'cliente' }).catch(() => {});
-            }
-        } catch {
-            setPushEstado(Notification.permission);
+        setPushMensaje('');
+
+        pedirPermisoYSuscribir();
+
+        function pedirPermisoYSuscribir() {
+            const permissionPromise = Notification.permission === 'default'
+                ? Notification.requestPermission()
+                : Promise.resolve(Notification.permission);
+
+            permissionPromise.then(permiso => {
+                setPushEstado(permiso);
+                if (permiso !== 'granted') {
+                    setPushMensaje(permiso === 'denied' ? 'Permiso bloqueado en el navegador' : 'Permiso no concedido');
+                    setActivandoPush(false);
+                    return;
+                }
+                if (typeof window.solicitarPushRservasRoma !== 'function') {
+                    setPushEstado('granted');
+                    setActivandoPush(false);
+                    return;
+                }
+                window.solicitarPushRservasRoma({ permission: permiso, defaultRole: 'cliente' })
+                    .then(res => {
+                        if (res?.ok) {
+                            setPushMensaje('');
+                        } else if (res?.error === 'sw_not_ready') {
+                            setPushMensaje('Activa la app desde pantalla de inicio para recibir avisos');
+                        }
+                    })
+                    .catch(() => {})
+                    .finally(() => setActivandoPush(false));
+            }).catch(() => setActivandoPush(false));
         }
-        setActivandoPush(false);
     };
 
     React.useEffect(() => {
@@ -246,14 +267,19 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
 
                         {/* Botón notificaciones */}
                         {pushEstado !== 'unsupported' && pushEstado !== 'denied' && (
-                            pushEstado === 'granted' ? (
-                                <p className="text-white/60 text-xs flex items-center justify-center gap-1">🔔 Recordatorios activados</p>
-                            ) : (
-                                <button onClick={activarNotificaciones} disabled={activandoPush}
-                                    className="text-white/80 text-xs border border-white/30 rounded-full px-4 py-1.5 hover:bg-white/10 transition flex items-center gap-1.5 mx-auto disabled:opacity-50">
-                                    🔔 {activandoPush ? 'Activando...' : 'Activar recordatorios'}
-                                </button>
-                            )
+                            <div className="space-y-1">
+                                {pushEstado === 'granted' ? (
+                                    <p className="text-white/60 text-xs flex items-center justify-center gap-1">🔔 Recordatorios activados</p>
+                                ) : (
+                                    <button onClick={activarNotificaciones} disabled={activandoPush}
+                                        className="text-white/80 text-xs border border-white/30 rounded-full px-4 py-1.5 hover:bg-white/10 transition flex items-center gap-1.5 mx-auto disabled:opacity-50">
+                                        🔔 {activandoPush ? 'Activando...' : 'Activar recordatorios'}
+                                    </button>
+                                )}
+                                {pushMensaje && (
+                                    <p className="text-yellow-300/80 text-xs text-center">{pushMensaje}</p>
+                                )}
+                            </div>
                         )}
 
                         {/* Botón principal */}

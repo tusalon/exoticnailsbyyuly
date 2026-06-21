@@ -1,5 +1,5 @@
 // utils/push-config.js
 // Pega aqui la llave publica VAPID cuando actives Web Push.
 
-window.RSERVAS_PUSH_PUBLIC_KEY = 'BAgxL-Bjg3EuaIsgh0LrW2AydN9au0sfa7-_BrTIbi4eBHWdQrd3nEW7uGIPcpUBPqz6i7GKqWEse2tW_0yH8Yk';
+window.RSERVAS_PUSH_PUBLIC_KEY = 'BBiW2ZRGmtS35uTqW_Cc77VKtaf8v_lIovQ5mErGUQeTr1K29dNqOuRhMAcFH0u3m5SKbvgFse1CLWqAcVtZ074';
 window.RSERVAS_PUSH_FUNCTION = 'enviar-web-push';
