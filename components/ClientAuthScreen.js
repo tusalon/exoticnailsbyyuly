@@ -363,7 +363,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
 
                         {esProfesional && profesionalInfo && !verificando && (
                             <div className="bg-pink-500/30 border border-pink-300/50 rounded-lg p-4">
-                                <p className="text-white font-bold text-xl">Â¡Hola, {profesionalInfo.nombre}!</p>
+                                <p className="text-white font-bold text-xl">¡Hola, {profesionalInfo.nombre}!</p>
                                 <p className="text-pink-200 text-sm">Ingresa tu contraseña para acceder al panel.</p>
                             </div>
                         )}
