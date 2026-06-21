@@ -359,3 +359,4 @@ function ClientApp() {
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<ClientApp />);
+if (typeof window.__ocultarSplash === 'function') window.__ocultarSplash();

@@ -1,4 +1,4 @@
-// components/ClientAuthScreen.js - Login por teléfono con registro automático
+﻿// components/ClientAuthScreen.js - Login por teléfono con registro automático
 
 function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     const [config, setConfig] = React.useState(null);
@@ -111,7 +111,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
             if (bloqueo) {
                 setClienteBloqueado(bloqueo);
                 setNecesitaNombre(false);
-                setError('Este número no tiene permiso para registrarse ni reservar. Contactá al negocio.');
+                setError('Este número no tiene permiso para registrarse ni reservar. Contacta al negocio.');
                 return;
             }
 
@@ -125,7 +125,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
             setNecesitaNombre(true);
         } catch (err) {
             console.error('Error verificando teléfono:', err);
-            setError('Error verificando el número. Intentá más tarde.');
+            setError('Error verificando el número. Intenta más tarde.');
         } finally {
             setVerificando(false);
         }
@@ -134,7 +134,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     const ingresarComoProfesional = async () => {
         if (!profesionalInfo) return;
         if (!String(profesionalPassword || '').trim()) {
-            setError('Ingresá tu contraseña profesional.');
+            setError('Ingresa tu contraseña profesional.');
             return;
         }
 
@@ -162,7 +162,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
             window.location.href = 'admin.html';
         } catch (err) {
             console.error('Error ingresando como profesional:', err);
-            setError('Error al iniciar sesión profesional. Intentá de nuevo.');
+            setError('Error al iniciar sesión profesional. Intenta de nuevo.');
         } finally {
             setVerificando(false);
         }
@@ -181,7 +181,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
             : `53${numeroLimpio}`;
 
         if (numeroLimpio.length < Math.min(7, paisTelefono.localLength || 8)) {
-            setError('Ingresá un número de WhatsApp válido.');
+            setError('Ingresa un número de WhatsApp válido.');
             return;
         }
 
@@ -193,7 +193,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
         }
 
         if (!nombre.trim()) {
-            setError('Ingresá tu nombre completo para registrarte.');
+            setError('Ingresa tu nombre completo para registrarte.');
             return;
         }
 
@@ -204,7 +204,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
             const bloqueo = await window.getClienteBloqueado?.(numeroCompleto);
             if (bloqueo) {
                 setClienteBloqueado(bloqueo);
-                setError('Este número no tiene permiso para registrarse ni reservar. Contactá al negocio.');
+                setError('Este número no tiene permiso para registrarse ni reservar. Contacta al negocio.');
                 return;
             }
 
@@ -220,11 +220,11 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                 guardarNegocioEnSesion();
                 onAccessGranted(nuevoCliente.nombre || nombre.trim(), numeroCompleto);
             } else {
-                setError(window.ultimoErrorCliente || 'Error al crear el cliente. Intentá más tarde.');
+                setError(window.ultimoErrorCliente || 'Error al crear el cliente. Intenta más tarde.');
             }
         } catch (err) {
             console.error('Error registrando cliente:', err);
-            setError('Error en el sistema. Intentá más tarde.');
+            setError('Error en el sistema. Intenta más tarde.');
         } finally {
             setVerificando(false);
         }
@@ -291,14 +291,14 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
 
                     <h2 className="text-lg font-semibold text-white mb-4 flex items-center justify-center gap-2 bg-pink-500/30 p-3 rounded-lg">
                         <span>📱</span>
-                        Ingresá con tu WhatsApp
+                        {necesitaNombre ? 'Primera vez aquí — bienvenida' : 'Entra con tu WhatsApp'}
                         <span>✨</span>
                     </h2>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-white mb-1">
-                                Tu WhatsApp
+                                Tu número de WhatsApp
                             </label>
                             <div className="flex">
                                 <select
@@ -327,13 +327,19 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                                     required
                                 />
                             </div>
-                            <p className="text-xs text-pink-300/70 mt-1">
-                                Si ya estás registrada, entrarás directo. Si no, te pediremos tu nombre.
-                            </p>
+                            {!necesitaNombre && !esProfesional && (
+                                <p className="text-xs text-pink-300/70 mt-1">
+                                    Si ya reservaste antes, entrarás directo sin contraseña.
+                                </p>
+                            )}
                         </div>
 
                         {necesitaNombre && !clienteBloqueado && !esAdmin && !esProfesional && (
                             <div>
+                                <div className="bg-white/10 border border-pink-300/40 rounded-lg p-3 text-pink-100 text-sm mb-3 flex items-center gap-2">
+                                    <span>👋</span>
+                                    <span>Número nuevo — solo necesitamos tu nombre para registrarte.</span>
+                                </div>
                                 <label className="block text-sm font-medium text-white mb-1">
                                     Tu nombre completo
                                 </label>
@@ -343,6 +349,7 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                                     onChange={(e) => setNombre(e.target.value)}
                                     className="w-full px-4 py-3 rounded-lg border border-pink-300/30 bg-black/20 text-white placeholder-pink-200/70 focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition"
                                     placeholder="Ej: María Pérez"
+                                    autoFocus
                                 />
                             </div>
                         )}
@@ -356,30 +363,25 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
 
                         {esProfesional && profesionalInfo && !verificando && (
                             <div className="bg-pink-500/30 border border-pink-300/50 rounded-lg p-4">
-                                <p className="text-white font-bold text-xl">¡Hola {profesionalInfo.nombre}!</p>
-                                <p className="text-pink-200 text-sm">Accedé a tu panel profesional.</p>
+                                <p className="text-white font-bold text-xl">Â¡Hola, {profesionalInfo.nombre}!</p>
+                                <p className="text-pink-200 text-sm">Ingresa tu contraseña para acceder al panel.</p>
                             </div>
                         )}
 
                         {esProfesional && profesionalInfo && !verificando && (
                             <div>
                                 <label className="block text-sm font-medium text-white mb-1">
-                                    ContraseÃ±a profesional
+                                    Contraseña profesional
                                 </label>
                                 <input
                                     type="password"
                                     value={profesionalPassword}
                                     onChange={(e) => setProfesionalPassword(e.target.value)}
                                     className="w-full px-4 py-3 rounded-lg border border-pink-300/30 bg-black/20 text-white placeholder-pink-200/70 focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition"
-                                    placeholder="Tu contraseÃ±a"
+                                    placeholder="Tu contraseña"
                                     autoComplete="current-password"
+                                    autoFocus
                                 />
-                            </div>
-                        )}
-
-                        {necesitaNombre && !verificando && !clienteBloqueado && !esAdmin && !esProfesional && (
-                            <div className="bg-pink-500/20 border border-pink-300/30 rounded-lg p-3 text-pink-100 text-sm">
-                                No encontramos ese WhatsApp. Completá tu nombre para registrarte y reservar.
                             </div>
                         )}
 

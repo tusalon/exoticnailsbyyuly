@@ -1,199 +1,196 @@
 // sw.js - Service Worker para Exotic Nails by Yuly
 
-const CACHE_NAME = 'exoticnailsbyyuly-v59';
+const CACHE_NAME = 'exoticnailsbyyuly-v60';
+const BASE = '/exoticnailsbyyuly';
+
 const urlsToCache = [
-  '/exoticnailsbyyuly/',
-  '/exoticnailsbyyuly/index.html',
-  '/exoticnailsbyyuly/admin.html',
-  '/exoticnailsbyyuly/admin-login.html',
-  '/exoticnailsbyyuly/calendar.html',
-  '/exoticnailsbyyuly/setup-wizard.html',
-  '/exoticnailsbyyuly/editar-negocio.html',
-  '/exoticnailsbyyuly/manifest.json',
-  '/exoticnailsbyyuly/icons/icon-72x72.png',
-  '/exoticnailsbyyuly/icons/icon-96x96.png',
-  '/exoticnailsbyyuly/icons/icon-128x128.png',
-  '/exoticnailsbyyuly/icons/icon-144x144.png',
-  '/exoticnailsbyyuly/icons/icon-152x152.png',
-  '/exoticnailsbyyuly/icons/icon-192x192.png',
-  '/exoticnailsbyyuly/icons/icon-384x384.png',
-  '/exoticnailsbyyuly/icons/icon-512x512.png',
-  '/exoticnailsbyyuly/vendor/react.production.min.js',
-  '/exoticnailsbyyuly/vendor/react-dom.production.min.js',
-  '/exoticnailsbyyuly/vendor/babel.min.js',
-  '/exoticnailsbyyuly/vendor/bcrypt.min.js',
-  '/exoticnailsbyyuly/vendor/tailwind-browser.js',
-  '/exoticnailsbyyuly/vendor/lucide/lucide.css',
-  '/exoticnailsbyyuly/vendor/lucide/lucide.woff2',
-  '/exoticnailsbyyuly/utils/legacy-ios-fallback.css?v=20260619-ios15',
-  '/exoticnailsbyyuly/utils/push-config.js',
-  '/exoticnailsbyyuly/utils/push-notifications.js'
+  `${BASE}/`,
+  `${BASE}/index.html`,
+  `${BASE}/admin.html`,
+  `${BASE}/admin-login.html`,
+  `${BASE}/calendar.html`,
+  `${BASE}/setup-wizard.html`,
+  `${BASE}/editar-negocio.html`,
+  `${BASE}/manifest.json`,
+
+  // App principal
+  `${BASE}/app.js`,
+  `${BASE}/client-app.js`,
+  `${BASE}/admin-app.js`,
+
+  // Utils
+  `${BASE}/utils/api.js`,
+  `${BASE}/utils/auth-clients.js`,
+  `${BASE}/utils/auth-profesionales.js`,
+  `${BASE}/utils/config-negocio.js`,
+  `${BASE}/utils/config.js`,
+  `${BASE}/utils/dias-cerrados.js`,
+  `${BASE}/utils/hero-backgrounds.js`,
+  `${BASE}/utils/native-push-notifications.js`,
+  `${BASE}/utils/phone-utils.js`,
+  `${BASE}/utils/profesionales.js`,
+  `${BASE}/utils/push-config.js`,
+  `${BASE}/utils/push-notifications.js`,
+  `${BASE}/utils/servicios.js`,
+  `${BASE}/utils/storage.js`,
+  `${BASE}/utils/supabase-config.js`,
+  `${BASE}/utils/timeLogic.js`,
+  `${BASE}/utils/whatsapp-helper.js`,
+  `${BASE}/utils/legacy-ios-fallback.css`,
+
+  // Componentes cliente
+  `${BASE}/components/BookingForm.js`,
+  `${BASE}/components/Calendar.js`,
+  `${BASE}/components/ClientAuthScreen.js`,
+  `${BASE}/components/Confirmation.js`,
+  `${BASE}/components/Header.js`,
+  `${BASE}/components/InstallButton.js`,
+  `${BASE}/components/MultiProfesionalSelector.js`,
+  `${BASE}/components/MultiTimeSlots.js`,
+  `${BASE}/components/MyBookings.js`,
+  `${BASE}/components/ProfesionalSelector.js`,
+  `${BASE}/components/ServiceSelection.js`,
+  `${BASE}/components/ServiceSelectionCategorias.js`,
+  `${BASE}/components/ServiceSelectionTabs.js`,
+  `${BASE}/components/TimeSlots.js`,
+  `${BASE}/components/WelcomeScreen.js`,
+  `${BASE}/components/WhatsAppButton.js`,
+
+  // Componentes admin
+  `${BASE}/components/admin/ConfigPanel.js`,
+  `${BASE}/components/admin/EditarNegocio.js`,
+  `${BASE}/components/admin/HorariosPorDiaPanel.js`,
+  `${BASE}/components/admin/ProfesionalesPanel.js`,
+  `${BASE}/components/admin/ServiciosPanel.js`,
+  `${BASE}/components/admin/ServiciosPanelCategorias.js`,
+  `${BASE}/components/admin/ServiciosPanelPro.js`,
+  `${BASE}/components/admin/SetupWizard.js`,
+
+  // Vendors
+  `${BASE}/vendor/react.production.min.js`,
+  `${BASE}/vendor/react-dom.production.min.js`,
+  `${BASE}/vendor/babel.min.js`,
+  `${BASE}/vendor/bcrypt.min.js`,
+  `${BASE}/vendor/tailwind-browser.js`,
+  `${BASE}/vendor/lucide/lucide.css`,
+  `${BASE}/vendor/lucide/lucide.woff2`,
+
+  // Iconos
+  `${BASE}/icons/icon-72x72.png`,
+  `${BASE}/icons/icon-96x96.png`,
+  `${BASE}/icons/icon-128x128.png`,
+  `${BASE}/icons/icon-144x144.png`,
+  `${BASE}/icons/icon-152x152.png`,
+  `${BASE}/icons/icon-192x192.png`,
+  `${BASE}/icons/icon-384x384.png`,
+  `${BASE}/icons/icon-512x512.png`,
+];
+
+// URLs externas — nunca interceptar
+const BYPASS = [
+  'supabase.co',
+  'ntfy.sh',
+  'unsplash.com',
+  'wa.me',
+  'api.whatsapp.com',
+  'whatsapp.com',
+  'cdn.',
+  'unpkg.com',
+  'trickle.so',
 ];
 
 // ============================================
 // INSTALACIÓN
 // ============================================
 self.addEventListener('install', event => {
-  console.log('📦 📦 Service Worker instalando...');
   self.skipWaiting();
-  
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('✅ Cache creado, guardando archivos...');
-        return cache.addAll(urlsToCache);
-      })
-      .catch(error => {
-        console.error('❌ Error al cachear archivos:', error);
-      })
+      .then(cache => cache.addAll(urlsToCache))
+      .catch(err => console.error('Error al cachear:', err))
   );
 });
 
 // ============================================
-// ACTIVACIÓN
+// ACTIVACIÓN — limpia caches anteriores
 // ============================================
 self.addEventListener('activate', event => {
-  console.log('🔄 🔄 Service Worker activado, limpiando caches antiguos...');
-  
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('🗑️ 🗑️ Eliminando cache antiguo:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => {
-      console.log('✅ Service Worker activado y listo');
-      return self.clients.claim();
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
+  );
+});
+
+// ============================================
+// FETCH — Cache First para archivos de app
+// ============================================
+self.addEventListener('fetch', event => {
+  if (!event.request.url.startsWith('http')) return;
+  if (BYPASS.some(b => event.request.url.includes(b))) return;
+  if (event.request.method !== 'GET') return;
+
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
+
+      return fetch(event.request).then(response => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => {
+        if (event.request.url.match(/\.(jpg|jpeg|png|gif|svg|webp)$/)) {
+          return caches.match(`${BASE}/icons/icon-192x192.png`);
+        }
+        return new Response('Sin conexión', { status: 408 });
+      });
     })
   );
 });
 
 // ============================================
-// ESTRATEGIA DE CACHÉ
-// ============================================
-self.addEventListener('fetch', event => {
-  // Ignorar peticiones que no sean HTTP
-  if (!event.request.url.startsWith('http')) return;
-  
-  // ⚡ ⚠️ NO INTERCEPTAR WHATSAPP (ESENCIAL PARA iOS)
-  if (event.request.url.includes('wa.me') || 
-      event.request.url.includes('api.whatsapp.com') ||
-      event.request.url.includes('whatsapp.com')) {
-    console.log('📱 📱 Dejando pasar WhatsApp sin cache');
-    return;
-  }
-  
-  // Ignorar otras APIs externas
-  if (event.request.url.includes('supabase.co')) return;
-  if (event.request.url.includes('ntfy.sh')) return;
-  if (event.request.url.includes('unsplash.com')) return;
-  if (event.request.url.includes('cdn.') || 
-      event.request.url.includes('unpkg.com') || 
-      event.request.url.includes('trickle.so')) {
-    return;
-  }
-
-  // Estrategia: Network First, fallback a cache
-  event.respondWith(
-    fetch(event.request)
-      .then(networkResponse => {
-        // Si la respuesta es válida, guardar en cache
-        if (networkResponse && networkResponse.status === 200 && event.request.method === 'GET') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      })
-      .catch(() => {
-        // Si falla la red, buscar en cache
-        return caches.match(event.request).then(cachedResponse => {
-          if (cachedResponse) {
-            console.log('📦 📦 Sirviendo desde cache:', event.request.url);
-            return cachedResponse;
-          }
-          // Si no hay cache y es imagen, devolver icon por defecto
-          if (event.request.url.match(/\.(jpg|jpeg|png|gif|svg|webp)$/)) {
-            return caches.match('/exoticnailsbyyuly/icons/icon-192x192.png');
-          }
-          return new Response('Error de red', { status: 408 });
-        });
-      })
-  );
-});
-
-// ============================================
-// MANEJO DE MENSAJES
+// MENSAJES
 // ============================================
 self.addEventListener('message', event => {
-  console.log('📨 📄 Mensaje recibido:', event.data);
-  
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('⏩ ⏩ Saltando waiting...');
-    self.skipWaiting();
-  }
-  
-  if (event.data && event.data.type === 'CLEAR_CACHE') {
-    console.log('🧹 🧹 Limpiando todo el cache...');
-    caches.keys().then(cacheNames => {
-      cacheNames.forEach(cacheName => {
-        caches.delete(cacheName);
-        console.log('🗑️ 🗑️ Cache eliminado:', cacheName);
-      });
-    });
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data?.type === 'CLEAR_CACHE') {
+    caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
   }
 });
 
 // ============================================
-// WEB PUSH OPCIONAL
+// WEB PUSH
 // ============================================
 self.addEventListener('push', event => {
   let payload = {};
-
   try {
     payload = event.data ? event.data.json() : {};
-  } catch (error) {
-    payload = {
-      title: 'RservasRoma',
-      body: event.data ? event.data.text() : 'Tienes una nueva notificación'
-    };
+  } catch {
+    payload = { title: 'RservasRoma', body: event.data ? event.data.text() : 'Nueva notificación' };
   }
 
-  const title = payload.title || 'RservasRoma';
-  const options = {
+  event.waitUntil(self.registration.showNotification(payload.title || 'RservasRoma', {
     body: payload.body || 'Tienes una nueva notificación',
-    icon: '/exoticnailsbyyuly/icons/icon-192x192.png',
-    badge: '/exoticnailsbyyuly/icons/icon-96x96.png',
+    icon: `${BASE}/icons/icon-192x192.png`,
+    badge: `${BASE}/icons/icon-96x96.png`,
     tag: payload.tag || 'rservasroma',
-    data: {
-      url: payload.url || '/exoticnailsbyyuly/admin.html',
-      ...(payload.data || {})
-    }
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
+    data: { url: payload.url || `${BASE}/admin.html`, ...(payload.data || {}) },
+  }));
 });
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-
-  const targetUrl = event.notification?.data?.url || '/exoticnailsbyyuly/admin.html';
+  const targetUrl = event.notification?.data?.url || `${BASE}/admin.html`;
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-      for (const client of clientList) {
-        if (client.url.includes(targetUrl) && 'focus' in client) return client.focus();
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) {
+        if (c.url.includes(targetUrl) && 'focus' in c) return c.focus();
       }
-      if (clients.openWindow) return clients.openWindow(targetUrl);
-      return null;
+      return clients.openWindow ? clients.openWindow(targetUrl) : null;
     })
   );
 });
-
-console.log('✅ Service Worker configurado para Exotic Nails by Yuly');
-console.log('📦 Cache:', CACHE_NAME);
-console.log('📄 Archivos a cachear:', urlsToCache.length);
