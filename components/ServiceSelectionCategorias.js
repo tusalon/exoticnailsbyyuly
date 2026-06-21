@@ -190,17 +190,17 @@ function ServiceSelection({ onSelect, selectedService }) {
             ) : (
                 <>
                     {services.length > 5 && (
-                        <div className="relative">
+                        <div className="flex items-center border border-pink-200 rounded-xl bg-white/80 focus-within:ring-2 focus-within:ring-pink-400">
+                            <span className="pl-3 text-base flex-shrink-0">🔍</span>
                             <input
                                 type="text"
                                 value={busqueda}
                                 onChange={e => { setBusqueda(e.target.value); setCategoriaActiva('todos'); }}
                                 placeholder="Buscar servicio..."
-                                className="w-full px-4 py-2 pl-9 rounded-xl border border-pink-200 bg-white/80 text-pink-800 placeholder-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400 text-sm"
+                                className="flex-1 px-3 py-2 bg-transparent text-pink-800 placeholder-pink-300 focus:outline-none text-sm"
                             />
-                            <span className="absolute left-3 top-2.5 text-pink-400 text-sm">🔍</span>
                             {busqueda && (
-                                <button onClick={() => setBusqueda('')} className="absolute right-3 top-2.5 text-pink-400 text-sm hover:text-pink-600">✕</button>
+                                <button onClick={() => setBusqueda('')} className="pr-3 text-pink-400 hover:text-pink-600 text-sm">✕</button>
                             )}
                         </div>
                     )}
