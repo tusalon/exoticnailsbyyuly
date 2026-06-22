@@ -53,30 +53,38 @@ Deno.serve(async (req) => {
 
   if (!reservas.length) return jsonResponse({ ok: true, enviados: 0, mensaje: `Sin turnos para ${manana}` });
 
-  // 2. Para cada reserva buscar suscripción push de esa clienta
+  // Agrupar reservas por negocio para notificar al admin de cada uno
+  const porNegocio: Record<string, typeof reservas> = {};
+  for (const r of reservas) {
+    if (!porNegocio[r.negocio_id]) porNegocio[r.negocio_id] = [];
+    porNegocio[r.negocio_id].push(r);
+  }
+
   let enviados = 0;
   let sinSuscripcion = 0;
   const errores: string[] = [];
 
-  for (const reserva of reservas) {
-    if (!reserva.cliente_whatsapp) { sinSuscripcion++; continue; }
-
-    const subUrl = `${supabaseUrl}/rest/v1/push_suscripciones?negocio_id=eq.${reserva.negocio_id}&cliente_whatsapp=eq.${encodeURIComponent(reserva.cliente_whatsapp)}&activo=eq.true&select=id,endpoint,subscription`;
+  for (const [negocioId, turnos] of Object.entries(porNegocio)) {
+    // Buscar suscripciones del ADMIN de ese negocio
+    const subUrl = `${supabaseUrl}/rest/v1/push_suscripciones?negocio_id=eq.${negocioId}&role=eq.admin&activo=eq.true&select=id,endpoint,subscription`;
     const resSubs = await fetch(subUrl, { headers });
-    if (!resSubs.ok) { errores.push(`Error consultando suscripcion ${reserva.cliente_whatsapp}`); continue; }
+    if (!resSubs.ok) { errores.push(`Error consultando suscripcion admin negocio ${negocioId}`); continue; }
     const subs = await resSubs.json();
 
     if (!subs.length) { sinSuscripcion++; continue; }
 
-    // Formatear hora a 12h
-    const [h, m] = reserva.hora_inicio.split(":").map(Number);
-    const hora12 = `${h > 12 ? h - 12 : h || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+    // Construir resumen de turnos del día
+    const lineas = turnos.map(r => {
+      const [h, m] = r.hora_inicio.split(":").map(Number);
+      const hora12 = `${h > 12 ? h - 12 : h || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+      return `• ${hora12} — ${r.cliente_nombre}: ${r.servicio.trim()}`;
+    });
 
     const notification = JSON.stringify({
-      title: `💅 Recordatorio de tu cita`,
-      body: `Hola ${reserva.cliente_nombre}! Mañana tienes ${reserva.servicio} a las ${hora12}. Te esperamos!`,
-      tag: "recordatorio",
-      url: `/${reserva.negocio_id}/`,
+      title: `📅 Turnos de mañana (${turnos.length})`,
+      body: lineas.join("\n"),
+      tag: "recordatorio-admin",
+      url: `https://tusalon.github.io/${negocioId}/admin.html`,
     });
 
     for (const sub of subs) {
@@ -86,14 +94,13 @@ Deno.serve(async (req) => {
       } catch (err: any) {
         const status = err?.statusCode || 0;
         if (status === 404 || status === 410) {
-          // Suscripción inválida — marcar inactiva
           await fetch(`${supabaseUrl}/rest/v1/push_suscripciones?id=eq.${sub.id}`, {
             method: "PATCH",
             headers: { ...headers, "Content-Type": "application/json" },
             body: JSON.stringify({ activo: false }),
           });
         }
-        errores.push(`${reserva.cliente_nombre}: ${err?.message || err}`);
+        errores.push(`Admin negocio ${negocioId}: ${err?.message || err}`);
       }
     }
   }
