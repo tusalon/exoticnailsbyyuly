@@ -2112,6 +2112,9 @@ function AdminApp() {
                         if (window.enviarConfirmacionReserva) {
                             await window.enviarConfirmacionReserva(result.data, configNegocio);
                         }
+                        if (window.notificarNuevaReserva) {
+                            window.notificarNuevaReserva(result.data).catch(e => console.warn('ntfy:', e));
+                        }
                     }
                 } catch (whatsappError) {
                     console.error('Error enviando WhatsApp:', whatsappError);
