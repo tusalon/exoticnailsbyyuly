@@ -2,17 +2,21 @@ name: Recordatorio diario de turnos
 
 on:
   schedule:
-    # 6 PM hora Cuba (UTC-4) = 22:00 UTC
-    - cron: '0 22 * * *'
-  workflow_dispatch: # permite ejecutarlo manualmente desde GitHub
+    # 8 AM Cuba (UTC-4) = 12:00 UTC
+    - cron: '0 12 * * *'
+    # Backup 9 AM Cuba = 13:00 UTC
+    - cron: '0 13 * * *'
+    # Backup 10 AM Cuba = 14:00 UTC
+    - cron: '0 14 * * *'
+  workflow_dispatch:
 
 jobs:
   enviar-recordatorios:
     runs-on: ubuntu-latest
     steps:
-      - name: Enviar recordatorios de turnos de mañana
+      - name: Enviar recordatorios de turnos de hoy
         run: |
-          echo "Enviando recordatorios para $(date +%Y-%m-%d)..."
+          echo "Disparando recordatorios para $(date -u '+%Y-%m-%d %H:%M UTC')..."
 
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             "https://zorhclhvykikaachfrmp.supabase.co/functions/v1/recordatorio-turnos" \
@@ -28,6 +32,6 @@ jobs:
           echo "Respuesta: $BODY"
 
           if [ "$HTTP_CODE" != "200" ]; then
-            echo "Error enviando recordatorios"
+            echo "Error: $BODY"
             exit 1
           fi
