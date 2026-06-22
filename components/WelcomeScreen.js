@@ -10,7 +10,16 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
 
     React.useEffect(() => {
         if (!('Notification' in window)) { setPushEstado('unsupported'); return; }
-        setPushEstado(Notification.permission);
+        const permiso = Notification.permission;
+        setPushEstado(permiso);
+        // Si ya tiene permiso pero no suscripción guardada, suscribirse automáticamente
+        if (permiso === 'granted' && !localStorage.getItem('rservasPushActivo')) {
+            if (typeof window.solicitarPushRservasRoma === 'function') {
+                window.solicitarPushRservasRoma({ permission: 'granted', defaultRole: 'cliente' })
+                    .then(res => { if (res?.ok) console.log('[Push] suscripcion auto-guardada'); })
+                    .catch(() => {});
+            }
+        }
     }, []);
 
     const activarNotificaciones = () => {
