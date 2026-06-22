@@ -3126,7 +3126,8 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
 
     const formatMoneyEstadistica = (value) => {
         const monto = Number(value || 0);
-        return `$${monto.toLocaleString('es-CU', { maximumFractionDigits: 0 })}`;
+        const decimales = monto % 1 === 0 ? 0 : 2;
+        return `$${monto.toLocaleString('es-CU', { minimumFractionDigits: decimales, maximumFractionDigits: decimales })}`;
     };
 
     const getDateFromInput = (value) => {

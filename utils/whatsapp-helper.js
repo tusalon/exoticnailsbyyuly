@@ -3,12 +3,21 @@
 
 console.log('📱 whatsapp-helper.js cargado');
 
-const CALENDARIO_PUBLICO_BASE_URL = 'https://tusalon.github.io/exoticnailsbyyuly/';
+function getBaseUrl() {
+    try {
+        // Usa la URL actual del sitio: https://tusalon.github.io/dalila/ etc.
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        const slug = parts[0] || '';
+        return `${window.location.origin}/${slug}/`;
+    } catch {
+        return 'https://tusalon.github.io/exoticnailsbyyuly/';
+    }
+}
 
 function generarLinkCalendarioCliente(booking) {
     if (!booking?.id) return '';
 
-    const calendarUrl = new URL('calendar.html', CALENDARIO_PUBLICO_BASE_URL);
+    const calendarUrl = new URL('calendar.html', getBaseUrl());
 
     calendarUrl.searchParams.set('id', booking.id);
     if (booking.negocio_id) {
