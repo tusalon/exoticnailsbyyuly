@@ -2368,7 +2368,9 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
 
                 window.enviarWhatsApp(bookingData.cliente_whatsapp, mensajeCliente);
 
-                alert('Pago confirmado. Grupo de servicios reservado y cliente notificada.');
+                if (window.enviarNotificacionPush) window.enviarNotificacionPush(`${nombreNegocio} - Pago confirmado`, `✅ ${bookingData.cliente_nombre}\n💅 ${bookingData.servicio}\n📅 ${fechaConDia} ${horaFormateada}`, 'white_check_mark', 'default').catch(() => {});
+                if (window.enviarPushCliente) window.enviarPushCliente({ whatsapp: bookingData.cliente_whatsapp, title: `✅ Pago confirmado — ${nombreNegocio}`, body: `Tu cita de ${bookingData.servicio} el ${fechaConDia} a las ${horaFormateada} está confirmada.` }).catch(() => {});
+
                 fetchBookings();
                 return;
             } catch (error) {
@@ -2428,7 +2430,9 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
 
             window.enviarWhatsApp(bookingData.cliente_whatsapp, mensajeCliente);
 
-            alert('Pago confirmado. Turno reservado y cliente notificado.');
+            if (window.enviarNotificacionPush) window.enviarNotificacionPush(`${nombreNegocio} - Pago confirmado`, `✅ ${bookingData.cliente_nombre}\n💅 ${bookingData.servicio}\n📅 ${fechaConDia} ${horaFormateada}`, 'white_check_mark', 'default').catch(() => {});
+            if (window.enviarPushCliente) window.enviarPushCliente({ whatsapp: bookingData.cliente_whatsapp, title: `✅ Pago confirmado — ${nombreNegocio}`, body: `Tu cita de ${bookingData.servicio} el ${fechaConDia} a las ${horaFormateada} está confirmada.` }).catch(() => {});
+
             fetchBookings();
 
         } catch (error) {
