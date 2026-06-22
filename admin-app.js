@@ -454,6 +454,7 @@ function AdminApp() {
     const [cargandoBloqueados, setCargandoBloqueados] = React.useState(false);
     const [nuevoBloqueo, setNuevoBloqueo] = React.useState({ nombre: '', whatsapp: '', codigo_pais: '53', motivo: '' });
     const [busquedaClienteManual, setBusquedaClienteManual] = React.useState('');
+    const [busquedaClientes, setBusquedaClientes] = React.useState('');
     const [clienteDetalle, setClienteDetalle] = React.useState(null);
 
     const [showNuevaReservaModal, setShowNuevaReservaModal] = React.useState(false);
@@ -4412,6 +4413,21 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                         </div>
                         {showClientesRegistrados && (
                             <div className="space-y-5 max-h-[42rem] overflow-y-auto pr-1">
+                                {clientesRegistrados.length > 0 && (
+                                    <div className="flex items-center gap-2 border border-pink-200 rounded-xl bg-pink-50/50 px-3 py-2">
+                                        <span className="text-pink-400 text-sm">🔍</span>
+                                        <input
+                                            type="text"
+                                            value={busquedaClientes}
+                                            onChange={e => setBusquedaClientes(e.target.value)}
+                                            placeholder="Buscar por nombre o número..."
+                                            className="flex-1 bg-transparent text-sm outline-none text-gray-700 placeholder-pink-300"
+                                        />
+                                        {busquedaClientes && (
+                                            <button onClick={() => setBusquedaClientes('')} className="text-pink-400 hover:text-pink-600 text-xs">✕</button>
+                                        )}
+                                    </div>
+                                )}
                                 {(userRole === 'admin' || userNivel >= 3) && (
                                     <div className="rounded-xl border border-red-100 bg-red-50 p-4">
                                         <h3 className="font-bold text-red-700 mb-3">Lista negra</h3>
@@ -4452,7 +4468,15 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                     </div>
                                 )}
                                 {cargandoClientes ? <p className="text-center text-pink-500">Cargando clientes...</p> : clientesRegistrados.length === 0 ? <p className="text-center text-gray-500">No hay clientes registrados</p> :
-                                    clientesRegistrados.map((cliente, idx) => {
+                                    (() => {
+                                        const q = busquedaClientes.toLowerCase().trim();
+                                        const qNum = busquedaClientes.replace(/\D/g, '');
+                                        const filtrados = q ? clientesRegistrados.filter(c =>
+                                            (c.nombre || '').toLowerCase().includes(q) ||
+                                            (qNum && (c.whatsapp || '').includes(qNum))
+                                        ) : clientesRegistrados;
+                                        if (filtrados.length === 0) return <p className="text-center text-gray-400 text-sm py-4">No hay clientes que coincidan con "{busquedaClientes}"</p>;
+                                        return filtrados.map((cliente, idx) => {
                                         const score = getClienteScore(cliente);
                                         const reservasCliente = getReservasCliente(cliente);
                                         const ultimaCita = score.ultima
@@ -4531,7 +4555,8 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                                 </div>
                                             </div>
                                         );
-                                    })}
+                                    });
+                                    })()}
                             </div>
                         )}
                     </div>
