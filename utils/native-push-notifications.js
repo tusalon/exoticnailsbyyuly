@@ -134,7 +134,6 @@ window.solicitarNativePushRservasRoma = async function(options = {}) {
 };
 
 function instalarBotonNativePushAdmin() {
-    return;
     if (!isRservasNativeApp()) return;
     if (document.getElementById('rservas-native-push-button')) return;
     if (!localStorage.getItem('adminAuth') && !localStorage.getItem('profesionalAuth')) return;

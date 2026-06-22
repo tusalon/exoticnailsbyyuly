@@ -1,0 +1,33 @@
+name: Recordatorio diario de turnos
+
+on:
+  schedule:
+    # 6 PM hora Cuba (UTC-4) = 22:00 UTC
+    - cron: '0 22 * * *'
+  workflow_dispatch: # permite ejecutarlo manualmente desde GitHub
+
+jobs:
+  enviar-recordatorios:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enviar recordatorios de turnos de mañana
+        run: |
+          echo "Enviando recordatorios para $(date +%Y-%m-%d)..."
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://zorhclhvykikaachfrmp.supabase.co/functions/v1/recordatorio-turnos" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -1)
+
+          echo "HTTP: $HTTP_CODE"
+          echo "Respuesta: $BODY"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Error enviando recordatorios"
+            exit 1
+          fi

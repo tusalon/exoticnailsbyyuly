@@ -258,7 +258,6 @@ window.enviarWebPushRservasRoma = async function({ title, body, url = '', role =
 };
 
 function instalarBotonPushAdmin() {
-    return;
     if (document.getElementById('rservas-push-button')) return;
     if (!pushKeyConfigurada()) return;
     if (!('Notification' in window) || Notification.permission === 'granted') return;

@@ -39,12 +39,11 @@ Deno.serve(async (req) => {
     Authorization: `Bearer ${serviceKey}`,
   };
 
-  // Filtrar por negocio si se pasa en el body
   const body = await req.json().catch(() => ({}));
   const negocioFiltro = body?.negocio_id || null;
   const manana = fechaManana();
 
-  // 1. Buscar reservas de mañana activas
+  // 1. Buscar reservas de mañana activas (todos los negocios o uno específico)
   let reservasUrl = `${supabaseUrl}/rest/v1/reservas?fecha=eq.${manana}&estado=neq.Cancelado&select=id,negocio_id,cliente_nombre,cliente_whatsapp,servicio,hora_inicio,profesional_nombre`;
   if (negocioFiltro) reservasUrl += `&negocio_id=eq.${negocioFiltro}`;
 
