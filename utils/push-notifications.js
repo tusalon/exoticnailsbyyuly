@@ -220,6 +220,32 @@ window.solicitarPushRservasRoma = async function(options = {}) {
     }
 };
 
+// Envía push a una clienta específica por su whatsapp en este negocio
+window.enviarPushCliente = async function({ whatsapp, title, body, url = '' } = {}) {
+    try {
+        if (!whatsapp || !title) return false;
+        const negocioId = getNegocioIdPush();
+        if (!negocioId || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return false;
+
+        const response = await fetch(`${window.SUPABASE_URL}/functions/v1/${window.RSERVAS_PUSH_FUNCTION}`, {
+            method: 'POST',
+            headers: {
+                apikey: window.SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${window.SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ negocio_id: negocioId, cliente_whatsapp: whatsapp, title, body, url })
+        });
+
+        const result = await response.json().catch(() => ({}));
+        if (result?.sent > 0) console.log(`[Push cliente] Enviado a ${whatsapp}`);
+        return result?.sent > 0;
+    } catch (err) {
+        console.warn('[Push cliente] Error:', err.message);
+        return false;
+    }
+};
+
 window.enviarWebPushRservasRoma = async function({ title, body, url = '', role = 'admin', tags = 'bell', data = {} } = {}) {
     try {
         if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return false;

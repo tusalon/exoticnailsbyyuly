@@ -276,6 +276,15 @@ function MyBookings({ cliente, onVolver }) {
             const msg = `CITA REPROGRAMADA - ${config?.nombre || 'Salón'}\n\nCliente: ${nuevo.cliente_nombre}\nWhatsApp: ${nuevo.cliente_whatsapp}\nServicio: ${nuevo.servicio}\nProfesional: ${nuevo.profesional_nombre || 'No asignada'}\n\nAntes: ${fA} a las ${hA}\nAhora: ${fN} a las ${hN}`;
             if (window.enviarNotificacionPush) await window.enviarNotificacionPush(`${config?.nombre || 'Salón'} - Cita reprogramada`, msg, 'calendar', 'default');
             if (window.enviarWhatsApp && config?.telefono) window.enviarWhatsApp(config.telefono, msg);
+            // Push al admin cuando clienta reprograma (ya enviado arriba vía enviarNotificacionPush)
+            // Push a la clienta cuando admin reprograma — se detecta si el que reprograma es admin
+            if (window.enviarPushCliente && nuevo.cliente_whatsapp) {
+                window.enviarPushCliente({
+                    whatsapp: nuevo.cliente_whatsapp,
+                    title: `📅 Cita reprogramada — ${config?.nombre || 'Tu salón'}`,
+                    body: `${nuevo.servicio}: ahora el ${fN} a las ${hN}`,
+                }).catch(() => {});
+            }
         } catch {}
     };
 

@@ -156,9 +156,15 @@ Deno.serve(async (req) => {
   const role = payload.role || "admin";
   const selectUrl = new URL(`${supabaseUrl}/rest/v1/push_suscripciones`);
   selectUrl.searchParams.set("negocio_id", `eq.${payload.negocio_id}`);
-  selectUrl.searchParams.set("role", `eq.${role}`);
   selectUrl.searchParams.set("activo", "eq.true");
   selectUrl.searchParams.set("select", "id,endpoint,subscription");
+
+  // Si viene cliente_whatsapp filtra por esa clienta específica, si no filtra por role
+  if (payload.cliente_whatsapp) {
+    selectUrl.searchParams.set("cliente_whatsapp", `eq.${payload.cliente_whatsapp}`);
+  } else {
+    selectUrl.searchParams.set("role", `eq.${role}`);
+  }
 
   const subscriptionsResponse = await fetch(selectUrl, {
     headers: {
