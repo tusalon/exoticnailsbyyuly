@@ -93,11 +93,12 @@ Deno.serve(async (req) => {
 
   if (!reservas.length) return jsonResponse({ ok: true, tipo, enviados: 0, mensaje: "Sin turnos pendientes" });
 
-  // Obtener nombres de negocios
+  // Obtener nombres y URLs de negocios
   const negocioIds = [...new Set(reservas.map((r: any) => r.negocio_id))];
-  const negociosRes = await fetch(`${supabaseUrl}/rest/v1/negocios?id=in.(${negocioIds.join(",")})&select=id,nombre`, { headers });
+  const negociosRes = await fetch(`${supabaseUrl}/rest/v1/negocios?id=in.(${negocioIds.join(",")})&select=id,nombre,sitio_web,slug`, { headers });
   const negocios = negociosRes.ok ? await negociosRes.json() : [];
   const nombreNegocioById: Record<string, string> = Object.fromEntries(negocios.map((n: any) => [n.id, n.nombre]));
+  const urlNegocioById: Record<string, string> = Object.fromEntries(negocios.map((n: any) => [n.id, n.sitio_web || `https://tusalon.github.io/${n.slug}/`]));
 
   let enviados = 0;
   const notificadosIds: number[] = [];
@@ -107,6 +108,7 @@ Deno.serve(async (req) => {
     if (!reserva.cliente_whatsapp) continue;
 
     const nombreNegocio = nombreNegocioById[reserva.negocio_id] || "Tu salón";
+    const urlNegocio = urlNegocioById[reserva.negocio_id] || "https://tusalon.github.io/";
 
     // Buscar suscripción push de esta clienta en este negocio
     const subUrl = `${supabaseUrl}/rest/v1/push_suscripciones?negocio_id=eq.${reserva.negocio_id}&cliente_whatsapp=eq.${encodeURIComponent(reserva.cliente_whatsapp)}&activo=eq.true&select=id,endpoint,subscription`;
@@ -116,7 +118,7 @@ Deno.serve(async (req) => {
     if (!subs.length) continue;
 
     const { title, body: msgBody } = buildMensaje(reserva, nombreNegocio);
-    const notification = JSON.stringify({ title, body: msgBody, tag: `recordatorio-${tipo}`, url: "/index.html" });
+    const notification = JSON.stringify({ title, body: msgBody, tag: `recordatorio-${tipo}`, url: urlNegocio });
 
     for (const sub of subs) {
       try {

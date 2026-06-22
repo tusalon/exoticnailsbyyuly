@@ -1,6 +1,6 @@
 // sw.js - Service Worker para Exotic Nails by Yuly
 
-const CACHE_NAME = 'exoticnailsbyyuly-v64';
+const CACHE_NAME = 'exoticnailsbyyuly-v65';
 const BASE = '/exoticnailsbyyuly';
 
 const urlsToCache = [
@@ -185,7 +185,12 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || `${BASE}/admin.html`;
+  let targetUrl = event.notification?.data?.url || `${BASE}/`;
+  // Si la URL es relativa, convertirla a absoluta usando el scope del SW
+  if (targetUrl.startsWith('/') && !targetUrl.startsWith('//')) {
+    const scope = self.registration.scope || `https://tusalon.github.io${BASE}/`;
+    targetUrl = scope.replace(/\/$/, '') + (targetUrl === '/' ? '' : targetUrl);
+  }
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const c of list) {
