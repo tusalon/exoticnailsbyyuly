@@ -283,6 +283,9 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
                         )}
 
                         {/* Botón notificaciones */}
+                        {pushEstado === 'denied' && (
+                            <p className="text-white/50 text-xs text-center">🔔 Notificaciones bloqueadas — actívalas en Ajustes del teléfono</p>
+                        )}
                         {pushEstado !== 'unsupported' && pushEstado !== 'denied' && (
                             <div className="space-y-1">
                                 {pushEstado === 'granted' ? (
