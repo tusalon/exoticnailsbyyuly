@@ -122,9 +122,9 @@ async function getRegistroServiceWorkerPush() {
     return ready || null;
 }
 
-async function guardarSuscripcionPush(subscription, role) {
+async function guardarSuscripcionPush(subscription, role, clienteWhatsapp) {
     const negocioId = getNegocioIdPush();
-    console.log('[Push] guardarSuscripcionPush - negocioId:', negocioId, 'role:', role);
+    console.log('[Push] guardarSuscripcionPush - negocioId:', negocioId, 'role:', role, 'cliente:', clienteWhatsapp || 'sin whatsapp');
     if (!negocioId) throw new Error('No hay negocio_id para guardar la suscripcion push.');
 
     const payload = {
@@ -136,6 +136,8 @@ async function guardarSuscripcionPush(subscription, role) {
         activo: true,
         updated_at: new Date().toISOString()
     };
+
+    if (clienteWhatsapp) payload.cliente_whatsapp = clienteWhatsapp;
 
     console.log('[Push] endpoint:', subscription.endpoint?.substring(0, 60));
     console.log('[Push] SUPABASE_URL:', window.SUPABASE_URL);
@@ -210,7 +212,7 @@ window.solicitarPushRservasRoma = async function(options = {}) {
             });
             console.log('[Push] suscripcion creada:', subscription.endpoint?.substring(0, 60));
         }
-        await guardarSuscripcionPush(subscription.toJSON ? subscription.toJSON() : subscription, role);
+        await guardarSuscripcionPush(subscription.toJSON ? subscription.toJSON() : subscription, role, options.clienteWhatsapp);
         return { ok: true };
     } catch (err) {
         console.error('[Push] error:', err.name, err.message);
