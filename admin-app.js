@@ -2113,8 +2113,15 @@ function AdminApp() {
                         if (window.enviarConfirmacionReserva) {
                             await window.enviarConfirmacionReserva(result.data, configNegocio);
                         }
-                        if (window.notificarNuevaReserva) {
-                            window.notificarNuevaReserva(result.data).catch(e => console.warn('ntfy:', e));
+                        if (window.enviarNotificacionPush) {
+                            const cfg = configNegocio || {};
+                            const fecha = window.formatFechaCompleta ? window.formatFechaCompleta(result.data.fecha) : result.data.fecha;
+                            const hora = window.formatTo12Hour ? window.formatTo12Hour(result.data.hora_inicio) : result.data.hora_inicio;
+                            window.enviarNotificacionPush(
+                                `${cfg.nombre || 'Salon'} - Reserva manual`,
+                                `👤 ${result.data.cliente_nombre}\n💅 ${result.data.servicio}\n📅 ${fecha} ${hora}`,
+                                'calendar', 'default'
+                            ).catch(e => console.warn('ntfy:', e));
                         }
                     }
                 } catch (whatsappError) {
