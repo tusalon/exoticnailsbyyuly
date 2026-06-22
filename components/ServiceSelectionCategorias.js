@@ -256,7 +256,7 @@ function ServiceSelection({ onSelect, selectedService }) {
                                             <span className={`text-xs px-2 py-1 rounded-full border ${estaSeleccionado ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-pink-600 border-pink-200'}`}>
                                                 {estaSeleccionado ? '✓ Elegido' : 'Agregar'}
                                             </span>
-                                            <span className="text-pink-600 font-bold text-lg">${service.precio}</span>
+                                            <span className="text-pink-600 font-bold text-lg">${parseFloat(service.precio) % 1 === 0 ? parseFloat(service.precio).toFixed(0) : parseFloat(service.precio).toFixed(2)}</span>
                                             <span className="flex items-center text-pink-500 text-xs bg-pink-50 px-2 py-1 rounded-full border border-pink-200">{service.duracion} min</span>
                                         </div>
                                     </div>
@@ -272,7 +272,7 @@ function ServiceSelection({ onSelect, selectedService }) {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                             <p className="font-bold text-pink-800">
-                                {serviciosSeleccionados.length} servicio{serviciosSeleccionados.length === 1 ? '' : 's'} · {totalSeleccion.duracion} min · ${totalSeleccion.precio}
+                                {serviciosSeleccionados.length} servicio{serviciosSeleccionados.length === 1 ? '' : 's'} · {totalSeleccion.duracion} min · ${totalSeleccion.precio % 1 === 0 ? totalSeleccion.precio.toFixed(0) : totalSeleccion.precio.toFixed(2)}
                             </p>
                             <p className="text-xs text-pink-500 truncate">
                                 {serviciosSeleccionados.map(s => s.nombre).join(' + ')}

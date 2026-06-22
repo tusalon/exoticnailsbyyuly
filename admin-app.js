@@ -3087,8 +3087,11 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
         const cobroReal = reservas.reduce((total, reserva) => total + Number(reserva.monto_cobrado || 0), 0);
         const requiereAnticipo = config?.requiere_anticipo === true || booking?.estado === 'Pendiente' || booking?.requiere_anticipo || booking?.requiereAnticipo || booking?.anticipo_recibido;
         const valorAnticipo = Number(config?.valor_anticipo ?? config?.monto_anticipo ?? 0);
+        const monedaNegocio = String(config?.whatsapp_moneda || 'CUP').toUpperCase();
         const anticipoCalculado = config?.tipo_anticipo === 'porcentaje'
-            ? Math.round(costoServicios * (valorAnticipo / 100))
+            ? (monedaNegocio === 'USD'
+                ? Math.round(costoServicios * (valorAnticipo / 100) * 100) / 100
+                : Math.round(costoServicios * (valorAnticipo / 100)))
             : valorAnticipo;
         const anticipo = requiereAnticipo ? anticipoCalculado : 0;
         const totalMostrar = cobroReal > 0 ? cobroReal : costoServicios;

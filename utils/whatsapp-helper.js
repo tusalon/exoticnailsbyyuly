@@ -77,7 +77,10 @@ async function calcularMontoAnticipo(configNegocio, servicioNombre) {
     }
 
     const porcentaje = (configNegocio.valor_anticipo || 0) / 100;
-    return Math.round(precioServicio * porcentaje);
+    const resultado = precioServicio * porcentaje;
+    // Para CUP redondear a entero, para USD preservar 2 decimales
+    const moneda = String(configNegocio?.whatsapp_moneda || 'CUP').toUpperCase();
+    return moneda === 'USD' ? Math.round(resultado * 100) / 100 : Math.round(resultado);
 }
 
 async function calcularTotalReserva(booking) {
@@ -116,7 +119,10 @@ async function calcularTotalReserva(booking) {
 function formatearMontoReserva(monto, moneda = 'CUP') {
     const numero = parseFloat(monto);
     if (!Number.isFinite(numero) || numero <= 0) return '';
-    const limpio = numero % 1 === 0 ? numero.toFixed(0) : numero.toFixed(2);
+    // USD: siempre 2 decimales (25.00, 12.50). CUP: sin decimales si es entero
+    const limpio = moneda === 'USD'
+        ? numero.toFixed(2)
+        : (numero % 1 === 0 ? numero.toFixed(0) : numero.toFixed(2));
     return `${limpio} ${moneda}`;
 }
 
