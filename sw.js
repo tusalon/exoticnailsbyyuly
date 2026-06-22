@@ -1,6 +1,6 @@
 // sw.js - Service Worker para Exotic Nails by Yuly
 
-const CACHE_NAME = 'exoticnailsbyyuly-v63';
+const CACHE_NAME = 'exoticnailsbyyuly-v64';
 const BASE = '/exoticnailsbyyuly';
 
 const urlsToCache = [
@@ -84,6 +84,7 @@ const urlsToCache = [
   `${BASE}/icons/icon-192x192.png`,
   `${BASE}/icons/icon-384x384.png`,
   `${BASE}/icons/icon-512x512.png`,
+  `${BASE}/icons/badge.svg`,
 ];
 
 // URLs externas — nunca interceptar
@@ -176,7 +177,7 @@ self.addEventListener('push', event => {
   event.waitUntil(self.registration.showNotification(payload.title || 'RservasRoma', {
     body: payload.body || 'Tienes una nueva notificación',
     icon: `${BASE}/icons/icon-192x192.png`,
-    badge: `${BASE}/icons/icon-96x96.png`,
+    badge: `${BASE}/icons/badge.svg`,
     tag: payload.tag || 'rservasroma',
     data: { url: payload.url || `${BASE}/admin.html`, ...(payload.data || {}) },
   }));
