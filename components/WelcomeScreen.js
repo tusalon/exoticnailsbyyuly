@@ -12,13 +12,10 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
         if (!('Notification' in window)) { setPushEstado('unsupported'); return; }
         const permiso = Notification.permission;
         setPushEstado(permiso);
-        // Si ya tiene permiso pero no suscripción guardada, suscribirse automáticamente
-        if (permiso === 'granted' && !localStorage.getItem('rservasPushActivo')) {
-            if (typeof window.solicitarPushRservasRoma === 'function') {
-                window.solicitarPushRservasRoma({ permission: 'granted', defaultRole: 'cliente', clienteWhatsapp: cliente?.whatsapp })
-                    .then(res => { if (res?.ok) console.log('[Push] suscripcion auto-guardada'); })
-                    .catch(() => {});
-            }
+        // Si tiene permiso y whatsapp disponible, actualizar suscripción para vincular el numero
+        if (permiso === 'granted' && cliente?.whatsapp && typeof window.solicitarPushRservasRoma === 'function') {
+            window.solicitarPushRservasRoma({ permission: 'granted', defaultRole: 'cliente', clienteWhatsapp: cliente.whatsapp })
+                .catch(() => {});
         }
     }, []);
 
