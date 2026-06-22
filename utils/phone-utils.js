@@ -3,14 +3,24 @@
 (function() {
     const DEFAULT_COUNTRY_CODE = '53';
     const COUNTRIES = [
-        { id: 'CU', nombre: 'Cuba', bandera: '🇨🇺', codigo: '53', ejemplo: '53066647', localLength: 8 },
-        { id: 'ES', nombre: 'Espana', bandera: '🇪🇸', codigo: '34', ejemplo: '612345678', localLength: 9 },
-        { id: 'MX', nombre: 'Mexico', bandera: '🇲🇽', codigo: '52', ejemplo: '5512345678', localLength: 10 },
-        { id: 'US', nombre: 'USA', bandera: '🇺🇸', codigo: '1', ejemplo: '3055551234', localLength: 10 },
-        { id: 'RU', nombre: 'Rusia', bandera: '\uD83C\uDDF7\uD83C\uDDFA', codigo: '7', ejemplo: '9123456789', localLength: 10 },
-        { id: 'VE', nombre: 'Venezuela', bandera: '🇻🇪', codigo: '58', ejemplo: '4121234567', localLength: 10 },
-        { id: 'CO', nombre: 'Colombia', bandera: '🇨🇴', codigo: '57', ejemplo: '3001234567', localLength: 10 },
-        { id: 'GY', nombre: 'Guyana', bandera: '🇬🇾', codigo: '592', ejemplo: '6123456', localLength: 7 }
+        { id: 'CU', nombre: 'Cuba',      bandera: '\uD83C\uDDE8\uD83C\uDDFA', codigo: '53',  ejemplo: '53066647',    localLength: 8  },
+        { id: 'ES', nombre: 'Espana',     bandera: '\uD83C\uDDEA\uD83C\uDDF8', codigo: '34',  ejemplo: '612345678',   localLength: 9  },
+        { id: 'MX', nombre: 'Mexico',     bandera: '\uD83C\uDDF2\uD83C\uDDFD', codigo: '52',  ejemplo: '5512345678',  localLength: 10 },
+        { id: 'US', nombre: 'USA',        bandera: '\uD83C\uDDFA\uD83C\uDDF8', codigo: '1',   ejemplo: '3055551234',  localLength: 10 },
+        { id: 'RU', nombre: 'Rusia',      bandera: '\uD83C\uDDF7\uD83C\uDDFA', codigo: '7',   ejemplo: '9123456789',  localLength: 10 },
+        { id: 'VE', nombre: 'Venezuela',  bandera: '\uD83C\uDDFB\uD83C\uDDEA', codigo: '58',  ejemplo: '4121234567',  localLength: 10 },
+        { id: 'CO', nombre: 'Colombia',   bandera: '\uD83C\uDDE8\uD83C\uDDF4', codigo: '57',  ejemplo: '3001234567',  localLength: 10 },
+        { id: 'GY', nombre: 'Guyana',     bandera: '\uD83C\uDDEC\uD83C\uDDFE', codigo: '592', ejemplo: '6123456',     localLength: 7  },
+        { id: 'VN', nombre: 'Vietnam',    bandera: '\uD83C\uDDFB\uD83C\uDDF3', codigo: '84',  ejemplo: '912345678',   localLength: 9  },
+        { id: 'AR', nombre: 'Argentina',  bandera: '\uD83C\uDDE6\uD83C\uDDF7', codigo: '54',  ejemplo: '91123456789', localLength: 10 },
+        { id: 'PE', nombre: 'Peru',       bandera: '\uD83C\uDDF5\uD83C\uDDEA', codigo: '51',  ejemplo: '912345678',   localLength: 9  },
+        { id: 'CL', nombre: 'Chile',      bandera: '\uD83C\uDDE8\uD83C\uDDF1', codigo: '56',  ejemplo: '912345678',   localLength: 9  },
+        { id: 'EC', nombre: 'Ecuador',    bandera: '\uD83C\uDDEA\uD83C\uDDE8', codigo: '593', ejemplo: '991234567',   localLength: 9  },
+        { id: 'PT', nombre: 'Portugal',   bandera: '\uD83C\uDDF5\uD83C\uDDF9', codigo: '351', ejemplo: '912345678',   localLength: 9  },
+        { id: 'IT', nombre: 'Italia',     bandera: '\uD83C\uDDEE\uD83C\uDDF9', codigo: '39',  ejemplo: '3123456789',  localLength: 10 },
+        { id: 'FR', nombre: 'Francia',    bandera: '\uD83C\uDDEB\uD83C\uDDF7', codigo: '33',  ejemplo: '612345678',   localLength: 9  },
+        { id: 'CN', nombre: 'China',      bandera: '\uD83C\uDDE8\uD83C\uDDF3', codigo: '86',  ejemplo: '13123456789', localLength: 11 },
+        { id: 'DE', nombre: 'Alemania',   bandera: '\uD83C\uDDE9\uD83C\uDDEA', codigo: '49',  ejemplo: '15123456789', localLength: 11 }
     ];
 
     const onlyDigits = (value) => String(value || '').replace(/\D/g, '');
