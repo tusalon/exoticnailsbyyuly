@@ -13,9 +13,16 @@ function WelcomeScreen({ onStart, onGoBack, cliente, userRol }) {
         const permiso = Notification.permission;
         setPushEstado(permiso);
         // Si tiene permiso y whatsapp disponible, actualizar suscripción para vincular el numero
-        if (permiso === 'granted' && cliente?.whatsapp && typeof window.solicitarPushRservasRoma === 'function') {
-            window.solicitarPushRservasRoma({ permission: 'granted', defaultRole: 'cliente', clienteWhatsapp: cliente.whatsapp })
-                .catch(() => {});
+        if (permiso === 'granted' && cliente?.whatsapp) {
+            // APK nativa: usa push nativo de Capacitor
+            if (typeof window.solicitarNativePushRservasRoma === 'function' && window.Capacitor?.isNativePlatform?.()) {
+                window.solicitarNativePushRservasRoma({ defaultRole: 'cliente' }).catch(() => {});
+            }
+            // Web/PWA: usa web push VAPID
+            if (typeof window.solicitarPushRservasRoma === 'function') {
+                window.solicitarPushRservasRoma({ permission: 'granted', defaultRole: 'cliente', clienteWhatsapp: cliente.whatsapp })
+                    .catch(() => {});
+            }
         }
     }, []);
 

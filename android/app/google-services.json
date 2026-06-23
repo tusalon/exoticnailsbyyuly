@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "741161993316",
+    "project_id": "rservasroma-c6fc5",
+    "storage_bucket": "rservasroma-c6fc5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:741161993316:android:cbfca0cfb9edcef7448b71",
+        "android_client_info": {
+          "package_name": "com.tusalon.exoticnailsbyyuli"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAa7yPoE5zR1M9B48aQi2lBnjgO8PSyjAQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
