@@ -510,6 +510,13 @@ function AdminApp() {
         return serviciosSeleccionados.reduce((total, servicio) => total + Number(servicio.duracion || 60), 0);
     };
 
+    const getTotalManualServicios = (serviciosSeleccionados = getServiciosManualSeleccionados()) => {
+        return serviciosSeleccionados.reduce((total, servicio) => {
+            const precio = parseFloat(servicio.precio);
+            return total + (Number.isFinite(precio) ? precio : 0);
+        }, 0);
+    };
+
     const getDuracionManualTotal = (serviciosSeleccionados = getServiciosManualSeleccionados()) => {
         if (nuevaReservaData.hora_inicio && nuevaReservaData.hora_fin) {
             const inicio = timeToMinutes(nuevaReservaData.hora_inicio);
@@ -1875,6 +1882,7 @@ function AdminApp() {
             }
             
             const duracionTotal = getDuracionManualTotal(serviciosSeleccionados);
+            const totalServiciosManual = getTotalManualServicios(serviciosSeleccionados);
             const usaDuracionPersonalizada = tieneDuracionManualPersonalizada();
             if (duracionTotal <= 0) {
                 alert('La duracion de la cita debe ser mayor que 0 minutos.');
@@ -1986,6 +1994,10 @@ function AdminApp() {
                             duracion: duracionTotal,
                             hora_inicio: reservasCreadas[0].hora_inicio,
                             hora_fin: reservasCreadas[reservasCreadas.length - 1].hora_fin,
+                            precio_original: totalServiciosManual,
+                            precio_final: totalServiciosManual,
+                            total_pagar: totalServiciosManual,
+                            monto_total: totalServiciosManual,
                             _reservasGrupo: reservasCreadas
                         }
                     };
@@ -4869,4 +4881,3 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<AdminApp />);
-
