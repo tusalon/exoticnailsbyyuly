@@ -1907,6 +1907,16 @@ function AdminApp() {
             }
             const configNegocio = await window.cargarConfiguracionNegocio();
             const requiereAnticipo = nuevaReservaData.requiereAnticipo;
+            if (requiereAnticipo && configNegocio?.anticipos_por_servicio && window.calcularMontoAnticipoReservaSync) {
+                const montoAnticipoManual = window.calcularMontoAnticipoReservaSync(configNegocio, {
+                    esMultiple: serviciosSeleccionados.length > 1,
+                    servicios: serviciosSeleccionados
+                });
+                if (!montoAnticipoManual || montoAnticipoManual <= 0) {
+                    alert('Este servicio no tiene anticipo configurado. Configuralo en Servicios o desmarca requerir anticipo.');
+                    return;
+                }
+            }
             
             const bookingData = {
                 cliente_nombre: nuevaReservaData.cliente_nombre,
@@ -3102,10 +3112,20 @@ Cualquier cambio, podÃ©s cancelarlo desde la app con hasta 1 hora de anticipaciÃ
         const reservas = getAgendaServicios(booking);
         const costoServicios = reservas.reduce((total, reserva) => total + getPrecioServicioAgenda(reserva.servicio), 0);
         const cobroReal = reservas.reduce((total, reserva) => total + Number(reserva.monto_cobrado || 0), 0);
-        const requiereAnticipo = config?.requiere_anticipo === true || booking?.estado === 'Pendiente' || booking?.requiere_anticipo || booking?.requiereAnticipo || booking?.anticipo_recibido;
+        const anticipoPorServicio = config?.anticipos_por_servicio && window.getAnticipoServicio
+            ? reservas.reduce((total, reserva) => {
+                return total + extraerNombresServicioAgenda(reserva.servicio).reduce((suma, nombre) => {
+                    const servicio = buscarServicioAgenda(nombre);
+                    return suma + (servicio ? window.getAnticipoServicio(servicio, config) : 0);
+                }, 0);
+            }, 0)
+            : 0;
+        const requiereAnticipo = booking?.estado === 'Pendiente' || booking?.requiere_anticipo || booking?.requiereAnticipo || booking?.anticipo_recibido || (config?.requiere_anticipo === true && (!config?.anticipos_por_servicio || anticipoPorServicio > 0));
         const valorAnticipo = Number(config?.valor_anticipo ?? config?.monto_anticipo ?? 0);
         const monedaNegocio = String(config?.whatsapp_moneda || 'CUP').toUpperCase();
-        const anticipoCalculado = config?.tipo_anticipo === 'porcentaje'
+        const anticipoCalculado = config?.anticipos_por_servicio
+            ? anticipoPorServicio
+            : config?.tipo_anticipo === 'porcentaje'
             ? (monedaNegocio === 'USD'
                 ? Math.round(costoServicios * (valorAnticipo / 100) * 100) / 100
                 : Math.round(costoServicios * (valorAnticipo / 100)))

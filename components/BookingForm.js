@@ -270,7 +270,10 @@ END:VCALENDAR`;
                 const configNegocio = await window.cargarConfiguracionNegocio();
                 const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
                 const minAntelacionHoras = configGlobal?.min_antelacion_horas ?? 2;
-                const requiereAnticipo = configNegocio?.requiere_anticipo === true;
+                const montoAnticipoReserva = window.calcularMontoAnticipoReservaSync
+                    ? window.calcularMontoAnticipoReservaSync(configNegocio, service)
+                    : 0;
+                const requiereAnticipo = configNegocio?.requiere_anticipo === true && (!configNegocio?.anticipos_por_servicio || montoAnticipoReserva > 0);
 
                 const [year, month, day] = date.split('-').map(Number);
                 const [hours, minutes] = time.split(':').map(Number);
@@ -376,7 +379,10 @@ END:VCALENDAR`;
             const configNegocio = await window.cargarConfiguracionNegocio();
             const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
             const minAntelacionHoras = configGlobal?.min_antelacion_horas ?? 2;
-            const requiereAnticipo = configNegocio?.requiere_anticipo === true;
+            const montoAnticipoReserva = window.calcularMontoAnticipoReservaSync
+                ? window.calcularMontoAnticipoReservaSync(configNegocio, service)
+                : 0;
+            const requiereAnticipo = configNegocio?.requiere_anticipo === true && (!configNegocio?.anticipos_por_servicio || montoAnticipoReserva > 0);
 
             const [year, month, day] = date.split('-').map(Number);
             const [hours, minutes] = time.split(':').map(Number);

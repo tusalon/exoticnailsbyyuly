@@ -27,6 +27,7 @@ function EditarNegocio() {
         horario_atencion: '',
         // 🆕 NUEVOS CAMPOS DE ANTICIPO
         requiere_anticipo: false,
+        anticipos_por_servicio: false,
         tipo_anticipo: 'fijo',
         valor_anticipo: '',
         mensaje_pago: 'Para confirmar tu turno, realizá el pago del anticipo de ${monto_anticipo} a la siguiente cuenta:\n\nCBU: {cbu}\nAlias: {alias}\nTitular: {titular}\n\nTenés {tiempo_vencimiento} horas para realizar el pago. Si no se confirma el pago en ese tiempo, el turno se liberará automáticamente.',
@@ -90,6 +91,7 @@ function EditarNegocio() {
                     horario_atencion: configData.horario_atencion || '',
                     // 🆕 CARGAR CAMPOS DE ANTICIPO
                     requiere_anticipo: configData.requiere_anticipo || false,
+                    anticipos_por_servicio: configData.anticipos_por_servicio === true,
                     tipo_anticipo: configData.tipo_anticipo || 'fijo',
                     valor_anticipo: configData.valor_anticipo || '',
                     mensaje_pago: configData.mensaje_pago || 'Para confirmar tu turno, realizá el pago del anticipo de ${monto_anticipo} a la siguiente cuenta:\n\nCBU: {cbu}\nAlias: {alias}\nTitular: {titular}\n\nTenés {tiempo_vencimiento} horas para realizar el pago. Si no se confirma el pago en ese tiempo, el turno se liberará automáticamente.',
@@ -208,6 +210,7 @@ function EditarNegocio() {
                 imagen_fondo_tipo: config.imagen_fondo_tipo || 'unas',
                 // 🆕 INCLUIR CAMPOS DE ANTICIPO
                 requiere_anticipo: config.requiere_anticipo,
+                anticipos_por_servicio: config.anticipos_por_servicio === true,
                 tipo_anticipo: config.tipo_anticipo,
                 valor_anticipo: config.valor_anticipo ? parseFloat(config.valor_anticipo) : null,
                 mensaje_pago: config.mensaje_pago || null,
@@ -244,9 +247,10 @@ function EditarNegocio() {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('❌ Error response:', errorText);
-                if (errorText.includes('codigo_pais') || errorText.includes('whatsapp_moneda') || errorText.includes('whatsapp_mostrar_costos')) {
+                if (errorText.includes('codigo_pais') || errorText.includes('whatsapp_moneda') || errorText.includes('whatsapp_mostrar_costos') || errorText.includes('anticipos_por_servicio')) {
                     const datosCompatibles = { ...datosActualizar };
                     if (errorText.includes('codigo_pais')) delete datosCompatibles.codigo_pais;
+                    if (errorText.includes('anticipos_por_servicio')) delete datosCompatibles.anticipos_por_servicio;
                     if (errorText.includes('whatsapp_moneda') || errorText.includes('whatsapp_mostrar_costos')) {
                         delete datosCompatibles.whatsapp_moneda;
                         delete datosCompatibles.whatsapp_mostrar_costos;
@@ -586,10 +590,26 @@ function EditarNegocio() {
 
                                 {config.requiere_anticipo && (
                                     <>
+                                        <div className="flex items-center justify-between bg-amber-50 p-4 rounded-lg border border-amber-100">
+                                            <div>
+                                                <label className="font-medium text-amber-800">Usar anticipo diferente por servicio</label>
+                                                <p className="text-xs text-amber-700 mt-1">Si activas esto, cada servicio define su propio anticipo desde Servicios.</p>
+                                            </div>
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={config.anticipos_por_servicio === true}
+                                                    onChange={(e) => setConfig({...config, anticipos_por_servicio: e.target.checked})}
+                                                    className="sr-only peer"
+                                                />
+                                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                                            </label>
+                                        </div>
+
                                         {/* Tipo de anticipo */}
-                                        <div>
+                                        <div className={config.anticipos_por_servicio ? 'opacity-60' : ''}>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Tipo de anticipo
+                                                Tipo de anticipo global
                                             </label>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <button
@@ -622,9 +642,9 @@ function EditarNegocio() {
                                         </div>
 
                                         {/* Valor del anticipo */}
-                                        <div>
+                                        <div className={config.anticipos_por_servicio ? 'opacity-60' : ''}>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                {config.tipo_anticipo === 'fijo' ? 'Monto del anticipo ($)' : 'Porcentaje del servicio (%)'}
+                                                {config.tipo_anticipo === 'fijo' ? 'Monto global del anticipo ($)' : 'Porcentaje global del servicio (%)'}
                                             </label>
                                             <input
                                                 type="number"

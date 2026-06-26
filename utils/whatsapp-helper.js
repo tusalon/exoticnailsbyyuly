@@ -68,6 +68,17 @@ async function getConfigNegocio() {
 async function calcularMontoAnticipo(configNegocio, servicioNombre) {
     if (!configNegocio) return 0;
 
+    if (configNegocio.anticipos_por_servicio && window.salonServicios && window.getAnticipoServicio) {
+        const servicios = await window.salonServicios.getAll(true);
+        const nombres = String(servicioNombre || '').split(' + ').map(nombre => nombre.trim()).filter(Boolean);
+        const serviciosEncontrados = servicios.filter(s => nombres.includes(s.nombre));
+        const total = serviciosEncontrados.reduce((suma, servicio) => {
+            return suma + window.getAnticipoServicio(servicio, configNegocio);
+        }, 0);
+        const moneda = String(configNegocio?.whatsapp_moneda || 'CUP').toUpperCase();
+        return moneda === 'USD' ? Math.round(total * 100) / 100 : Math.round(total);
+    }
+
     if (configNegocio.tipo_anticipo === 'fijo') {
         return configNegocio.valor_anticipo || 0;
     }
@@ -350,6 +361,10 @@ window.enviarMensajePago = async function(booking, configNegocio) {
         }
 
         const montoAnticipo = await calcularMontoAnticipo(configNegocio, booking.servicio);
+        if (configNegocio?.anticipos_por_servicio && (!montoAnticipo || montoAnticipo <= 0)) {
+            console.log('ℹ️ La reserva no tiene anticipo configurado por servicio');
+            return false;
+        }
         const totalReserva = await calcularTotalReserva(booking);
         const lineaTotalReserva = generarLineaTotalReserva(totalReserva, configNegocio);
         const totalPagar = formatearMontoWhatsApp(totalReserva, configNegocio);
@@ -623,6 +638,10 @@ window.notificarReservaPendiente = async function(booking) {
 
         const configNegocio = await window.cargarConfiguracionNegocio();
         const montoAnticipo = await calcularMontoAnticipo(configNegocio, booking.servicio);
+        if (configNegocio?.anticipos_por_servicio && (!montoAnticipo || montoAnticipo <= 0)) {
+            console.log('ℹ️ La reserva no tiene anticipo configurado por servicio');
+            return false;
+        }
         const totalReserva = await calcularTotalReserva(booking);
         const lineaTotalReserva = generarLineaTotalReserva(totalReserva, configNegocio);
         const totalPagar = formatearMontoWhatsApp(totalReserva, configNegocio);

@@ -158,6 +158,9 @@ function ServiciosPanel() {
             precio_desde: servicio.precio_desde ?? servicio.precio,
             precio_hasta: servicio.precio_hasta || null,
             precio_moneda: servicio.precio_moneda || 'CUP',
+            requiere_anticipo: servicio.requiere_anticipo === true,
+            tipo_anticipo: servicio.tipo_anticipo || 'fijo',
+            valor_anticipo: servicio.valor_anticipo || null,
             descripcion: servicio.descripcion || '',
             imagen: servicio.imagen || null,
             horarios_permitidos: servicio.horarios_permitidos || []
@@ -447,6 +450,9 @@ function ServicioFormCategorias({ servicio, categorias, onGuardar, onCancelar })
         precio_desde: String(servicio?.precio_desde ?? servicio?.precio ?? '0'),
         precio_hasta: String(servicio?.precio_hasta ?? ''),
         precio_moneda: String(servicio?.precio_moneda || 'CUP').toUpperCase(),
+        requiere_anticipo: servicio?.requiere_anticipo === true,
+        tipo_anticipo: servicio?.tipo_anticipo || 'fijo',
+        valor_anticipo: String(servicio?.valor_anticipo ?? ''),
         descripcion: servicio?.descripcion || '',
         horarios_permitidos: servicio?.horarios_permitidos || []
     });
@@ -457,10 +463,12 @@ function ServicioFormCategorias({ servicio, categorias, onGuardar, onCancelar })
         const duracion = parseInt(form.duracion, 10);
         const precioDesde = window.parsePrecioServicio ? window.parsePrecioServicio(form.precio_desde, NaN) : parseFloat(String(form.precio_desde).replace(',', '.'));
         const precioHasta = form.precio_hasta === '' ? null : (window.parsePrecioServicio ? window.parsePrecioServicio(form.precio_hasta, NaN) : parseFloat(String(form.precio_hasta).replace(',', '.')));
+        const valorAnticipo = form.valor_anticipo === '' ? null : (window.parsePrecioServicio ? window.parsePrecioServicio(form.valor_anticipo, NaN) : parseFloat(String(form.valor_anticipo).replace(',', '.')));
         if (!form.nombre.trim()) return alert('El nombre del servicio es obligatorio');
         if (isNaN(duracion) || duracion < 3) return alert('La duración debe ser al menos 3 minutos');
         if (isNaN(precioDesde) || precioDesde < 0) return alert('El precio desde debe ser válido');
         if (precioHasta !== null && (isNaN(precioHasta) || precioHasta < precioDesde)) return alert('El precio hasta debe ser mayor o igual al precio desde');
+        if (form.requiere_anticipo && (valorAnticipo === null || isNaN(valorAnticipo) || valorAnticipo <= 0)) return alert('El anticipo del servicio debe ser mayor que cero');
 
         let horarios = [];
         if (horariosStr.trim()) {
@@ -477,6 +485,9 @@ function ServicioFormCategorias({ servicio, categorias, onGuardar, onCancelar })
             precio_desde: precioDesde,
             precio_hasta: precioHasta,
             precio_moneda: ['CUP', 'USD'].includes(form.precio_moneda) ? form.precio_moneda : 'CUP',
+            requiere_anticipo: form.requiere_anticipo,
+            tipo_anticipo: form.tipo_anticipo === 'porcentaje' ? 'porcentaje' : 'fijo',
+            valor_anticipo: form.requiere_anticipo ? valorAnticipo : null,
             horarios_permitidos: horarios
         });
     };
@@ -516,6 +527,27 @@ function ServicioFormCategorias({ servicio, categorias, onGuardar, onCancelar })
                         <input value={form.precio_hasta} onChange={(e) => setForm({...form, precio_hasta: e.target.value.replace(/[^0-9.,]/g, '')})} className="w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="Precio hasta opcional" inputMode="decimal" />
                     </div>
                     <p className="text-xs text-gray-400">Si no hay rango, deja vacío "precio hasta". El cálculo usa el precio desde.</p>
+                    <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 space-y-3">
+                        <label className="flex items-center justify-between gap-3 cursor-pointer">
+                            <span className="text-sm font-semibold text-amber-800">Anticipo propio de este servicio</span>
+                            <input
+                                type="checkbox"
+                                checked={form.requiere_anticipo}
+                                onChange={(e) => setForm({...form, requiere_anticipo: e.target.checked})}
+                                className="w-5 h-5 text-amber-600"
+                            />
+                        </label>
+                        {form.requiere_anticipo && (
+                            <div className="grid grid-cols-2 gap-3">
+                                <select value={form.tipo_anticipo} onChange={(e) => setForm({...form, tipo_anticipo: e.target.value})} className="w-full border border-amber-200 rounded-lg px-3 py-2 bg-white">
+                                    <option value="fijo">Monto fijo</option>
+                                    <option value="porcentaje">Porcentaje</option>
+                                </select>
+                                <input value={form.valor_anticipo} onChange={(e) => setForm({...form, valor_anticipo: e.target.value.replace(/[^0-9.,]/g, '')})} className="w-full border border-amber-200 rounded-lg px-3 py-2" placeholder={form.tipo_anticipo === 'porcentaje' ? 'Ej: 30' : 'Ej: 500'} inputMode="decimal" />
+                            </div>
+                        )}
+                        <p className="text-xs text-amber-700">Solo se usa si en Editar negocio activas los anticipos por servicio.</p>
+                    </div>
                     <input value={horariosStr} onChange={(e) => setHorariosStr(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="Horarios permitidos: 09:00, 11:00" />
                     <p className="text-xs text-gray-400">Déjalo vacío para usar todos los horarios del profesional.</p>
                 </section>
