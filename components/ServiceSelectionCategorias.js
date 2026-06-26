@@ -246,22 +246,22 @@ function ServiceSelection({ onSelect, selectedService }) {
                                         estaSeleccionado ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-300 shadow-md' : 'border-pink-200 bg-white/80 backdrop-blur-sm hover:border-pink-400 hover:bg-pink-50/50 hover:shadow-sm'
                                     }`}
                                 >
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-2xl">{catIcono(categoria)}</span>
+                                    <div className="space-y-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-start gap-2 min-w-0">
+                                                <span className="text-2xl shrink-0">{catIcono(categoria)}</span>
                                                 <div className="min-w-0">
-                                                    <span className="font-medium text-pink-800 text-lg block">{service.nombre}</span>
+                                                    <span className="font-medium text-pink-800 text-lg block leading-snug break-words">{service.nombre}</span>
                                                     <span className="text-xs text-pink-500">{catNombre(categoria)}</span>
                                                 </div>
                                             </div>
-                                            {service.descripcion && <p className="text-sm text-pink-600/70 mt-1 ml-8">{service.descripcion}</p>}
-                                        </div>
-                                        <div className="flex flex-col items-end gap-1 ml-4 shrink-0">
                                             <span className={`text-xs px-2 py-1 rounded-full border ${estaSeleccionado ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-pink-600 border-pink-200'}`}>
                                                 {estaSeleccionado ? '✓ Elegido' : 'Agregar'}
                                             </span>
-                                            <span className="text-pink-600 font-bold text-lg">{window.formatearPrecioServicio ? window.formatearPrecioServicio(service) : `$${service.precio}`}</span>
+                                        </div>
+                                        {service.descripcion && <p className="text-sm text-pink-600/70 ml-8 leading-relaxed break-words">{service.descripcion}</p>}
+                                        <div className="ml-8 flex flex-wrap items-center gap-2">
+                                            <span className="max-w-full text-pink-600 font-bold text-base sm:text-lg leading-tight break-words">{window.formatearPrecioServicio ? window.formatearPrecioServicio(service) : `$${service.precio}`}</span>
                                             <span className="flex items-center text-pink-500 text-xs bg-pink-50 px-2 py-1 rounded-full border border-pink-200">{service.duracion} min</span>
                                         </div>
                                     </div>
