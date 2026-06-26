@@ -107,10 +107,25 @@
         const online = await isOnline();
         const alreadyOfflinePanel = /offline-panel\.html$/i.test(window.location.pathname);
         if (!online && !alreadyOfflinePanel) {
-            window.location.href = 'offline-panel.html';
+            goToOfflinePanel();
             return true;
         }
         return false;
+    }
+
+    function goToOfflinePanel() {
+        if (/offline-panel\.html$/i.test(window.location.pathname)) return;
+        window.location.href = new URL('offline-panel.html', window.location.href).href;
+    }
+
+    function enableAutoRedirect() {
+        window.addEventListener('offline', goToOfflinePanel);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && !navigator.onLine) goToOfflinePanel();
+        });
+        window.addEventListener('pageshow', () => {
+            if (!navigator.onLine) goToOfflinePanel();
+        });
     }
 
     async function syncFromSupabase() {
@@ -247,7 +262,10 @@
         syncFromBookings: saveOfflineData,
         syncFromSupabase,
         redirectIfOffline,
+        enableAutoRedirect,
         renderOfflinePanel,
         isOnline
     };
+
+    enableAutoRedirect();
 })();
