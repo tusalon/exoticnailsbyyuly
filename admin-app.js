@@ -512,7 +512,7 @@ function AdminApp() {
 
     const getTotalManualServicios = (serviciosSeleccionados = getServiciosManualSeleccionados()) => {
         return serviciosSeleccionados.reduce((total, servicio) => {
-            const precio = parseFloat(servicio.precio);
+            const precio = window.getPrecioServicioBase ? window.getPrecioServicioBase(servicio) : parseFloat(servicio.precio);
             return total + (Number.isFinite(precio) ? precio : 0);
         }, 0);
     };
@@ -3093,7 +3093,8 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
     const getPrecioServicioAgenda = (nombreServicio) => {
         return extraerNombresServicioAgenda(nombreServicio).reduce((total, nombre) => {
             const servicio = buscarServicioAgenda(nombre);
-            return total + Number(servicio?.precio || 0);
+            const precio = servicio && window.getPrecioServicioBase ? window.getPrecioServicioBase(servicio) : Number(servicio?.precio || 0);
+            return total + precio;
         }, 0);
     };
 
@@ -3150,7 +3151,8 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
     const getServicioPrecioEstadistica = (nombreServicio) => {
         return extraerNombresServicioAgenda(nombreServicio).reduce((total, nombre) => {
             const servicio = buscarServicioAgenda(nombre);
-            return total + parseMontoEstadistica(servicio?.precio);
+            const precio = servicio && window.getPrecioServicioBase ? window.getPrecioServicioBase(servicio) : parseMontoEstadistica(servicio?.precio);
+            return total + precio;
         }, 0);
     };
 
@@ -3794,7 +3796,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                         >
                                             <option value="">Seleccionar servicio</option>
                                             {serviciosList.map(s => (
-                                                <option key={s.id} value={s.nombre}>{s.nombre} ({s.duracion} min - ${s.precio})</option>
+                                                <option key={s.id} value={s.nombre}>{s.nombre} ({s.duracion} min - {window.formatearPrecioServicio ? window.formatearPrecioServicio(s) : `$${s.precio}`})</option>
                                             ))}
                                         </select>
                                     ) : (
@@ -3814,7 +3816,7 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                                                 {seleccionado ? '‚úì' : ''}
                                                             </span>
                                                         </div>
-                                                        <p className="text-xs text-gray-500 mt-1">{s.duracion} min - ${s.precio}</p>
+                                                        <p className="text-xs text-gray-500 mt-1">{s.duracion} min - {window.formatearPrecioServicio ? window.formatearPrecioServicio(s) : `$${s.precio}`}</p>
                                                     </button>
                                                 );
                                             })}

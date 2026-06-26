@@ -120,8 +120,11 @@ function ServiceSelection({ onSelect, selectedService }) {
     const totalSeleccion = React.useMemo(() => {
         return serviciosSeleccionados.reduce((total, servicio) => ({
             duracion: total.duracion + (parseInt(servicio.duracion, 10) || 0),
-            precio: total.precio + (parseFloat(servicio.precio) || 0)
-        }), { duracion: 0, precio: 0 });
+            precio: total.precio + (window.getPrecioServicioBase ? window.getPrecioServicioBase(servicio) : (parseFloat(servicio.precio) || 0)),
+            monedas: total.monedas.includes(window.getMonedaServicio ? window.getMonedaServicio(servicio) : 'CUP')
+                ? total.monedas
+                : [...total.monedas, window.getMonedaServicio ? window.getMonedaServicio(servicio) : 'CUP']
+        }), { duracion: 0, precio: 0, monedas: [] });
     }, [serviciosSeleccionados]);
 
     const toggleServicio = (servicio) => {
@@ -154,6 +157,8 @@ function ServiceSelection({ onSelect, selectedService }) {
             nombre: serviciosSeleccionados.map(s => s.nombre).join(' + '),
             duracion: totalSeleccion.duracion,
             precio: totalSeleccion.precio,
+            precio_desde: totalSeleccion.precio,
+            precio_moneda: totalSeleccion.monedas.length === 1 ? totalSeleccion.monedas[0] : 'CUP',
             categoria: 'combos',
             horarios_permitidos: combinarHorariosPermitidos(serviciosSeleccionados)
         });
@@ -256,7 +261,7 @@ function ServiceSelection({ onSelect, selectedService }) {
                                             <span className={`text-xs px-2 py-1 rounded-full border ${estaSeleccionado ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-pink-600 border-pink-200'}`}>
                                                 {estaSeleccionado ? '✓ Elegido' : 'Agregar'}
                                             </span>
-                                            <span className="text-pink-600 font-bold text-lg">${parseFloat(service.precio) % 1 === 0 ? parseFloat(service.precio).toFixed(0) : parseFloat(service.precio).toFixed(2)}</span>
+                                            <span className="text-pink-600 font-bold text-lg">{window.formatearPrecioServicio ? window.formatearPrecioServicio(service) : `$${service.precio}`}</span>
                                             <span className="flex items-center text-pink-500 text-xs bg-pink-50 px-2 py-1 rounded-full border border-pink-200">{service.duracion} min</span>
                                         </div>
                                     </div>
@@ -272,7 +277,7 @@ function ServiceSelection({ onSelect, selectedService }) {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                             <p className="font-bold text-pink-800">
-                                {serviciosSeleccionados.length} servicio{serviciosSeleccionados.length === 1 ? '' : 's'} · {totalSeleccion.duracion} min · ${totalSeleccion.precio % 1 === 0 ? totalSeleccion.precio.toFixed(0) : totalSeleccion.precio.toFixed(2)}
+                                {serviciosSeleccionados.length} servicio{serviciosSeleccionados.length === 1 ? '' : 's'} · {totalSeleccion.duracion} min · {totalSeleccion.precio % 1 === 0 ? totalSeleccion.precio.toFixed(0) : totalSeleccion.precio.toFixed(2)} {totalSeleccion.monedas.length === 1 ? totalSeleccion.monedas[0] : 'base'}
                             </p>
                             <p className="text-xs text-pink-500 truncate">
                                 {serviciosSeleccionados.map(s => s.nombre).join(' + ')}

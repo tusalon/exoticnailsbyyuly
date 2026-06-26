@@ -80,7 +80,7 @@ function MultiProfesionalSelector({ selectedService, selectedProfesional, onSele
                             <div className="flex items-center justify-between gap-3 mb-3">
                                 <div>
                                     <h3 className="font-bold text-pink-800">{index + 1}. {servicio.nombre}</h3>
-                                    <p className="text-xs text-pink-500">{servicio.duracion} min · ${servicio.precio}</p>
+                                    <p className="text-xs text-pink-500">{servicio.duracion} min · {window.formatearPrecioServicio ? window.formatearPrecioServicio(servicio) : `$${servicio.precio}`}</p>
                                 </div>
                                 {elegido && <span className="text-xs bg-pink-100 text-pink-700 px-2 py-1 rounded-full">{elegido.nombre}</span>}
                             </div>

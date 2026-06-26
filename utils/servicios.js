@@ -17,6 +17,55 @@ let serviciosCache = [];
 let ultimaActualizacionServicios = 0;
 const CACHE_DURATION_SERVICIOS = 5 * 60 * 1000;
 
+function parsePrecioServicio(valor, fallback = 0) {
+    const normalizado = String(valor ?? '').replace(',', '.').replace(/[^0-9.]/g, '');
+    const partes = normalizado.split('.');
+    const limpio = partes.length > 2 ? `${partes[0]}.${partes.slice(1).join('')}` : normalizado;
+    const numero = parseFloat(limpio);
+    return Number.isFinite(numero) ? numero : fallback;
+}
+
+function formatearMontoServicio(valor) {
+    const numero = parsePrecioServicio(valor, 0);
+    return numero % 1 === 0 ? numero.toFixed(0) : numero.toFixed(2);
+}
+
+function getMonedaServicio(servicio = {}) {
+    const moneda = String(servicio.precio_moneda || servicio.moneda || 'CUP').toUpperCase();
+    return ['CUP', 'USD'].includes(moneda) ? moneda : 'CUP';
+}
+
+function getPrecioServicioBase(servicio = {}) {
+    return parsePrecioServicio(
+        servicio.precio_desde ?? servicio.precio_min ?? servicio.precio,
+        parsePrecioServicio(servicio.precio, 0)
+    );
+}
+
+function getPrecioServicioHasta(servicio = {}) {
+    const hasta = parsePrecioServicio(servicio.precio_hasta ?? servicio.precio_max, NaN);
+    return Number.isFinite(hasta) && hasta > 0 ? hasta : null;
+}
+
+function formatearPrecioServicio(servicio = {}, opciones = {}) {
+    const moneda = getMonedaServicio(servicio);
+    const desde = getPrecioServicioBase(servicio);
+    const hasta = getPrecioServicioHasta(servicio);
+    const prefijo = opciones.sinDesde ? '' : 'Desde ';
+
+    if (hasta && hasta > desde) {
+        return `${prefijo}${formatearMontoServicio(desde)} - ${formatearMontoServicio(hasta)} ${moneda}`;
+    }
+
+    return `${formatearMontoServicio(desde)} ${moneda}`;
+}
+
+window.parsePrecioServicio = parsePrecioServicio;
+window.formatearPrecioServicio = formatearPrecioServicio;
+window.getPrecioServicioBase = getPrecioServicioBase;
+window.getPrecioServicioHasta = getPrecioServicioHasta;
+window.getMonedaServicio = getMonedaServicio;
+
 function extraerColumnaFaltante(errorTexto) {
     const texto = String(errorTexto || '');
     const match = texto.match(/Could not find the '([^']+)' column/i);
@@ -137,6 +186,9 @@ window.salonServicios = {
                 categoria: servicio.categoria || null,
                 duracion: servicio.duracion,
                 precio: servicio.precio,
+                precio_desde: servicio.precio_desde,
+                precio_hasta: servicio.precio_hasta,
+                precio_moneda: servicio.precio_moneda || 'CUP',
                 descripcion: servicio.descripcion || '',
                 activo: true,
                 imagen: servicio.imagen || null,
@@ -212,6 +264,9 @@ window.salonServicios = {
             if (cambios.categoria !== undefined) datosActualizar.categoria = cambios.categoria;
             if (cambios.duracion !== undefined) datosActualizar.duracion = cambios.duracion;
             if (cambios.precio !== undefined) datosActualizar.precio = cambios.precio;
+            if (cambios.precio_desde !== undefined) datosActualizar.precio_desde = cambios.precio_desde;
+            if (cambios.precio_hasta !== undefined) datosActualizar.precio_hasta = cambios.precio_hasta;
+            if (cambios.precio_moneda !== undefined) datosActualizar.precio_moneda = cambios.precio_moneda;
             if (cambios.descripcion !== undefined) datosActualizar.descripcion = cambios.descripcion;
             if (cambios.activo !== undefined) datosActualizar.activo = cambios.activo;
             if (cambios.imagen !== undefined) datosActualizar.imagen = cambios.imagen;

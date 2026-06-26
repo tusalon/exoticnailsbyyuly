@@ -78,10 +78,19 @@ async function calcularMontoAnticipo(configNegocio, servicioNombre) {
         const nombres = String(servicioNombre || '').split(' + ').map(nombre => nombre.trim()).filter(Boolean);
         const serviciosEncontrados = servicios.filter(s => nombres.includes(s.nombre));
         if (serviciosEncontrados.length > 0) {
-            precioServicio = serviciosEncontrados.reduce((total, servicio) => total + (parseFloat(servicio.precio) || 0), 0);
+            precioServicio = serviciosEncontrados.reduce((total, servicio) => {
+                const precio = window.getPrecioServicioBase
+                    ? window.getPrecioServicioBase(servicio)
+                    : (parseFloat(servicio.precio) || 0);
+                return total + precio;
+            }, 0);
         } else {
             const servicio = servicios.find(s => s.nombre === servicioNombre);
-            if (servicio) precioServicio = servicio.precio || 0;
+            if (servicio) {
+                precioServicio = window.getPrecioServicioBase
+                    ? window.getPrecioServicioBase(servicio)
+                    : (parseFloat(servicio.precio) || 0);
+            }
         }
     }
 
@@ -103,10 +112,19 @@ async function calcularTotalReserva(booking) {
             const serviciosEncontrados = servicios.filter(s => nombres.includes(s.nombre));
 
             if (serviciosEncontrados.length > 0) {
-                precioServicio = serviciosEncontrados.reduce((total, servicio) => total + (parseFloat(servicio.precio) || 0), 0);
+                precioServicio = serviciosEncontrados.reduce((total, servicio) => {
+                    const precio = window.getPrecioServicioBase
+                        ? window.getPrecioServicioBase(servicio)
+                        : (parseFloat(servicio.precio) || 0);
+                    return total + precio;
+                }, 0);
             } else {
                 const servicio = servicios.find(s => s.nombre === booking.servicio);
-                if (servicio) precioServicio = parseFloat(servicio.precio) || 0;
+                if (servicio) {
+                    precioServicio = window.getPrecioServicioBase
+                        ? window.getPrecioServicioBase(servicio)
+                        : (parseFloat(servicio.precio) || 0);
+                }
             }
         }
 

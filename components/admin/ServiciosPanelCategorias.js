@@ -155,6 +155,9 @@ function ServiciosPanel() {
             categoria: inferirCategoriaServicio(servicio, categorias),
             duracion: servicio.duracion,
             precio: servicio.precio,
+            precio_desde: servicio.precio_desde ?? servicio.precio,
+            precio_hasta: servicio.precio_hasta || null,
+            precio_moneda: servicio.precio_moneda || 'CUP',
             descripcion: servicio.descripcion || '',
             imagen: servicio.imagen || null,
             horarios_permitidos: servicio.horarios_permitidos || []
@@ -292,7 +295,7 @@ function ServiciosPanel() {
                                         </div>
                                         <div className="mt-2 flex flex-wrap gap-2 text-sm">
                                             <span className="px-2 py-1 bg-gray-100 rounded-full text-gray-700">{servicio.duracion} min</span>
-                                            <span className="px-2 py-1 bg-gray-100 rounded-full text-gray-700">${servicio.precio}</span>
+                                            <span className="px-2 py-1 bg-gray-100 rounded-full text-gray-700">{window.formatearPrecioServicio ? window.formatearPrecioServicio(servicio) : `$${servicio.precio}`}</span>
                                             <button onClick={() => toggleActivo(servicio)} className={`px-2 py-1 rounded-full text-xs font-semibold ${servicio.activo !== false ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
                                                 {servicio.activo !== false ? 'Activo' : 'Inactivo'}
                                             </button>
@@ -441,7 +444,9 @@ function ServicioFormCategorias({ servicio, categorias, onGuardar, onCancelar })
         nombre: servicio?.nombre || '',
         categoria: categoriaInicial || 'otros',
         duracion: String(servicio?.duracion || '45'),
-        precio: String(servicio?.precio ?? '0'),
+        precio_desde: String(servicio?.precio_desde ?? servicio?.precio ?? '0'),
+        precio_hasta: String(servicio?.precio_hasta ?? ''),
+        precio_moneda: String(servicio?.precio_moneda || 'CUP').toUpperCase(),
         descripcion: servicio?.descripcion || '',
         horarios_permitidos: servicio?.horarios_permitidos || []
     });
@@ -450,10 +455,12 @@ function ServicioFormCategorias({ servicio, categorias, onGuardar, onCancelar })
     const submit = (e) => {
         e.preventDefault();
         const duracion = parseInt(form.duracion, 10);
-        const precio = parseFloat(form.precio);
+        const precioDesde = window.parsePrecioServicio ? window.parsePrecioServicio(form.precio_desde, NaN) : parseFloat(String(form.precio_desde).replace(',', '.'));
+        const precioHasta = form.precio_hasta === '' ? null : (window.parsePrecioServicio ? window.parsePrecioServicio(form.precio_hasta, NaN) : parseFloat(String(form.precio_hasta).replace(',', '.')));
         if (!form.nombre.trim()) return alert('El nombre del servicio es obligatorio');
         if (isNaN(duracion) || duracion < 3) return alert('La duración debe ser al menos 3 minutos');
-        if (isNaN(precio) || precio < 0) return alert('El precio debe ser válido');
+        if (isNaN(precioDesde) || precioDesde < 0) return alert('El precio desde debe ser válido');
+        if (precioHasta !== null && (isNaN(precioHasta) || precioHasta < precioDesde)) return alert('El precio hasta debe ser mayor o igual al precio desde');
 
         let horarios = [];
         if (horariosStr.trim()) {
@@ -466,7 +473,10 @@ function ServicioFormCategorias({ servicio, categorias, onGuardar, onCancelar })
             nombre: form.nombre.trim(),
             descripcion: form.descripcion.trim(),
             duracion,
-            precio,
+            precio: precioDesde,
+            precio_desde: precioDesde,
+            precio_hasta: precioHasta,
+            precio_moneda: ['CUP', 'USD'].includes(form.precio_moneda) ? form.precio_moneda : 'CUP',
             horarios_permitidos: horarios
         });
     };
@@ -496,8 +506,16 @@ function ServicioFormCategorias({ servicio, categorias, onGuardar, onCancelar })
                     <h4 className="font-semibold text-gray-800">Precio, duración y disponibilidad</h4>
                     <div className="grid grid-cols-2 gap-3">
                         <input value={form.duracion} onChange={(e) => setForm({...form, duracion: e.target.value.replace(/\D/g, '')})} className="w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="Duración" inputMode="numeric" />
-                        <input value={form.precio} onChange={(e) => setForm({...form, precio: e.target.value.replace(/[^0-9.]/g, '')})} className="w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="Precio" inputMode="decimal" />
+                        <select value={form.precio_moneda} onChange={(e) => setForm({...form, precio_moneda: e.target.value})} className="w-full border border-gray-200 rounded-lg px-3 py-2 bg-white">
+                            <option value="CUP">CUP</option>
+                            <option value="USD">USD</option>
+                        </select>
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <input value={form.precio_desde} onChange={(e) => setForm({...form, precio_desde: e.target.value.replace(/[^0-9.,]/g, '')})} className="w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="Precio desde" inputMode="decimal" />
+                        <input value={form.precio_hasta} onChange={(e) => setForm({...form, precio_hasta: e.target.value.replace(/[^0-9.,]/g, '')})} className="w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="Precio hasta opcional" inputMode="decimal" />
+                    </div>
+                    <p className="text-xs text-gray-400">Si no hay rango, deja vacío "precio hasta". El cálculo usa el precio desde.</p>
                     <input value={horariosStr} onChange={(e) => setHorariosStr(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2" placeholder="Horarios permitidos: 09:00, 11:00" />
                     <p className="text-xs text-gray-400">Déjalo vacío para usar todos los horarios del profesional.</p>
                 </section>

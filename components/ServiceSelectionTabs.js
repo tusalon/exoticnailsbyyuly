@@ -159,7 +159,7 @@ function ServiceSelection({ onSelect, selectedService }) {
                                             )}
                                         </div>
                                         <div className="flex flex-col items-end gap-1 ml-4 shrink-0">
-                                            <span className="text-pink-600 font-bold text-lg">${service.precio}</span>
+                                            <span className="text-pink-600 font-bold text-lg">{window.formatearPrecioServicio ? window.formatearPrecioServicio(service) : `$${service.precio}`}</span>
                                             <span className="flex items-center text-pink-500 text-xs bg-pink-50 px-2 py-1 rounded-full border border-pink-200">
                                                 {service.duracion} min
                                             </span>
