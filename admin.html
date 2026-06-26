@@ -23,6 +23,13 @@
     <script src="utils/timeLogic.js"></script>
     <script src="utils/auth-clients.js?v=20260528-cliente-pais"></script>
     <script src="utils/auth-profesionales.js?v=20260528-internacional"></script>
+    <script src="utils/offline-panel.js?v=20260626-offline-panel"></script>
+    <script>
+        (async function() {
+            const offline = await window.RservasOffline?.redirectIfOffline?.();
+            if (!offline) window.RservasOffline?.syncFromSupabase?.();
+        })();
+    </script>
     <script src="utils/servicios.js?v=20260626-anticipos-servicio"></script>
     <script src="utils/profesionales.js"></script>
     <script src="utils/config.js"></script>
@@ -38,7 +45,7 @@
     <script src="components/admin/ServiciosPanelCategorias.js?v=20260626-anticipos-servicio" type="text/babel"></script>
     <script src="components/admin/ProfesionalesPanel.js?v=20260528-banderas" type="text/babel"></script>
     <script src="components/admin/HorariosPorDiaPanel.js?v=20260529-horas-12h" type="text/babel"></script>
-    <script src="admin-app.js?v=20260626-anticipos-servicio" type="text/babel"></script>
+    <script src="admin-app.js?v=20260626-offline-panel" type="text/babel"></script>
 
     <script>
         (function() {

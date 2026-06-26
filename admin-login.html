@@ -84,6 +84,13 @@
     </div>
 
     <script src="utils/supabase-config.js"></script>
+    <script src="utils/offline-panel.js?v=20260626-offline-panel"></script>
+    <script>
+        (async function() {
+            const offline = await window.RservasOffline?.redirectIfOffline?.();
+            if (!offline) window.RservasOffline?.syncFromSupabase?.();
+        })();
+    </script>
 
     <script>
         document.getElementById('loginForm').addEventListener('submit', async function(e) {

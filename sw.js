@@ -1,6 +1,6 @@
 // sw.js - Service Worker para Exotic Nails by Yuly
 
-const CACHE_NAME = 'exoticnailsbyyuly-v69';
+const CACHE_NAME = 'exoticnailsbyyuly-v70';
 const BASE = '/exoticnailsbyyuly';
 
 const urlsToCache = [
@@ -8,6 +8,7 @@ const urlsToCache = [
   `${BASE}/index.html`,
   `${BASE}/admin.html`,
   `${BASE}/admin-login.html`,
+  `${BASE}/offline-panel.html`,
   `${BASE}/calendar.html`,
   `${BASE}/setup-wizard.html`,
   `${BASE}/editar-negocio.html`,
@@ -27,6 +28,7 @@ const urlsToCache = [
   `${BASE}/utils/dias-cerrados.js`,
   `${BASE}/utils/hero-backgrounds.js`,
   `${BASE}/utils/native-push-notifications.js`,
+  `${BASE}/utils/offline-panel.js`,
   `${BASE}/utils/phone-utils.js`,
   `${BASE}/utils/profesionales.js`,
   `${BASE}/utils/push-config.js?v=20260621`,

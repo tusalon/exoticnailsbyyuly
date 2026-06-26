@@ -2300,7 +2300,12 @@ function AdminApp() {
 
                 data = filtrarReservasDelProfesional(data);
                 
-                setBookings(Array.isArray(data) ? data : []);
+                const reservasActualizadas = Array.isArray(data) ? data : [];
+                setBookings(reservasActualizadas);
+
+                if (window.RservasOffline?.syncFromBookings) {
+                    window.RservasOffline.syncFromBookings(reservasActualizadas);
+                }
             } else {
                 setBookings([]);
             }

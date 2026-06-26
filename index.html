@@ -372,6 +372,13 @@
     <script src="utils/storage.js"></script>
     <script src="utils/api.js?v=20260529-lista-espera"></script>
     <script src="utils/timeLogic.js"></script>
+    <script src="utils/offline-panel.js?v=20260626-offline-panel"></script>
+    <script>
+        (async function() {
+            const offline = await window.RservasOffline?.redirectIfOffline?.();
+            if (!offline) window.RservasOffline?.syncFromSupabase?.();
+        })();
+    </script>
     <script src="utils/auth-clients.js?v=20260528-cliente-pais"></script>
     <script src="utils/auth-profesionales.js?v=20260528-internacional"></script>
     <script src="utils/config.js"></script>
