@@ -296,10 +296,9 @@ END:VCALENDAR`;
                     const servicioItem = item.servicio;
                     const profesionalItem = item.profesional;
                     const bookings = await getBookingsByDateAndProfesional(date, profesionalItem.id);
-                    const horariosPorDia = await window.salonConfig.getHorariosPorDia(profesionalItem.id);
-                    const descansosPorDia = window.salonConfig.getDescansosPorDia
-                        ? await window.salonConfig.getDescansosPorDia(profesionalItem.id)
-                        : {};
+                    const horarioFecha = await window.salonConfig.getHorariosProfesionalParaFecha(profesionalItem.id, date);
+                    const horariosPorDia = horarioFecha.horariosPorDia || {};
+                    const descansosPorDia = horarioFecha.descansosPorDia || {};
                     const inicioMin = timeToMinutes(cursor);
                     const finMin = inicioMin + (parseInt(servicioItem.duracion, 10) || 60);
                     const trabajaEseDia = (horariosPorDia[diaSemana] || []).length > 0;

@@ -340,6 +340,13 @@ function ConfigPanel({ profesionalId, modoRestringido }) {
                             }}
                             onCancelar={() => setMostrarEditorPorDia(false)}
                         />
+                        <div className="px-6 pb-6">
+                            <HorariosExcepcionPanel
+                                profesionalId={profesionalSeleccionado}
+                                profesionalNombre={profesionales.find(p => p.id === profesionalSeleccionado)?.nombre || 'Profesional'}
+                                onCerrar={() => setMostrarEditorPorDia(false)}
+                            />
+                        </div>
                     </div>
                 </div>
             )}

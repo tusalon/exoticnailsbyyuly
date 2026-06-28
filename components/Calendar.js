@@ -8,6 +8,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
     const [fechasLibresProfesional, setFechasLibresProfesional] = React.useState([]);
     const [horariosPorDia, setHorariosPorDia] = React.useState({});
     const [descansosPorDia, setDescansosPorDia] = React.useState({});
+    const [fechasConHorariosConfigurados, setFechasConHorariosConfigurados] = React.useState([]);
     const [fechasSinDisponibilidad, setFechasSinDisponibilidad] = React.useState([]);
     const [cargandoDisponibilidad, setCargandoDisponibilidad] = React.useState(false);
     const [disponibilidadVerificada, setDisponibilidadVerificada] = React.useState(false);
@@ -220,12 +221,8 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
 
             const datosMultiples = asignacionesMultiples.length > 0
                 ? await Promise.all(asignacionesMultiples.map(async item => {
-                    const horariosItem = await window.salonConfig.getHorariosPorDia(item.profesional.id);
-                    const descansosItem = window.salonConfig.getDescansosPorDia
-                        ? await window.salonConfig.getDescansosPorDia(item.profesional.id)
-                        : {};
                     const reservasItem = await getReservasPorFechaProfesional(negocioId, item.profesional.id, fechaInicio, fechaFin);
-                    return { ...item, horarios: horariosItem || {}, descansos: descansosItem || {}, reservasPorFecha: reservasItem || {} };
+                    return { ...item, reservasPorFecha: reservasItem || {} };
                 }))
                 : [];
 
@@ -235,6 +232,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
             
             const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
             const sinDisponibilidad = [];
+            const conHorariosConfigurados = [];
             const ahora = new Date();
             const minFechaPermitida = new Date(Date.now() + (minHoras * 60 * 60 * 1000));
             
@@ -243,12 +241,20 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                 const fechaStr = formatDate(fecha);
                 const diaSemana = diasSemana[fecha.getDay()];
                 const diffDias = Math.ceil((new Date(`${fechaStr}T00:00:00`) - new Date(formatDate(ahora) + 'T00:00:00')) / (1000 * 60 * 60 * 24));
-                let baseSlots = (horarios[diaSemana] || []).map(indiceToHoraLegible);
+                const horariosFecha = await window.salonConfig.getHorariosProfesionalParaFecha(profesional.id, fechaStr);
+                const horariosFechaPorDia = horariosFecha.horariosPorDia || {};
+                const descansosFechaPorDia = horariosFecha.descansosPorDia || {};
+                let baseSlots = (horariosFechaPorDia[diaSemana] || []).map(indiceToHoraLegible);
                 if (!service?.esMultiple && service?.horarios_permitidos?.length) {
                     baseSlots = baseSlots.filter(slot => servicioPermiteHorario(service, slot));
                 }
                 
-                if (baseSlots.length === 0 || (Number(maxDias) > 0 && diffDias > Number(maxDias))) {
+                if (Number(maxDias) > 0 && diffDias > Number(maxDias)) {
+                    sinDisponibilidad.push(fechaStr);
+                    continue;
+                }
+
+                if (datosMultiples.length === 0 && baseSlots.length === 0) {
                     sinDisponibilidad.push(fechaStr);
                     continue;
                 }
@@ -257,37 +263,56 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
 
                 if (datosMultiples.length > 0) {
                     const primerItem = datosMultiples[0];
-                    baseSlots = (primerItem.horarios[diaSemana] || []).map(indiceToHoraLegible);
+                    const primerHorario = await window.salonConfig.getHorariosProfesionalParaFecha(primerItem.profesional.id, fechaStr);
+                    baseSlots = ((primerHorario.horariosPorDia || {})[diaSemana] || []).map(indiceToHoraLegible);
                     if (primerItem.servicio?.horarios_permitidos?.length) {
                         baseSlots = baseSlots.filter(slot => servicioPermiteHorario(primerItem.servicio, slot));
                     }
+                    if (baseSlots.length === 0) {
+                        sinDisponibilidad.push(fechaStr);
+                        continue;
+                    }
+                    conHorariosConfigurados.push(fechaStr);
 
-                    tieneHorarioFuturo = baseSlots.some(slotStr => {
+                    for (const slotStr of baseSlots) {
                         let cursor = timeToMinutes(slotStr);
                         const fechaHoraSlot = new Date(year, month, d, Math.floor(cursor / 60), cursor % 60, 0);
-                        if (fechaHoraSlot < minFechaPermitida) return false;
+                        if (fechaHoraSlot < minFechaPermitida) continue;
 
+                        let slotCompletoDisponible = true;
                         for (const item of datosMultiples) {
+                            const horarioItem = await window.salonConfig.getHorariosProfesionalParaFecha(item.profesional.id, fechaStr);
+                            const horariosItemPorDia = horarioItem.horariosPorDia || {};
+                            const descansosItemPorDia = horarioItem.descansosPorDia || {};
                             const duracion = parseInt(item.servicio?.duracion, 10) || 60;
                             const inicio = cursor;
                             const fin = inicio + duracion;
-                            const slotsDia = item.horarios[diaSemana] || [];
-                            if (slotsDia.length === 0) return false;
-                            if (slotTieneDescanso(inicio, fin, item.descansos[diaSemana] || [])) return false;
+                            const slotsDia = horariosItemPorDia[diaSemana] || [];
+                            if (slotsDia.length === 0 || slotTieneDescanso(inicio, fin, descansosItemPorDia[diaSemana] || [])) {
+                                slotCompletoDisponible = false;
+                                break;
+                            }
 
                             const conflicto = (item.reservasPorFecha[fechaStr] || []).some(reserva => {
                                 const reservaStart = timeToMinutes(reserva.hora_inicio);
                                 const reservaEnd = timeToMinutes(reserva.hora_fin);
                                 return (inicio < reservaEnd) && (fin > reservaStart);
                             });
-                            if (conflicto) return false;
+                            if (conflicto) {
+                                slotCompletoDisponible = false;
+                                break;
+                            }
 
                             cursor = fin;
                         }
 
-                        return true;
-                    });
+                        if (slotCompletoDisponible) {
+                            tieneHorarioFuturo = true;
+                            break;
+                        }
+                    }
                 } else {
+                    conHorariosConfigurados.push(fechaStr);
                     tieneHorarioFuturo = baseSlots.some(slotStr => {
                         const slotStart = timeToMinutes(slotStr);
                         const fechaHoraSlot = new Date(year, month, d, Math.floor(slotStart / 60), slotStart % 60, 0);
@@ -295,7 +320,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                             slotStr,
                             duracion: service.duracion,
                             slotsDia: baseSlots,
-                            descansosDelDia: descansos[diaSemana] || [],
+                            descansosDelDia: descansosFechaPorDia[diaSemana] || [],
                             reservasDia: reservasPorFecha[fechaStr] || [],
                             fechaHoraSlot,
                             minFechaPermitida,
@@ -311,6 +336,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
             // Descartar resultado si llegó una petición más reciente
             if (peticionMesRef.current !== miPeticion) return;
             setFechasSinDisponibilidad(sinDisponibilidad);
+            setFechasConHorariosConfigurados(conHorariosConfigurados);
             setDisponibilidadVerificada(true);
         } catch (error) {
             console.error('Error verificando disponibilidad real del mes:', error);
@@ -348,10 +374,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
     };
 
     const tieneHorariosConfigurados = (date) => {
-        const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-        const diaSemana = diasSemana[date.getDay()];
-        let horariosDelDia = (horariosPorDia[diaSemana] || []).map(indiceToHoraLegible);
-        return horariosDelDia.length > 0;
+        return fechasConHorariosConfigurados.includes(formatDate(date));
     };
 
     const nextMonth = () => {
@@ -451,8 +474,8 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                             const sinDisponibilidad = esDiaSinDisponibilidad(date);
                             const tieneHorarios = tieneHorariosConfigurados(date);
                             const dentroDeAntelacion = estaDentroDeAntelacion(date);
-                            const puedeListaEspera = disponibilidadVerificada && !cargandoDisponibilidad && !past && profesionalTrabaja && !cerrado && !diaLibreProfesional && sinDisponibilidad && tieneHorarios && dentroDeAntelacion;
-                            const available = disponibilidadVerificada && !cargandoDisponibilidad && !past && profesionalTrabaja && !cerrado && !diaLibreProfesional && !sinDisponibilidad && tieneHorarios && dentroDeAntelacion;
+                            const puedeListaEspera = disponibilidadVerificada && !cargandoDisponibilidad && !past && !cerrado && !diaLibreProfesional && sinDisponibilidad && tieneHorarios && dentroDeAntelacion;
+                            const available = disponibilidadVerificada && !cargandoDisponibilidad && !past && !cerrado && !diaLibreProfesional && !sinDisponibilidad && tieneHorarios && dentroDeAntelacion;
                             const selectable = available || puedeListaEspera;
                             
                             let className = "h-10 w-full flex items-center justify-center rounded-lg text-sm font-medium transition-all relative";
@@ -469,7 +492,7 @@ function Calendar({ onDateSelect, selectedDate, profesional, profesionalCompleto
                             else if (!disponibilidadVerificada || cargandoDisponibilidad) title = "Verificando disponibilidad";
                             else if (past && dateStr === getTodayLocalString()) title = "Hoy ya no hay horarios disponibles";
                             else if (past) title = "Fecha pasada";
-                            else if (!profesionalTrabaja && profesional) {
+                            else if (!profesionalTrabaja && profesional && !tieneHorarios) {
                                 const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
                                 title = `${profesional.nombre} no trabaja los ${diasSemana[date.getDay()]}s`;
                             } else if (!tieneHorarios) title = "No hay horarios configurados para este dia";

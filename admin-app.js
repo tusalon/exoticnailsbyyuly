@@ -801,7 +801,7 @@ function AdminApp() {
         const maxAntelacionDias = configGlobal?.max_antelacion_dias ?? 30;
         const respetarLimitesAntelacion = userRole !== 'admin' && !reservaEditando;
 
-        const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
+        const horarios = await window.salonConfig.getHorariosProfesionalParaFecha(profesionalId, fecha);
         const [year, month, day] = fecha.split('-').map(Number);
         const fechaLocal = new Date(year, month - 1, day);
         const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
@@ -926,12 +926,6 @@ function AdminApp() {
             const maxAntelacionDias = configGlobal?.max_antelacion_dias ?? 30;
             const respetarLimitesAntelacion = userRole !== 'admin' && !reservaEditando;
             
-            const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
-            const horasTrabajo = horarios.horas || [];
-            const diasTrabajo = horarios.dias || [];
-            const horariosPorDia = horarios.horariosPorDia || {};
-            const descansosPorDia = horarios.descansosPorDia || {};
-            
             const primerDia = new Date(year, month, 1);
             const ultimoDia = new Date(year, month + 1, 0);
             
@@ -974,6 +968,11 @@ function AdminApp() {
                 const fechaStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
                 const fechaActual = new Date(year, month, d);
                 const diaSemana = nombresDias[fechaActual.getDay()];
+                const horarios = await window.salonConfig.getHorariosProfesionalParaFecha(profesionalId, fechaStr);
+                const horasTrabajo = horarios.horas || [];
+                const diasTrabajo = horarios.dias || [];
+                const horariosPorDia = horarios.horariosPorDia || {};
+                const descansosPorDia = horarios.descansosPorDia || {};
                 const diffDias = Math.ceil((fechaActual - hoy) / (1000 * 60 * 60 * 24));
 
                 if (respetarLimitesAntelacion && Number(maxAntelacionDias) > 0 && diffDias > Number(maxAntelacionDias)) {
@@ -1053,12 +1052,6 @@ function AdminApp() {
             const year = fecha.getFullYear();
             const month = fecha.getMonth();
             
-            const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
-            const horasTrabajo = horarios.horas || [];
-            const diasTrabajo = horarios.dias || [];
-            const horariosPorDia = horarios.horariosPorDia || {};
-            const descansosPorDia = horarios.descansosPorDia || {};
-            
             const profesionalObj = profesionalesList.find(p => p.id === profesionalId);
             const fechasLibresPersonales = profesionalObj?.fechas_libres || [];
             
@@ -1106,6 +1099,11 @@ function AdminApp() {
                 
                 const fechaActual = new Date(year, month, d);
                 const diaSemana = nombresDias[fechaActual.getDay()];
+                const horarios = await window.salonConfig.getHorariosProfesionalParaFecha(profesionalId, fechaStr);
+                const horasTrabajo = horarios.horas || [];
+                const diasTrabajo = horarios.dias || [];
+                const horariosPorDia = horarios.horariosPorDia || {};
+                const descansosPorDia = horarios.descansosPorDia || {};
                 
                 const horariosDelDia = (horariosPorDia[diaSemana] && horariosPorDia[diaSemana].length ? horariosPorDia[diaSemana] : horasTrabajo) || [];
                 const descansosDelDia = descansosPorDia[diaSemana] || [];
@@ -1192,11 +1190,6 @@ function AdminApp() {
         setDisponibilidadCargando(true);
         try {
             const profesionalObj = profesionalesList.find(p => p.id === parseInt(profesionalId));
-            const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
-            const horasTrabajo = horarios.horas || [];
-            const diasTrabajo = horarios.dias || [];
-            const horariosPorDia = horarios.horariosPorDia || {};
-            const descansosPorDia = horarios.descansosPorDia || {};
             const fechasLibresPersonales = profesionalObj?.fechas_libres || [];
             const diasSemanaVista = getDiasSemanaDisponibilidad(fecha);
             const fechaInicio = formatDate(diasSemanaVista[0]);
@@ -1221,9 +1214,14 @@ function AdminApp() {
                 reservasPorFecha[r.fecha].push(r);
             });
 
-            const semana = diasSemanaVista.map(dia => {
+            const semana = await Promise.all(diasSemanaVista.map(async dia => {
                 const fechaStr = formatDate(dia);
                 const diaSemana = nombresDias[dia.getDay()];
+                const horarios = await window.salonConfig.getHorariosProfesionalParaFecha(profesionalId, fechaStr);
+                const horasTrabajo = horarios.horas || [];
+                const diasTrabajo = horarios.dias || [];
+                const horariosPorDia = horarios.horariosPorDia || {};
+                const descansosPorDia = horarios.descansosPorDia || {};
                 const reservasDia = reservasPorFecha[fechaStr] || [];
                 const horariosDelDia = (horariosPorDia[diaSemana] && horariosPorDia[diaSemana].length ? horariosPorDia[diaSemana] : horasTrabajo) || [];
                 const descansosDelDia = descansosPorDia[diaSemana] || [];
@@ -1262,7 +1260,7 @@ function AdminApp() {
                     turnos,
                     libres: turnos.filter(t => t.estado === 'Disponible').length
                 };
-            });
+            }));
 
             setDisponibilidadSemanal(semana);
         } catch (error) {
@@ -1809,7 +1807,7 @@ function AdminApp() {
             return { ok: false, mensaje: 'La hora de fin debe ser mayor que la hora de inicio.' };
         }
 
-        const horarios = await window.salonConfig.getHorariosProfesional(profesionalId);
+        const horarios = await window.salonConfig.getHorariosProfesionalParaFecha(profesionalId, fecha);
         const [year, month, day] = fecha.split('-').map(Number);
         const fechaLocal = new Date(year, month - 1, day);
         const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];

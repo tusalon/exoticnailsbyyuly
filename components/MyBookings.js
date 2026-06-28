@@ -152,9 +152,8 @@ function MyBookings({ cliente, onVolver }) {
             return [];
         }
 
-        const horarios = await window.salonConfig.getHorariosProfesional(booking.profesional_id);
-        const descansosPorDia = window.salonConfig.getDescansosPorDia
-            ? await window.salonConfig.getDescansosPorDia(booking.profesional_id) : {};
+        const horarios = await window.salonConfig.getHorariosProfesionalParaFecha(booking.profesional_id, fecha);
+        const descansosPorDia = horarios?.descansosPorDia || {};
 
         const profRes = await fetch(
             `${window.SUPABASE_URL}/rest/v1/profesionales?negocio_id=eq.${negocioId}&id=eq.${booking.profesional_id}&select=id,nombre,fechas_libres`,

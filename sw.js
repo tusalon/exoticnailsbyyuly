@@ -1,6 +1,6 @@
 // sw.js - Service Worker para Exotic Nails by Yuly
 
-const CACHE_NAME = 'exoticnailsbyyuly-v71';
+const CACHE_NAME = 'exoticnailsbyyuly-v72';
 const BASE = '/exoticnailsbyyuly';
 
 const urlsToCache = [
@@ -61,6 +61,7 @@ const urlsToCache = [
   // Componentes admin
   `${BASE}/components/admin/ConfigPanel.js`,
   `${BASE}/components/admin/EditarNegocio.js`,
+  `${BASE}/components/admin/HorariosExcepcionPanel.js`,
   `${BASE}/components/admin/HorariosPorDiaPanel.js`,
   `${BASE}/components/admin/ProfesionalesPanel.js`,
   `${BASE}/components/admin/ServiciosPanel.js`,
