@@ -1,59 +1,22 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Negocio</title>
-    <script src="vendor/tailwind-browser.js"></script>
-    <script src="vendor/react.production.min.js"></script>
-    <script src="vendor/react-dom.production.min.js"></script>
-    <script src="vendor/babel.min.js"></script>
-    <link href="vendor/lucide/lucide.css" rel="stylesheet">
-    <link href="utils/legacy-ios-fallback.css?v=20260619-ios15" rel="stylesheet">
-    <style>
-        .animate-fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yuly Nails Studio</title>
+<meta name="robots" content="noindex">
+<noscript><meta http-equiv="refresh" content="1;url=https://tusalon.github.io/rservasroma/editar-negocio.html?s=exoticnailsbyyuly"></noscript>
+<script>
+// Este salón ya vive en la app nueva. Se conservan los parámetros que traiga el enlace.
+(function () {
+    var q = new URLSearchParams(location.search);
+    q.set('s', "exoticnailsbyyuly");
+    location.replace("https://tusalon.github.io/rservasroma/editar-negocio.html" + '?' + q.toString() + location.hash);
+})();
+</script>
 </head>
-<body class="bg-gray-100">
-    <div id="root"></div>
-
-    <!-- Scripts necesarios -->
-    <script src="utils/supabase-config.js"></script>
-    <script src="utils/hero-backgrounds.js?v=20260522-fondos-lashes-peluqueria"></script>
-    <script src="utils/storage.js"></script>
-    <script src="utils/config-negocio.js?v=20260619-whatsapp-costos"></script>
-    <script src="utils/phone-utils.js?v=20260616-preservar-cero-v2"></script>
-    
-    <!-- Componente de edición -->
-    <script type="text/babel" src="components/admin/EditarNegocio.js?v=20260626-anticipos-servicio"></script>
-
-    <script>
-        // Verificar autenticación
-        (function() {
-            const negocioId = localStorage.getItem('negocioId');
-            const adminAuth = localStorage.getItem('adminAuth') === 'true';
-            const profesionalAuthRaw = localStorage.getItem('profesionalAuth');
-            const profesionalLoginTime = localStorage.getItem('profesionalLoginTime');
-            let profesionalNivel = 0;
-            try {
-                profesionalNivel = profesionalAuthRaw ? (JSON.parse(profesionalAuthRaw).nivel || 1) : 0;
-            } catch (e) {
-                profesionalNivel = 0;
-            }
-            const profesionalAvanzado = profesionalAuthRaw && profesionalNivel >= 3 && profesionalLoginTime &&
-                (Date.now() - parseInt(profesionalLoginTime)) < 8 * 60 * 60 * 1000;
-            
-            if (!negocioId || (!adminAuth && !profesionalAvanzado)) {
-                console.log('🚫 No hay sesión, redirigiendo a login');
-                window.location.href = 'admin-login.html';
-            }
-        })();
-    </script>
+<body style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:48px 24px;color:#444">
+<p style="font-size:18px">Te llevamos a la versión nueva de <strong>Yuly Nails Studio</strong>…</p>
+<p><a href="https://tusalon.github.io/rservasroma/editar-negocio.html?s=exoticnailsbyyuly" style="color:#d81b60;font-weight:bold">Toca aquí si no se abre sola</a></p>
 </body>
 </html>
