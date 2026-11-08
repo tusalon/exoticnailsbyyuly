@@ -5,8 +5,18 @@ const DESTINO = "https://tusalon.github.io/rservasroma/";
 const SLUG = "exoticnailsbyyuly";
 const REPO = "exoticnailsbyyuly";
 const QS = new URLSearchParams({ s: SLUG }).toString(); // la misma codificación que usa mapearUrl
+const AVISO_URL = "https://zorhclhvykikaachfrmp.supabase.co/rest/v1/rpc/puente_visita";
+const AVISO_CLAVE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcmhjbGh2eWtpa2FhY2hmcm1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDQzMzUsImV4cCI6MjA4NzcyMDMzNX0.reauF3UfNTFJFZ3Mnzf8ctYH1d5p7C3msi7AvYJUaos";
 const CLIENTA = DESTINO + '?' + QS;
 const ADMIN = DESTINO + 'admin.html?' + QS;
+
+// Cuenta (sin datos de la persona) que este enlace viejo sigue en uso: 'sw' al llevar una ventana abierta a la app
+// nueva y 'push' cuando llega una notificación por la suscripción vieja. Nunca debe estorbar: si falla, se ignora.
+function avisar(tipo) {
+    try {
+        return fetch(AVISO_URL, { method: 'POST', keepalive: true, headers: { apikey: AVISO_CLAVE, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_slug: SLUG, p_tipo: tipo }) }).catch(function () {});
+    } catch (e) { return Promise.resolve(); }
+}
 
 // Una dirección de la app vieja ("/repo/admin.html", "https://tusalon.github.io/repo/?x=1") -> la de la app nueva.
 function mapearUrl(url) {
@@ -39,7 +49,7 @@ self.addEventListener('activate', function (event) {
             .then(function (ventanas) {
                 // Las ventanas que ya estaban abiertas con la app vieja pasan a la nueva.
                 ventanas.forEach(function (v) {
-                    try { v.navigate(/admin/i.test(v.url) ? ADMIN : CLIENTA); } catch (e) { /* ventana cerrada */ }
+                    try { v.navigate(/admin/i.test(v.url) ? ADMIN : CLIENTA); avisar('sw'); } catch (e) { /* ventana cerrada */ }
                 });
             })
     );
@@ -54,13 +64,16 @@ self.addEventListener('push', function (event) {
     } catch (e) {
         carga = { title: 'RservasRoma', body: event.data ? event.data.text() : 'Tienes una nueva notificación' };
     }
-    event.waitUntil(self.registration.showNotification(carga.title || 'RservasRoma', {
-        body: carga.body || 'Tienes una nueva notificación',
-        icon: DESTINO + 'icons/icon-192x192.png',
-        badge: DESTINO + 'icons/badge-96.png',
-        tag: carga.tag || 'rservasroma',
-        data: Object.assign({ url: mapearUrl(carga.url) }, carga.data || {})
-    }));
+    event.waitUntil(Promise.all([
+        self.registration.showNotification(carga.title || 'RservasRoma', {
+            body: carga.body || 'Tienes una nueva notificación',
+            icon: DESTINO + 'icons/icon-192x192.png',
+            badge: DESTINO + 'icons/badge-96.png',
+            tag: carga.tag || 'rservasroma',
+            data: Object.assign({ url: mapearUrl(carga.url) }, carga.data || {})
+        }),
+        avisar('push')
+    ]));
 });
 
 self.addEventListener('notificationclick', function (event) {
